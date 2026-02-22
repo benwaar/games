@@ -1,0 +1,10 @@
+# utala: kaos 9 - Phase 1 dependencies
+# No ML/DL frameworks allowed in Phase 1 per CLAUDE.md
+
+# Core dependencies will be added as needed
+
+# Development dependencies
+coverage>=7.4.0  # Code coverage measurement
+ruff>=0.1.0      # Fast modern linter (replaces flake8, pylint, isort)
+mypy>=1.8.0      # Static type checking
+bandit>=1.7.0    # Security vulnerability scanner

@@ -1,0 +1,79 @@
+[project]
+name = "utala-kaos-9"
+version = "0.1.0"
+description = "A 2-player tactical grid combat card game research project"
+requires-python = ">=3.10"
+
+[tool.ruff]
+# Target Python 3.10+
+target-version = "py310"
+
+# Source directory
+src = ["src"]
+
+# Line length
+line-length = 100
+
+# Exclude patterns
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Enable specific rule sets
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["N802"]  # Allow non-lowercase function names in tests
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Allow untyped defs for now (Phase 1)
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# Allow incremental adoption
+ignore_missing_imports = true
+
+# Exclude directories
+exclude = [
+    "venv",
+    "build",
+    "src/ui",  # UI has different import structure
+]
+
+[tool.bandit]
+# Exclude test directories
+exclude_dirs = ["tests", "venv"]
+
+# Skip certain test IDs
+skips = [
+    "B101",  # assert_used (we use asserts in tests)
+    "B311",  # random (standard random is fine for game simulation, not cryptography)
+]

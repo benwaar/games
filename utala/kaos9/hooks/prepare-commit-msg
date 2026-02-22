@@ -1,0 +1,36 @@
+#!/bin/bash
+# Git prepare-commit-msg hook
+# Provides a template for conventional commits
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+
+# Only add template for regular commits (not merge, squash, etc.)
+if [ -z "$COMMIT_SOURCE" ]; then
+    # Check if file is empty or only has comments
+    if ! grep -q "^[^#]" "$COMMIT_MSG_FILE" 2>/dev/null; then
+        cat > "$COMMIT_MSG_FILE" << 'EOF'
+# <type>[optional scope]: <description>
+#
+# [optional body]
+#
+# [optional footer(s)]
+#
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+#
+# Examples:
+#   feat: add baseline random agent
+#   fix(engine): correct dogfight resolution order
+#   docs: document game state representation
+#   refactor(agent)!: breaking change to agent interface
+#
+# Remember:
+#   - Use imperative mood ("add" not "added")
+#   - Don't capitalize first letter of description
+#   - No period at the end of the subject line
+#   - Limit subject line to 72 characters
+#   - Separate subject from body with a blank line
+#   - Use ! after type/scope for breaking changes
+EOF
+    fi
+fi
