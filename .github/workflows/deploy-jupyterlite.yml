@@ -1,0 +1,70 @@
+name: Deploy JupyterLite
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'jupyterlite/**'
+      - 'utala/kaos9/src/**'
+      - 'utala/kaos9/pyproject.toml'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          pip install --upgrade pip
+          pip install build jupyterlite-core jupyterlite-pyodide-kernel
+
+      - name: Build Python wheel
+        run: |
+          cd utala/kaos9
+          python -m build --wheel
+          ls -lh dist/
+
+      - name: Copy wheel to JupyterLite
+        run: |
+          cp utala/kaos9/dist/*.whl jupyterlite/pyodide/
+          ls -lh jupyterlite/pyodide/
+
+      - name: Build JupyterLite site
+        run: |
+          cd jupyterlite
+          jupyter lite build --contents content --output-dir dist
+          ls -lh dist/
+
+      - name: Copy wheel to dist
+        run: |
+          cd jupyterlite
+          mkdir -p dist/pyodide
+          cp pyodide/*.whl dist/pyodide/
+          ls -lh dist/pyodide/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: jupyterlite/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

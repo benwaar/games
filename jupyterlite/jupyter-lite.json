@@ -1,0 +1,13 @@
+{
+  "jupyter-lite-schema-version": 0,
+  "jupyter-config-data": {
+    "appName": "Utala KAOS 9",
+    "appDescription": "Play tactical card game with AI agents"
+  },
+  "piplite": {
+    "pipliteUrls": [
+      "/pyodide/utala_kaos_9-0.1.0-py3-none-any.whl",
+      "pyodide/utala_kaos_9-0.1.0-py3-none-any.whl"
+    ]
+  }
+}
