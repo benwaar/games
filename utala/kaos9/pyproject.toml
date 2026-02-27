@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "utala-kaos-9"
-version = "0.1.0"
+version = "0.1.1"
 description = "A 2-player tactical grid combat card game research project"
 requires-python = ">=3.10"
 
