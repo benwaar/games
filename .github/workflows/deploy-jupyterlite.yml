@@ -7,6 +7,7 @@ on:
       - 'jupyterlite/**'
       - 'utala/kaos9/src/**'
       - 'utala/kaos9/pyproject.toml'
+      - '.github/workflows/deploy-jupyterlite.yml'
   workflow_dispatch:  # Allow manual triggering
 
 permissions:
