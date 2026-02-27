@@ -34,7 +34,7 @@ jobs:
       - name: Install build tools
         run: |
           pip install --upgrade pip
-          pip install build jupyterlite-core jupyterlite-pyodide-kernel
+          pip install build jupyterlite-core jupyterlite-pyodide-kernel jupyter-server
 
       - name: Build Python wheel
         run: |
