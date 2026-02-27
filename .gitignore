@@ -1,0 +1,12 @@
+# JupyterLite build artifacts (if accidentally created at root)
+dist/
+_output/
+.jupyterlite.doit.db
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
