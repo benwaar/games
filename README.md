@@ -1,5 +1,7 @@
 # Games and Game AI
 
+[![Deploy to GitHub Pages](https://github.com/benwaar/games/actions/workflows/deploy-jupyterlite.yml/badge.svg)](https://github.com/benwaar/games/actions/workflows/deploy-jupyterlite.yml)
+
 ## Project Ethos
 
 These projects are about:
@@ -20,6 +22,14 @@ Everything is text-based, inspectable, and hackable.
 Download and play the game (requires Python)
 
 ![Human gameplay screenshot](utala/kaos9/screenshot.png)
+
+## 🚀 Live Player
+
+Deployed automatically via GitHub Pages on pushes to `main`.
+The text based game can be played in a Jupyter lab so it works at
+`https://benwaar.github.io/games/`.
+
+**[Play online →](https://benwaar.github.io/games/)**
 
 ## Quick Start
 
