@@ -216,7 +216,7 @@ def main():
                         from utala.agents.monte_carlo_agent import UltraStrongMonteCarloAgent
                         ai_agent = UltraStrongMonteCarloAgent("AI-MC-Ultra")
 
-                    print(f"✓ Game restored! Phase: {engine.state.phase.name}, Turn: {engine.state.turn_number}")
+                    print(f"✓ Game restored! Phase: {engine.state.phase.name}")
                     break
                 elif choice == "2":
                     # Delete saved game and start fresh
@@ -321,7 +321,7 @@ def main():
                     rm1, rm2 = square.rocketmen
                     underdog_rm = rm1 if rm1.player == df.underdog else rm2
                     other_rm = rm2 if rm1.player == df.underdog else rm1
-                    print(f"\n🥊 Dogfight at [{pos[0]},{pos[1]}]:")
+                    print(f"\n🥊 Dogfight at Square [r{pos[0] + 1},c{pos[1] + 1}]:")
                     print(f"   {agents[df.underdog].name} (underdog, power {underdog_rm.power}) acts first")
                     print(f"   vs {agents[df.other].name} (power {other_rm.power})")
 
@@ -537,8 +537,10 @@ def main():
                     survivor = post_rocketmen[0]
                     eliminated_players = [rm.player for rm in pre_rocketmen if rm.player != survivor.player]
                     if eliminated_players:
-                        print(f"\n🎯 {agents[survivor.player].name} wins! {agents[eliminated_players[0]].name}'s rocketman eliminated.")
-                    print(f"   Square [{pos[0]},{pos[1]}] now controlled by {agents[survivor.player].name} (power {survivor.power})")
+                        winner_name = agents[survivor.player].name
+                        winner_verb = "win" if winner_name == "You" else "wins"
+                        print(f"\n🎯 {winner_name} {winner_verb}! {agents[eliminated_players[0]].name}'s rocketman eliminated.")
+                    print(f"   Square [r{pos[0] + 1},c{pos[1] + 1}] now controlled by {agents[survivor.player].name}")
 
                 # Display updated board
                 print("\n📍 Updated board:")
@@ -560,7 +562,7 @@ def main():
                             p1_val = str(p1_rm.power) if not p1_rm.face_down else "??"
                             p2_val = str(p2_rm.power) if not p2_rm.face_down else "??"
                             row_str.append(f"X:{p1_val}/O:{p2_val}")
-                    print(f"  {row}: {'|'.join(row_str)}")
+                    print(f"  {row + 1}: {'|'.join(row_str)}")
 
                 print("\n" + "-" * 60)
 
@@ -667,7 +669,7 @@ def main():
                 p1_val = str(p1_rm.power) if not p1_rm.face_down else "??"
                 p2_val = str(p2_rm.power) if not p2_rm.face_down else "??"
                 row_str.append(f"X:{p1_val}/O:{p2_val}")
-        print(f"  {row}: {'|'.join(row_str)}")
+        print(f"  {row + 1}: {'|'.join(row_str)}")
 
     # Announce winner
     print()

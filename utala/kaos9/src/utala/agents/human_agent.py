@@ -85,7 +85,14 @@ class HumanAgent(Agent):
     def _display_state(self, state: GameState, player: Player, dogfight_info=None):
         """Display current game state with optional dogfight turn information."""
         print("\n" + "=" * 60)
-        print(f"Turn {state.turn_number} - Phase: {state.phase.name}")
+        if state.phase == Phase.DOGFIGHTS and state.current_dogfight_index < len(state.dogfight_order):
+            row, col = state.dogfight_order[state.current_dogfight_index]
+            print(
+                f"Dogfight {state.current_dogfight_index + 1}/{len(state.dogfight_order)} "
+                f"- Square [r{row + 1},c{col + 1}]"
+            )
+        else:
+            print(f"Turn {state.turn_number} - Phase: {state.phase.name}")
         print(f"You are Player {player.value + 1} {'(X)' if player == Player.ONE else '(O)'}")
 
         # Display joker token holder
@@ -118,7 +125,7 @@ class HumanAgent(Agent):
                     p1_val = str(p1_rm.power) if not p1_rm.face_down else "??"
                     p2_val = str(p2_rm.power) if not p2_rm.face_down else "??"
                     row_str.append(f"X:{p1_val}/O:{p2_val}")
-            print(f"  {row}: {'|'.join(row_str)}")
+            print(f"  {row + 1}: {'|'.join(row_str)}")
 
         # Display resources
         resources = state.get_resources(player)
@@ -139,7 +146,7 @@ class HumanAgent(Agent):
         if state.phase == Phase.DOGFIGHTS and state.current_dogfight_index < len(state.dogfight_order):
             row, col = state.dogfight_order[state.current_dogfight_index]
             square = state.get_square(row, col)
-            print(f"\nCurrent dogfight at [{row},{col}]:")
+            print(f"\nCell in play: Square [r{row + 1},c{col + 1}]")
             if len(square.rocketmen) == 2:
                 rm1, rm2 = square.rocketmen
 
@@ -163,8 +170,7 @@ class HumanAgent(Agent):
                 your_power_display = str(your_rm.power) if not your_rm.face_down else "??"
                 opp_power_display = str(opp_rm.power) if not opp_rm.face_down else "??"
 
-                print(f"  Your rocketman: {your_power_display}")
-                print(f"  Opponent rocketman: {opp_power_display}")
+                print(f"  Matchup: you {your_power_display} vs {opp_power_display}")
                 print(f"  Underdog acts first: {'You' if underdog_player == player else 'Opponent'}")
 
                 # Show opponent's action if they've already acted (from dogfight_info)
