@@ -13,14 +13,17 @@ from pathlib import Path
 
 sys.path.insert(0, 'src')
 
-from utala.actions import get_action_space
+from utala.actions import ActionType, get_action_space
 from utala.agents.heuristic_agent import HeuristicAgent
 from utala.agents.human_agent import HumanAgent
 from utala.agents.monte_carlo_agent import FastMonteCarloAgent
 from utala.agents.random_agent import RandomAgent
 from utala.engine import GameEngine
 from utala.replays.format import ReplayMetadata, ReplayV1
-from utala.state import Phase, Player
+from utala.state import GameConfig, Phase, Player
+
+# v1.9: Choosable dogfight order
+CONFIG = GameConfig(fixed_dogfight_order=False)
 
 SAVE_FILE = Path("saved_game.json")
 
@@ -32,7 +35,7 @@ def save_game(engine: GameEngine, human_player: Player, ai_agent_type: str, agen
 
     metadata = ReplayMetadata(
         format_version="v1",
-        rules_version="1.8",
+        rules_version="1.9",
         game_variant="level1",
         player_one_name=agents[Player.ONE].name,
         player_two_name=agents[Player.TWO].name,
@@ -97,15 +100,19 @@ def select_action_with_save(
 
     for action_idx in legal_actions:
         action = human.action_space.get_action(action_idx)
-        action_type = action.action_type.name
 
-        # For dogfight actions, only show first of each type
-        if action_type in ["PLAY_WEAPON", "PASS"]:
-            if action_type not in seen_types:
-                seen_types.add(action_type)
-                display_options.append((action_idx, action_type))
+        if action.action_type == ActionType.PLAY_WEAPON:
+            if "PLAY_WEAPON" not in seen_types:
+                seen_types.add("PLAY_WEAPON")
+                display_options.append((action_idx, "PLAY_WEAPON"))
+        elif action.action_type == ActionType.PASS:
+            if "PASS" not in seen_types:
+                seen_types.add("PASS")
+                display_options.append((action_idx, "PASS"))
+        elif action.action_type == ActionType.CHOOSE_DOGFIGHT:
+            label = human._format_dogfight_choice(action, state, current_player)
+            display_options.append((action_idx, label))
         else:
-            # For placement actions, show all
             display_options.append((action_idx, str(action)))
 
     # Display consolidated options
@@ -145,11 +152,16 @@ def restore_engine(save_data: dict) -> GameEngine:
     seed = save_data["seed"]
     actions = save_data["actions"]
 
-    engine = GameEngine(seed=seed)
+    engine = GameEngine(seed=seed, config=CONFIG)
 
     # Replay all actions to restore state
     for player_id, action_idx in actions:
         if engine.state.phase == Phase.DOGFIGHTS:
+            # v1.9: Handle dogfight choice during replay
+            if engine.state.awaiting_dogfight_choice:
+                engine.apply_dogfight_choice(action_idx)
+                continue
+
             # In dogfights, apply turn-based actions
             if not engine.current_dogfight:
                 engine.begin_current_dogfight()
@@ -169,9 +181,9 @@ def restore_engine(save_data: dict) -> GameEngine:
 def main():
     """Run human vs AI demo."""
     print("=" * 60)
-    print("utala: kaos 9 v1.8 - Human vs AI")
+    print("utala: kaos 9 v1.9 - Human vs AI")
     print("Face-down cards (2,3,9,10) shown as ??")
-    print("Joker token for equal-power dogfights")
+    print("Winner chooses next dogfight square")
     print("=" * 60)
     print()
 
@@ -209,12 +221,12 @@ def main():
                     if ai_agent_type == "random":
                         ai_agent = RandomAgent("AI-Random")
                     elif ai_agent_type == "heuristic":
-                        ai_agent = HeuristicAgent("AI-Heuristic")
+                        ai_agent = HeuristicAgent("AI-Heuristic", config=CONFIG)
                     elif ai_agent_type == "mc-fast":
-                        ai_agent = FastMonteCarloAgent("AI-MC-Fast")
+                        ai_agent = FastMonteCarloAgent("AI-MC-Fast", config=CONFIG)
                     elif ai_agent_type == "mc-ultra":
                         from utala.agents.monte_carlo_agent import UltraStrongMonteCarloAgent
-                        ai_agent = UltraStrongMonteCarloAgent("AI-MC-Ultra")
+                        ai_agent = UltraStrongMonteCarloAgent("AI-MC-Ultra", config=CONFIG)
 
                     print(f"✓ Game restored! Phase: {engine.state.phase.name}")
                     break
@@ -244,16 +256,16 @@ def main():
                     ai_agent_type = "random"
                     break
                 elif choice == "2":
-                    ai_agent = HeuristicAgent("AI-Heuristic")
+                    ai_agent = HeuristicAgent("AI-Heuristic", config=CONFIG)
                     ai_agent_type = "heuristic"
                     break
                 elif choice == "3":
-                    ai_agent = FastMonteCarloAgent("AI-MC-Fast")
+                    ai_agent = FastMonteCarloAgent("AI-MC-Fast", config=CONFIG)
                     ai_agent_type = "mc-fast"
                     break
                 elif choice == "4":
                     from utala.agents.monte_carlo_agent import UltraStrongMonteCarloAgent
-                    ai_agent = UltraStrongMonteCarloAgent("AI-MC-Ultra")
+                    ai_agent = UltraStrongMonteCarloAgent("AI-MC-Ultra", config=CONFIG)
                     ai_agent_type = "mc-ultra"
                     break
                 print("Invalid choice. Please enter 1, 2, 3, or 4")
@@ -283,7 +295,7 @@ def main():
                 return
 
     # Create agents
-    human = HumanAgent("You")
+    human = HumanAgent("You", config=CONFIG)
     agents = {
         human_player: human,
         ai_player: ai_agent
@@ -292,7 +304,7 @@ def main():
     # Initialize engine (if not loaded)
     if engine is None:
         seed = 42  # Fixed seed for reproducibility
-        engine = GameEngine(seed=seed)
+        engine = GameEngine(seed=seed, config=CONFIG)
 
         # Notify agents
         agents[Player.ONE].game_start(Player.ONE, seed)
@@ -309,6 +321,31 @@ def main():
     while not engine.is_game_over():
         # Handle dogfight phase with turn-based action/reaction
         if engine.state.phase == Phase.DOGFIGHTS:
+            # v1.9: Handle dogfight choice (winner picks next square)
+            if engine.state.awaiting_dogfight_choice:
+                chooser = engine.state.dogfight_choice_player
+                agent = agents[chooser]
+                action_space = get_action_space(CONFIG)
+                legal_actions = action_space.get_legal_actions(engine.state, chooser)
+
+                if agent == human:
+                    action_idx = select_action_with_save(
+                        human, engine, legal_actions, chooser,
+                        human_player, ai_agent_type, agents
+                    )
+                    if action_idx is None:
+                        return
+                else:
+                    print(f"\n{agent.name} is choosing next dogfight...")
+                    action_idx = agent.select_action(
+                        engine.get_state_copy(), legal_actions, chooser
+                    )
+                    action = action_space.get_action(action_idx)
+                    print(f"{agent.name} chooses: {action}")
+
+                engine.apply_dogfight_choice(action_idx)
+                continue  # Loop back — now a dogfight is queued
+
             # Start the dogfight (determines underdog)
             engine.begin_current_dogfight()
 
@@ -371,7 +408,7 @@ def main():
                 if agent == human:
                     # Auto-pass if PASS is the only legal action
                     if len(legal_actions) == 1:
-                        action_space = get_action_space()
+                        action_space = get_action_space(CONFIG)
                         action = action_space.get_action(legal_actions[0])
                         if action.action_type.name == "PASS":
                             print("\n(Auto-passing - no weapons available)")
@@ -426,7 +463,7 @@ def main():
                         legal_actions,
                         current_player
                     )
-                    action = get_action_space().get_action(action_idx)
+                    action = get_action_space(CONFIG).get_action(action_idx)
                     print(f"{agent.name} plays: {action}")
 
                 # Apply the action to the dogfight
@@ -467,47 +504,50 @@ def main():
                 underdog_kaos = result.kaos_draws[df.underdog]
                 other_kaos = result.kaos_draws[df.other]
 
-                # Check if this was undefended rocket (one player has Kaos, other doesn't initially)
-                underdog_action_type = underdog_action.action_type if underdog_action else None
-                other_action_type = other_action.action_type if other_action else None
+                # Determine actual weapon interaction from the full turn sequence
+                # rocket_player: who fired offensively; flare_player: who defended
+                rocket_player = None
+                flare_player = None
 
-                # v1.4: Check for weapon vs weapon cancellation
-                weapons_cancel = False
-                if underdog_action_type and other_action_type:
-                    if (underdog_action_type.name == "PLAY_WEAPON" and other_action_type.name == "PLAY_WEAPON"):
-                        weapons_cancel = True
-                        print("\n⚔️  Weapons cancel out (attack vs defense)! Proceeding to Kaos resolution...")
+                if underdog_action and underdog_action.action_type == ActionType.PLAY_WEAPON:
+                    rocket_player = df.underdog
+                    if other_action and other_action.action_type == ActionType.PLAY_WEAPON:
+                        flare_player = df.other
+                elif other_action and other_action.action_type == ActionType.PLAY_WEAPON:
+                    rocket_player = df.other
+                    if underdog_second_action and underdog_second_action.action_type == ActionType.PLAY_WEAPON:
+                        flare_player = df.underdog
 
                 print("\n🎲 Kaos Resolution:")
 
-                # v1.4: Weapon without response case
-                if (underdog_action_type and underdog_action_type.name == "PLAY_WEAPON" and
-                    other_action_type and other_action_type.name == "PASS"):
-                    # Underdog played weapon (attack), other passed
-                    rocket_kaos = underdog_kaos[0]
-                    print(f"   {agents[df.underdog].name} drew Kaos: {rocket_kaos}")
+                if rocket_player and flare_player:
+                    # Rocket vs Flare — weapons cancel
+                    print(f"\n⚔️  Weapons cancel out (attack vs defense)! Proceeding to Kaos resolution...")
+                    if underdog_kaos:
+                        print(f"   {agents[df.underdog].name} drew Kaos: {underdog_kaos[-1]}")
+                        print(f"     → Total power: {underdog_rm.power} + {underdog_kaos[-1]} = {underdog_rm.power + underdog_kaos[-1]}")
+                    if other_kaos:
+                        print(f"   {agents[df.other].name} drew Kaos: {other_kaos[-1]}")
+                        print(f"     → Total power: {other_rm.power} + {other_kaos[-1]} = {other_rm.power + other_kaos[-1]}")
+
+                elif rocket_player and not flare_player:
+                    # Undefended rocket
+                    defender = df.other if rocket_player == df.underdog else df.underdog
+                    attacker_kaos = result.kaos_draws[rocket_player]
+                    rocket_kaos = attacker_kaos[0]
+                    print(f"   {agents[rocket_player].name} drew Kaos: {rocket_kaos}")
                     if rocket_kaos >= 7:
                         print(f"   💥 HIT! ({rocket_kaos} ≥ 7)")
                     else:
                         print(f"   ❌ MISS ({rocket_kaos} < 7) - continuing to Kaos resolution...")
-                        if len(underdog_kaos) > 1:
-                            print(f"   {agents[df.underdog].name} drew: {underdog_kaos[1]} (total: {underdog_rm.power}+{underdog_kaos[1]}={underdog_rm.power + underdog_kaos[1]})")
-                            print(f"   {agents[df.other].name} drew: {other_kaos[0]} (total: {other_rm.power}+{other_kaos[0]}={other_rm.power + other_kaos[0]})")
+                        defender_kaos = result.kaos_draws[defender]
+                        attacker_rm = underdog_rm if rocket_player == df.underdog else other_rm
+                        defender_rm = other_rm if rocket_player == df.underdog else underdog_rm
+                        if len(attacker_kaos) > 1 and defender_kaos:
+                            print(f"   {agents[rocket_player].name} drew: {attacker_kaos[1]} (total: {attacker_rm.power}+{attacker_kaos[1]}={attacker_rm.power + attacker_kaos[1]})")
+                            print(f"   {agents[defender].name} drew: {defender_kaos[0]} (total: {defender_rm.power}+{defender_kaos[0]}={defender_rm.power + defender_kaos[0]})")
 
-                elif (other_action_type and other_action_type.name == "PLAY_WEAPON" and
-                      underdog_action_type and underdog_action_type.name == "PASS"):
-                    # Other played weapon (attack), underdog passed
-                    rocket_kaos = other_kaos[0]
-                    print(f"   {agents[df.other].name} drew Kaos: {rocket_kaos}")
-                    if rocket_kaos >= 7:
-                        print(f"   💥 HIT! ({rocket_kaos} ≥ 7)")
-                    else:
-                        print(f"   ❌ MISS ({rocket_kaos} < 7) - continuing to Kaos resolution...")
-                        if len(other_kaos) > 1:
-                            print(f"   {agents[df.underdog].name} drew: {underdog_kaos[0]} (total: {underdog_rm.power}+{underdog_kaos[0]}={underdog_rm.power + underdog_kaos[0]})")
-                            print(f"   {agents[df.other].name} drew: {other_kaos[1]} (total: {other_rm.power}+{other_kaos[1]}={other_rm.power + other_kaos[1]})")
-
-                # Other cases: both passed, or rocket vs flare
+                # No weapons played — straight to Kaos
                 elif len(underdog_kaos) > 0 or len(other_kaos) > 0:
                     # Show all Kaos draws
                     if underdog_kaos:
@@ -596,7 +636,7 @@ def main():
             if agent == human:
                 # Auto-pass if PASS is the only legal action (rare but possible)
                 if len(legal_actions) == 1:
-                    action_space = get_action_space()
+                    action_space = get_action_space(CONFIG)
                     action = action_space.get_action(legal_actions[0])
                     if action.action_type.name == "PASS":
                         print("\n(Auto-passing - no legal placements)")
@@ -633,7 +673,7 @@ def main():
                     legal_actions,
                     current_player
                 )
-                action = get_action_space().get_action(action_idx)
+                action = get_action_space(CONFIG).get_action(action_idx)
                 print(f"{agent.name} plays: {action}")
 
             # Apply action

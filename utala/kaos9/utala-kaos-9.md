@@ -1,27 +1,22 @@
 # utala: kaos 9
-## version 1.8
+## version 1.9
 
 *a tactical grid combat card game of strategy, risk and aerial duels*
 
 ---
 
-## v1.8 Update: Joker Token & Immediate Victory
+## v1.9 Update: Choosable Dogfight Order
 
-**New in v1.8:**
+**New in v1.9:**
 
-1. **Joker Token for Equal-Power Tie-Breaking**
-   - Physical token (coin, marker, etc.) given to one player at game start (typically P2)
-   - When two Rocketmen have **equal power** in a dogfight, the **joker holder acts first**
-   - After use, joker passes to opponent (alternating advantage)
-   - Makes equal-power situations fair and trackable
-
-2. **Immediate 3-in-a-Row Victory**
-   - **First player to achieve 3-in-a-row wins immediately**
-   - Checked after EACH dogfight resolves (not just at game end)
-   - Standard tournament rule (like chess checkmate)
-   - Eliminates ambiguous simultaneous wins
+1. **Winner Chooses Next Dogfight**
+   - Center square (if contested) is always resolved first
+   - After each dogfight, the **winner chooses which contested square to fight next**
+   - If both Rocketmen are eliminated (double knockout), the **joker holder** chooses
+   - Adds a new strategic layer: fight where you're strong, or block where opponent threatens a line
 
 **Previous versions:**
+- v1.8: Joker token for equal-power tie-breaking, immediate 3-in-a-row victory
 - v1.4: Dual-purpose weapons (sacrifice mechanic)
 - v1.3: Face-down placement for cards 2, 3, 9, 10 (hidden information)
 - v1.2: Turn-based dogfight mechanics
@@ -141,13 +136,15 @@ No combat occurs during this phase.
 ### Phase 2: Dogfights
 A **dogfight** occurs in any square containing **two Rocketmen** (one from each player).
 
-Resolve dogfights **one square at a time**.  
-Recommended order:
-1. Center  
-2. Edges  (Left clockwise from first players view)
-3. Corners  (Top left clockwise from first players view)
+Resolve dogfights **one square at a time**.
 
-(Order matters and is part of the strategy.)
+**v1.9 Choosable Order:**
+- The **center square** (if contested) is always resolved first
+- After each dogfight, the **winner chooses** which contested square to fight next
+- If both Rocketmen are eliminated (no winner), the **joker holder** chooses
+- This continues until all contested squares are resolved
+
+(Order matters and is part of the strategy — choosing where to fight next is a key tactical decision.)
 
 ---
 
@@ -252,6 +249,7 @@ If all dogfights complete without anyone achieving 3-in-a-row:
 
 ## Design Notes
 
+- **v1.9 Choosable dogfight order** adds strategic depth — fight where you're strong or block opponent lines
 - **v1.8 Joker token** creates fair tie-breaking with alternating advantage
 - **v1.8 Immediate 3-in-a-row** makes spatial tactics primary win condition
 - **v1.4 Dual-purpose weapons** create meaningful sacrifice decisions (defend now vs attack later)
@@ -262,6 +260,8 @@ If all dogfights complete without anyone achieving 3-in-a-row:
 - **Resource tension throughout** - only 4 weapons total, must choose when to spend
 
 The sacrifice mechanic (like chess) means skilled players must evaluate: "Is this Rocketman worth a weapon?" This prevents "always defend" strategies and rewards risk management.
+
+**v1.9 Strategic Implication**: Choosable dogfight order rewards players who create multiple threats during placement. After winning a fight, choosing the next square wisely — completing your own line or blocking the opponent's — is a critical skill. Combined with v1.8's immediate victory rule, the order you fight in can determine the game.
 
 **v1.8 Strategic Implication**: The immediate 3-in-a-row victory rule makes line completion/blocking the dominant strategy. Good placement creates 3-in-a-row threats; good dogfight play defends critical line-completing squares.
 

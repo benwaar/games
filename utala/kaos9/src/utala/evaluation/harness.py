@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 from ..agents.base import Agent
 from ..engine import GameEngine
-from ..state import Player
+from ..state import GameConfig, Player
 
 
 @dataclass
@@ -63,20 +63,23 @@ class Harness:
     Evaluation harness for running games and matches.
     """
 
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False, config: GameConfig | None = None):
         """
         Initialize the harness.
 
         Args:
             verbose: If True, print game progress
+            config: Rule configuration for all games. If None, uses default rules.
         """
         self.verbose = verbose
+        self.config = config
 
     def run_game(
         self,
         agent_one: Agent,
         agent_two: Agent,
-        seed: int | None = None
+        seed: int | None = None,
+        config: GameConfig | None = None
     ) -> GameResult:
         """
         Run a single game between two agents.
@@ -85,11 +88,13 @@ class Harness:
             agent_one: Agent playing as Player ONE
             agent_two: Agent playing as Player TWO
             seed: RNG seed for deterministic games
+            config: Rule config override for this game (uses harness default if None)
 
         Returns:
             GameResult with outcome
         """
-        engine = GameEngine(seed=seed)
+        game_config = config or self.config
+        engine = GameEngine(seed=seed, config=game_config)
 
         # Notify agents of game start
         agent_one.game_start(Player.ONE, seed)
@@ -119,32 +124,47 @@ class Harness:
                 engine.apply_action(action_idx)
 
             elif state.phase.value == "dogfights":
-                # Dogfight phase: turn-based action/reaction
-                engine.begin_current_dogfight()
+                if state.awaiting_dogfight_choice:
+                    # Variant A: winner chooses next dogfight square
+                    chooser = state.dogfight_choice_player
+                    assert chooser is not None
+                    agent = agent_one if chooser == Player.ONE else agent_two
 
-                # v1.3: Get fresh state after begin_current_dogfight() to show revealed cards
-                state = engine.get_state_copy()
-
-                if self.verbose:
-                    dogfight_pos = engine.get_current_dogfight_square()
-                    print(f"Dogfight @ {dogfight_pos}:")
-
-                # Collect actions turn by turn
-                while not engine.is_dogfight_complete():
-                    current_player = engine.get_dogfight_current_actor()
-                    agent = agent_one if current_player == Player.ONE else agent_two
-
-                    legal_actions = engine.get_dogfight_legal_actions_for_player(current_player)
-                    action_idx = agent.select_action(state, legal_actions, current_player)
+                    legal_actions = engine.get_legal_actions(chooser)
+                    action_idx = agent.select_action(state, legal_actions, chooser)
 
                     if self.verbose:
                         action = engine.action_space.get_action(action_idx)
-                        print(f"  P{current_player.value + 1} plays: {action}")
+                        print(f"P{chooser.value + 1} chooses: {action}")
 
-                    engine.apply_dogfight_turn_action(current_player, action_idx)
+                    engine.apply_dogfight_choice(action_idx)
+                else:
+                    # Normal dogfight: turn-based action/reaction
+                    engine.begin_current_dogfight()
 
-                # Resolve the dogfight
-                engine.finish_current_dogfight()
+                    # v1.3: Get fresh state after begin_current_dogfight() to show revealed cards
+                    state = engine.get_state_copy()
+
+                    if self.verbose:
+                        dogfight_pos = engine.get_current_dogfight_square()
+                        print(f"Dogfight @ {dogfight_pos}:")
+
+                    # Collect actions turn by turn
+                    while not engine.is_dogfight_complete():
+                        current_player = engine.get_dogfight_current_actor()
+                        agent = agent_one if current_player == Player.ONE else agent_two
+
+                        legal_actions = engine.get_dogfight_legal_actions_for_player(current_player)
+                        action_idx = agent.select_action(state, legal_actions, current_player)
+
+                        if self.verbose:
+                            action = engine.action_space.get_action(action_idx)
+                            print(f"  P{current_player.value + 1} plays: {action}")
+
+                        engine.apply_dogfight_turn_action(current_player, action_idx)
+
+                    # Resolve the dogfight
+                    engine.finish_current_dogfight()
 
         # Game ended
         winner = engine.get_winner()

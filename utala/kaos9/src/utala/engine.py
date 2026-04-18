@@ -13,7 +13,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 from .actions import Action, ActionType, get_action_space
-from .state import DogfightContext, GameState, Phase, Player, Rocketman
+from .state import DogfightContext, GameConfig, GameState, Phase, Player, Rocketman
 
 
 @dataclass
@@ -52,30 +52,34 @@ class GameEngine:
     Manages game state, applies actions, handles all randomness.
     """
 
-    def __init__(self, seed: int | None = None):
+    def __init__(self, seed: int | None = None, config: GameConfig | None = None):
         """
         Initialize a new game.
 
         Args:
             seed: RNG seed for deterministic replay. If None, uses system random.
+            config: Rule configuration. If None, uses default v1.8 rules.
         """
+        self.config = config or GameConfig()
         self.seed = seed if seed is not None else random.randint(0, 2**31 - 1)
         self.rng = random.Random(self.seed)
         self.state = self._initialize_state()
-        self.action_space = get_action_space()
+        self.action_space = get_action_space(self.config)
         self.action_history: list[tuple[Player, int]] = []  # (player, action_index)
         self.current_dogfight: DogfightTurnState | None = None  # Turn-based dogfight state
 
     def _initialize_state(self) -> GameState:
         """Initialize game state."""
-        state = GameState()
+        state = GameState(config=self.config)
         state.rng_seed = self.seed
 
-        # Initialize Kaos decks (shuffled)
+        # Initialize player resources from config
         for player in [Player.ONE, Player.TWO]:
-            kaos_deck = list(range(1, 14))  # 1-13 (A-K, Ace low)
+            resources = state.player_resources[player]
+            resources.rocketmen = list(self.config.rocketman_powers)
+            kaos_deck = list(self.config.kaos_deck_values)
             self.rng.shuffle(kaos_deck)
-            state.player_resources[player].kaos_deck = kaos_deck
+            resources.kaos_deck = kaos_deck
 
         return state
 
@@ -157,8 +161,8 @@ class GameEngine:
         resources = self.state.get_resources(player)
         resources.rocketmen.remove(action.rocketman_power)
 
-        # Place rocketman on grid (v1.3: cards 2, 3, 9, 10 placed face-down)
-        face_down = action.rocketman_power in [2, 3, 9, 10]
+        # Place rocketman on grid (face-down determined by config)
+        face_down = action.rocketman_power in self.config.face_down_powers
         rocketman = Rocketman(player=player, power=action.rocketman_power, face_down=face_down)
         square = self.state.get_square(action.row, action.col)
         square.rocketmen.append(rocketman)
@@ -182,26 +186,33 @@ class GameEngine:
         """Transition from placement to dogfights phase."""
         self.state.phase = Phase.DOGFIGHTS
 
-        # Build dogfight order: center, edges, corners
-        # Center: (1,1)
-        # Edges: (0,1), (1,0), (1,2), (2,1)
-        # Corners: (0,0), (0,2), (2,0), (2,2)
-        order = [
-            (1, 1),  # center
-            (0, 1), (1, 0), (1, 2), (2, 1),  # edges
-            (0, 0), (0, 2), (2, 0), (2, 2),  # corners
-        ]
-
-        # Only include contested squares
-        self.state.dogfight_order = [
-            pos for pos in order
+        contested = [
+            pos for pos in self.config.dogfight_priority
             if self.state.get_square(pos[0], pos[1]).is_contested
         ]
+
+        if self.config.fixed_dogfight_order:
+            # Fixed order: all dogfights queued up front
+            self.state.dogfight_order = contested
+        else:
+            # Choosable order: center (1,1) is first if contested, then winner picks
+            center = (1, 1)
+            if center in contested:
+                self.state.dogfight_order = [center]
+                self.state.remaining_contested = [p for p in contested if p != center]
+            elif contested:
+                # Center not contested: P1 chooses the first square
+                self.state.dogfight_order = []
+                self.state.remaining_contested = contested
+                self.state.awaiting_dogfight_choice = True
+                self.state.dogfight_choice_player = Player.ONE
+            else:
+                self.state.dogfight_order = []
 
         self.state.current_dogfight_index = 0
 
         # If no dogfights, go straight to game end
-        if len(self.state.dogfight_order) == 0:
+        if len(self.state.dogfight_order) == 0 and not self.state.awaiting_dogfight_choice:
             self._check_game_end()
 
     def get_current_dogfight_square(self) -> tuple[int, int] | None:
@@ -469,11 +480,53 @@ class GameEngine:
             self.state.phase = Phase.ENDED
             return result
 
-        # Check if all dogfights are done
-        if self.state.current_dogfight_index >= len(self.state.dogfight_order):
-            self._check_game_end()
+        if self.config.fixed_dogfight_order:
+            # Fixed order: check if all dogfights done
+            if self.state.current_dogfight_index >= len(self.state.dogfight_order):
+                self._check_game_end()
+        else:
+            # Choosable order: winner picks next square (if any remain)
+            if self.state.remaining_contested:
+                # Winner chooses next; if no winner (both eliminated), joker holder chooses
+                chooser = result.winner if result.winner is not None else self.state.joker_holder
+                self.state.awaiting_dogfight_choice = True
+                self.state.dogfight_choice_player = chooser
+            else:
+                self._check_game_end()
 
         return result
+
+    def apply_dogfight_choice(self, action_index: int):
+        """
+        Apply a dogfight square choice (Variant A: choosable order).
+
+        The choosing player selects which contested square to fight next.
+
+        Args:
+            action_index: Index of a CHOOSE_DOGFIGHT action
+        """
+        if not self.state.awaiting_dogfight_choice:
+            raise RuntimeError("Not awaiting dogfight choice")
+
+        action = self.action_space.get_action(action_index)
+        if action.action_type != ActionType.CHOOSE_DOGFIGHT:
+            raise RuntimeError(f"Expected CHOOSE_DOGFIGHT, got {action.action_type}")
+
+        pos = (action.row, action.col)
+        if pos not in self.state.remaining_contested:
+            raise RuntimeError(f"Position {pos} is not a remaining contested square")
+
+        # Record action
+        assert self.state.dogfight_choice_player is not None
+        self.action_history.append((self.state.dogfight_choice_player, action_index))
+
+        # Queue the chosen square as the next dogfight
+        self.state.dogfight_order.append(pos)
+        self.state.remaining_contested.remove(pos)
+
+        # Clear choice state
+        self.state.awaiting_dogfight_choice = False
+        self.state.dogfight_choice_player = None
 
     def apply_dogfight_actions(self, p1_action_index: int, p2_action_index: int):
         """
@@ -601,18 +654,18 @@ class GameEngine:
             k1 = self._draw_kaos(Player.ONE)
             result.kaos_draws[Player.ONE].append(k1)
 
-            if k1 >= 7:  # Hit (7 or higher)
+            if k1 >= self.config.rocket_hit_threshold:  # Hit
                 result.eliminated.append(Player.TWO)
                 result.winner = Player.ONE
                 rocket_ended_dogfight = True
-            # else: Miss (6 or lower), proceed to Kaos resolution
+            # else: Miss, proceed to Kaos resolution
 
         # Case 4: P2 plays rocket, P1 passes
         elif p2_is_rocket and p1_action.action_type == ActionType.PASS:
             k2 = self._draw_kaos(Player.TWO)
             result.kaos_draws[Player.TWO].append(k2)
 
-            if k2 >= 7:  # Hit (7 or higher)
+            if k2 >= self.config.rocket_hit_threshold:  # Hit
                 result.eliminated.append(Player.ONE)
                 result.winner = Player.TWO
                 rocket_ended_dogfight = True

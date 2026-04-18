@@ -9,6 +9,42 @@ from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 
 
+@dataclass(frozen=True)
+class GameConfig:
+    """
+    Centralised rule parameters for utala: kaos 9.
+
+    All game constants live here. Variants change the config, not the engine.
+    Defaults match the v1.8 base rules so existing behaviour is unchanged.
+    """
+    rocketman_powers: tuple[int, ...] = (2, 3, 4, 5, 6, 7, 8, 9, 10)
+    face_down_powers: frozenset[int] = frozenset({2, 3, 9, 10})
+    kaos_deck_values: tuple[int, ...] = tuple(range(1, 14))
+    fixed_dogfight_order: bool = True
+    dogfight_priority: tuple[tuple[int, int], ...] = (
+        (1, 1), (0, 1), (1, 0), (1, 2), (2, 1),
+        (0, 0), (0, 2), (2, 0), (2, 2),
+    )
+    rocket_hit_threshold: int = 7
+    three_in_row_wins: bool = True
+
+    @property
+    def num_rocketmen(self) -> int:
+        return len(self.rocketman_powers)
+
+    @property
+    def num_kaos_cards(self) -> int:
+        return len(self.kaos_deck_values)
+
+    @property
+    def power_range(self) -> int:
+        return max(self.rocketman_powers) - min(self.rocketman_powers)
+
+    @property
+    def min_power(self) -> int:
+        return min(self.rocketman_powers)
+
+
 class Player(IntEnum):
     """Player identifiers."""
     ONE = 0
@@ -165,6 +201,9 @@ class PlayerResources:
 class GameState:
     """Complete game state for utala: kaos 9."""
 
+    # Rule configuration (set by engine, read by agents)
+    config: GameConfig = field(default_factory=GameConfig)
+
     # Grid state (indexed as grid[row][col], 0-indexed)
     grid: list[list[GridSquare]] = field(default_factory=lambda:
         [[GridSquare() for _ in range(3)] for _ in range(3)])
@@ -185,6 +224,11 @@ class GameState:
     current_dogfight_index: int = 0
     dogfight_context: DogfightContext | None = None  # Current dogfight turn context (v1.4+)
     joker_holder: Player = Player.TWO  # v1.8: Tie-breaker token (P2 starts to balance first-move)
+
+    # Variant A: Choosable dogfight order
+    awaiting_dogfight_choice: bool = False
+    dogfight_choice_player: Player | None = None
+    remaining_contested: list[tuple[int, int]] = field(default_factory=list)
 
     # Winner tracking
     winner: Player | None = None

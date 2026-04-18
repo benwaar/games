@@ -715,5 +715,502 @@ class TestV18ImmediateThreeInRow(unittest.TestCase):
             self.assertIn(result.winner, [Player.ONE, Player.TWO, None])
 
 
+class TestWeaponInteractions(unittest.TestCase):
+    """Test turn-based weapon mechanics (Rocket/Flare/counter-response)."""
+
+    def _setup_single_dogfight(self, p1_power, p2_power, p1_kaos_deck, p2_kaos_deck):
+        """
+        Helper: create an engine with one contested square at center,
+        custom rocketman powers and pre-set Kaos decks for deterministic draws.
+        """
+        from utala.state import GameConfig, Rocketman
+
+        engine = GameEngine(seed=1)
+        engine.state.phase = Phase.DOGFIGHTS
+        engine.state.dogfight_order = [(1, 1)]
+        engine.state.current_dogfight_index = 0
+
+        engine.state.grid[1][1].rocketmen = [
+            Rocketman(Player.ONE, p1_power),
+            Rocketman(Player.TWO, p2_power),
+        ]
+
+        # Pre-set Kaos decks (front = first drawn)
+        engine.state.player_resources[Player.ONE].kaos_deck = list(p1_kaos_deck)
+        engine.state.player_resources[Player.ONE].kaos_discard = []
+        engine.state.player_resources[Player.TWO].kaos_deck = list(p2_kaos_deck)
+        engine.state.player_resources[Player.TWO].kaos_discard = []
+
+        return engine
+
+    def _find_action(self, engine, action_type):
+        """Find first action index of a given type."""
+        for i, a in enumerate(engine.action_space.actions):
+            if a.action_type == action_type:
+                return i
+        raise RuntimeError(f"No {action_type} action found")
+
+    def test_undefended_rocket_hit(self):
+        """Undefended Rocket with Kaos >= 7 → HIT, target eliminated."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[9],  # P1 draws 9 for rocket → HIT
+            p2_kaos_deck=[5],
+        )
+        engine.begin_current_dogfight()
+
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+        pass_act = self._find_action(engine, ActionType.PASS)
+
+        # Round 1: underdog (P1, power 3) fires Rocket
+        self.assertEqual(engine.get_dogfight_current_actor(), Player.ONE)
+        engine.apply_dogfight_turn_action(Player.ONE, weapon)
+
+        # Round 2: other (P2) passes — no defense
+        self.assertEqual(engine.get_dogfight_current_actor(), Player.TWO)
+        engine.apply_dogfight_turn_action(Player.TWO, pass_act)
+
+        self.assertTrue(engine.is_dogfight_complete())
+        result = engine.finish_current_dogfight()
+
+        # P1's rocket drew 9 (>= 7) → HIT → P2 eliminated
+        self.assertEqual(result.winner, Player.ONE)
+        self.assertIn(Player.TWO, result.eliminated)
+        self.assertEqual(result.kaos_draws[Player.ONE], [9])
+
+    def test_undefended_rocket_miss(self):
+        """Undefended Rocket with Kaos < 7 → MISS, proceeds to Kaos resolution."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[4, 10],  # 4 for rocket (miss), 10 for Kaos resolution
+            p2_kaos_deck=[1],       # 1 for Kaos resolution
+        )
+        engine.begin_current_dogfight()
+
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+        pass_act = self._find_action(engine, ActionType.PASS)
+
+        # Round 1: underdog fires Rocket
+        engine.apply_dogfight_turn_action(Player.ONE, weapon)
+        # Round 2: other passes
+        engine.apply_dogfight_turn_action(Player.TWO, pass_act)
+
+        result = engine.finish_current_dogfight()
+
+        # Rocket drew 4 (< 7) → MISS → Kaos resolution
+        # P1: 3 + 10 = 13, P2: 8 + 1 = 9 → P1 wins via Kaos
+        self.assertEqual(result.kaos_draws[Player.ONE], [4, 10])
+        self.assertEqual(result.kaos_draws[Player.TWO], [1])
+        self.assertEqual(result.winner, Player.ONE)
+        self.assertIn(Player.TWO, result.eliminated)
+
+    def test_rocket_vs_flare_cancel(self):
+        """Rocket + Flare → both cancel, proceed to Kaos resolution."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[7],  # Kaos resolution draw
+            p2_kaos_deck=[2],  # Kaos resolution draw
+        )
+        engine.begin_current_dogfight()
+
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+
+        # Round 1: underdog fires Rocket
+        engine.apply_dogfight_turn_action(Player.ONE, weapon)
+        # Round 2: other defends with Flare
+        engine.apply_dogfight_turn_action(Player.TWO, weapon)
+
+        result = engine.finish_current_dogfight()
+
+        # Weapons cancel → Kaos resolution
+        # P1: 3 + 7 = 10, P2: 8 + 2 = 10 → TIE → both eliminated
+        self.assertEqual(result.kaos_draws[Player.ONE], [7])
+        self.assertEqual(result.kaos_draws[Player.TWO], [2])
+        self.assertIsNone(result.winner)
+        self.assertIn(Player.ONE, result.eliminated)
+        self.assertIn(Player.TWO, result.eliminated)
+
+    def test_counter_response_flare(self):
+        """Underdog passes → other Rockets → underdog Flares (counter-response) → cancel."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[13],  # Kaos resolution draw
+            p2_kaos_deck=[1],   # Kaos resolution draw
+        )
+        engine.begin_current_dogfight()
+
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+        pass_act = self._find_action(engine, ActionType.PASS)
+
+        # Round 1: underdog passes
+        engine.apply_dogfight_turn_action(Player.ONE, pass_act)
+        # Round 2: other fires Rocket
+        engine.apply_dogfight_turn_action(Player.TWO, weapon)
+        # Round 3: underdog counter-responds with Flare
+        self.assertFalse(engine.is_dogfight_complete())
+        self.assertEqual(engine.get_dogfight_current_actor(), Player.ONE)
+        engine.apply_dogfight_turn_action(Player.ONE, weapon)
+
+        self.assertTrue(engine.is_dogfight_complete())
+        result = engine.finish_current_dogfight()
+
+        # Rocket vs Flare cancel → Kaos resolution
+        # P1: 3 + 13 = 16, P2: 8 + 1 = 9 → P1 wins
+        self.assertEqual(result.winner, Player.ONE)
+        self.assertIn(Player.TWO, result.eliminated)
+        self.assertEqual(result.kaos_draws[Player.ONE], [13])
+        self.assertEqual(result.kaos_draws[Player.TWO], [1])
+
+    def test_both_pass_straight_kaos(self):
+        """Both players pass → straight to Kaos resolution, no weapon draws."""
+        engine = self._setup_single_dogfight(
+            p1_power=5, p2_power=7,
+            p1_kaos_deck=[12],  # Kaos resolution
+            p2_kaos_deck=[3],   # Kaos resolution
+        )
+        engine.begin_current_dogfight()
+
+        pass_act = self._find_action(engine, ActionType.PASS)
+
+        # Round 1: underdog passes
+        engine.apply_dogfight_turn_action(Player.ONE, pass_act)
+        # Round 2: other passes
+        engine.apply_dogfight_turn_action(Player.TWO, pass_act)
+
+        self.assertTrue(engine.is_dogfight_complete())
+        result = engine.finish_current_dogfight()
+
+        # Straight to Kaos: P1: 5 + 12 = 17, P2: 7 + 3 = 10 → P1 wins
+        self.assertEqual(result.winner, Player.ONE)
+        self.assertEqual(result.kaos_draws[Player.ONE], [12])
+        self.assertEqual(result.kaos_draws[Player.TWO], [3])
+
+    def test_other_fires_undefended_rocket_hit(self):
+        """Underdog passes, other fires Rocket, underdog doesn't defend → HIT."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[5],
+            p2_kaos_deck=[10],  # P2 draws 10 for rocket → HIT
+        )
+        engine.begin_current_dogfight()
+
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+        pass_act = self._find_action(engine, ActionType.PASS)
+
+        # Round 1: underdog passes
+        engine.apply_dogfight_turn_action(Player.ONE, pass_act)
+        # Round 2: other fires Rocket
+        engine.apply_dogfight_turn_action(Player.TWO, weapon)
+        # Round 3: underdog passes (doesn't defend)
+        engine.apply_dogfight_turn_action(Player.ONE, pass_act)
+
+        result = engine.finish_current_dogfight()
+
+        # P2's rocket drew 10 (>= 7) → HIT → P1 eliminated
+        self.assertEqual(result.winner, Player.TWO)
+        self.assertIn(Player.ONE, result.eliminated)
+        self.assertEqual(result.kaos_draws[Player.TWO], [10])
+
+    def test_weapons_consumed_after_use(self):
+        """Weapons are removed from player's hand after being played."""
+        engine = self._setup_single_dogfight(
+            p1_power=3, p2_power=8,
+            p1_kaos_deck=[7],
+            p2_kaos_deck=[2],
+        )
+
+        p1_weapons_before = len(engine.state.player_resources[Player.ONE].weapons)
+        p2_weapons_before = len(engine.state.player_resources[Player.TWO].weapons)
+
+        engine.begin_current_dogfight()
+        weapon = self._find_action(engine, ActionType.PLAY_WEAPON)
+
+        # Both play weapons (Rocket vs Flare)
+        engine.apply_dogfight_turn_action(Player.ONE, weapon)
+        engine.apply_dogfight_turn_action(Player.TWO, weapon)
+        engine.finish_current_dogfight()
+
+        p1_weapons_after = len(engine.state.player_resources[Player.ONE].weapons)
+        p2_weapons_after = len(engine.state.player_resources[Player.TWO].weapons)
+
+        self.assertEqual(p1_weapons_after, p1_weapons_before - 1)
+        self.assertEqual(p2_weapons_after, p2_weapons_before - 1)
+
+
+class TestChoosableDogfightOrder(unittest.TestCase):
+    """Test v1.9 choosable dogfight order mechanics."""
+
+    def _setup_contested_board(self, contested_positions, config=None):
+        """
+        Helper: create engine in dogfight phase with specified contested squares.
+        Non-contested squares get a single P1 rocketman.
+        """
+        from utala.state import GameConfig, Rocketman
+
+        if config is None:
+            config = GameConfig(fixed_dogfight_order=False)
+
+        engine = GameEngine(seed=1, config=config)
+        engine.state.phase = Phase.PLACEMENT  # Will transition properly
+
+        # Place rocketmen manually then transition
+        power_idx = 0
+        powers = list(range(2, 11))
+        for row in range(3):
+            for col in range(3):
+                pos = (row, col)
+                if pos in contested_positions:
+                    engine.state.grid[row][col].rocketmen = [
+                        Rocketman(Player.ONE, powers[power_idx]),
+                        Rocketman(Player.TWO, powers[8 - power_idx]),
+                    ]
+                else:
+                    engine.state.grid[row][col].rocketmen = [
+                        Rocketman(Player.ONE, powers[power_idx]),
+                    ]
+                power_idx += 1
+
+        # Clear hands (all placed)
+        engine.state.player_resources[Player.ONE].rocketmen = []
+        engine.state.player_resources[Player.TWO].rocketmen = []
+
+        # Transition to dogfights
+        engine._transition_to_dogfights()
+        return engine
+
+    def test_center_always_first_if_contested(self):
+        """Center (1,1) is always the first dogfight when contested."""
+        from utala.state import GameConfig
+        config = GameConfig(fixed_dogfight_order=False)
+        contested = [(0, 0), (1, 1), (2, 2)]
+        engine = self._setup_contested_board(contested, config)
+
+        # Center should be queued first
+        self.assertEqual(engine.state.dogfight_order, [(1, 1)])
+        # Others should be in remaining_contested
+        self.assertIn((0, 0), engine.state.remaining_contested)
+        self.assertIn((2, 2), engine.state.remaining_contested)
+        self.assertFalse(engine.state.awaiting_dogfight_choice)
+
+    def test_p1_chooses_first_when_center_not_contested(self):
+        """P1 chooses first square when center is not contested."""
+        from utala.state import GameConfig
+        config = GameConfig(fixed_dogfight_order=False)
+        contested = [(0, 0), (0, 2), (2, 1)]
+        engine = self._setup_contested_board(contested, config)
+
+        # No dogfights queued yet — P1 must choose
+        self.assertEqual(engine.state.dogfight_order, [])
+        self.assertTrue(engine.state.awaiting_dogfight_choice)
+        self.assertEqual(engine.state.dogfight_choice_player, Player.ONE)
+        self.assertEqual(len(engine.state.remaining_contested), 3)
+
+    def test_winner_chooses_next_square(self):
+        """After winning a dogfight, the winner chooses the next square."""
+        from utala.state import GameConfig, Rocketman
+        config = GameConfig(fixed_dogfight_order=False)
+
+        engine = GameEngine(seed=1, config=config)
+        engine.state.phase = Phase.DOGFIGHTS
+        # Center contested, plus two others
+        engine.state.grid[1][1].rocketmen = [
+            Rocketman(Player.ONE, 9),
+            Rocketman(Player.TWO, 3),
+        ]
+        engine.state.grid[0, 0] if False else None  # just for clarity
+        engine.state.grid[0][0].rocketmen = [
+            Rocketman(Player.ONE, 5),
+            Rocketman(Player.TWO, 6),
+        ]
+        engine.state.grid[2][2].rocketmen = [
+            Rocketman(Player.ONE, 4),
+            Rocketman(Player.TWO, 7),
+        ]
+
+        engine.state.dogfight_order = [(1, 1)]
+        engine.state.remaining_contested = [(0, 0), (2, 2)]
+        engine.state.current_dogfight_index = 0
+
+        # Pre-set Kaos decks so P1 wins center (P1 has power 9, should win easily)
+        engine.state.player_resources[Player.ONE].kaos_deck = [5, 5, 5]
+        engine.state.player_resources[Player.ONE].kaos_discard = []
+        engine.state.player_resources[Player.TWO].kaos_deck = [1, 1, 1]
+        engine.state.player_resources[Player.TWO].kaos_discard = []
+
+        # Fight center — both pass
+        engine.begin_current_dogfight()
+        pass_act = None
+        for i, a in enumerate(engine.action_space.actions):
+            if a.action_type == ActionType.PASS:
+                pass_act = i
+                break
+
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        result = engine.finish_current_dogfight()
+
+        # P1 should win center (9+5=14 vs 3+1=4)
+        self.assertEqual(result.winner, Player.ONE)
+        # Now P1 should choose next square
+        self.assertTrue(engine.state.awaiting_dogfight_choice)
+        self.assertEqual(engine.state.dogfight_choice_player, Player.ONE)
+
+    def test_joker_holder_chooses_on_double_elimination(self):
+        """When both rocketmen eliminated, joker holder chooses next square."""
+        from utala.state import GameConfig, Rocketman
+        config = GameConfig(fixed_dogfight_order=False)
+
+        engine = GameEngine(seed=1, config=config)
+        engine.state.phase = Phase.DOGFIGHTS
+
+        # Equal power at center → will tie in Kaos if same draws
+        engine.state.grid[1][1].rocketmen = [
+            Rocketman(Player.ONE, 5),
+            Rocketman(Player.TWO, 5),
+        ]
+        engine.state.grid[0][0].rocketmen = [
+            Rocketman(Player.ONE, 6),
+            Rocketman(Player.TWO, 7),
+        ]
+
+        engine.state.dogfight_order = [(1, 1)]
+        engine.state.remaining_contested = [(0, 0)]
+        engine.state.current_dogfight_index = 0
+
+        # Equal Kaos draws → tie → both eliminated
+        engine.state.player_resources[Player.ONE].kaos_deck = [3]
+        engine.state.player_resources[Player.ONE].kaos_discard = []
+        engine.state.player_resources[Player.TWO].kaos_deck = [3]
+        engine.state.player_resources[Player.TWO].kaos_discard = []
+
+        engine.begin_current_dogfight()
+        pass_act = None
+        for i, a in enumerate(engine.action_space.actions):
+            if a.action_type == ActionType.PASS:
+                pass_act = i
+                break
+
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        result = engine.finish_current_dogfight()
+
+        # Both eliminated (5+3=8 vs 5+3=8 → tie)
+        self.assertIsNone(result.winner)
+        self.assertIn(Player.ONE, result.eliminated)
+        self.assertIn(Player.TWO, result.eliminated)
+
+        # Joker holder should choose next
+        self.assertTrue(engine.state.awaiting_dogfight_choice)
+        self.assertEqual(engine.state.dogfight_choice_player, engine.state.joker_holder)
+
+    def test_choose_dogfight_action_masking(self):
+        """CHOOSE_DOGFIGHT actions are masked to remaining contested squares only."""
+        from utala.state import GameConfig, Rocketman
+        config = GameConfig(fixed_dogfight_order=False)
+
+        engine = GameEngine(seed=1, config=config)
+        engine.state.phase = Phase.DOGFIGHTS
+        engine.state.awaiting_dogfight_choice = True
+        engine.state.dogfight_choice_player = Player.ONE
+        engine.state.remaining_contested = [(0, 1), (2, 0)]
+
+        legal = engine.action_space.get_legal_actions(engine.state, Player.ONE)
+
+        # Should only have CHOOSE_DOGFIGHT actions for (0,1) and (2,0)
+        self.assertEqual(len(legal), 2)
+        for idx in legal:
+            action = engine.action_space.get_action(idx)
+            self.assertEqual(action.action_type, ActionType.CHOOSE_DOGFIGHT)
+            self.assertIn((action.row, action.col), [(0, 1), (2, 0)])
+
+    def test_apply_dogfight_choice(self):
+        """apply_dogfight_choice queues the chosen square and clears choice state."""
+        from utala.state import GameConfig, Rocketman
+        config = GameConfig(fixed_dogfight_order=False)
+
+        engine = GameEngine(seed=1, config=config)
+        engine.state.phase = Phase.DOGFIGHTS
+        engine.state.awaiting_dogfight_choice = True
+        engine.state.dogfight_choice_player = Player.ONE
+        engine.state.remaining_contested = [(0, 1), (2, 0)]
+        engine.state.dogfight_order = [(1, 1)]
+        engine.state.current_dogfight_index = 1
+
+        # Find CHOOSE_DOGFIGHT action for (2, 0)
+        choice_idx = None
+        for i, a in enumerate(engine.action_space.actions):
+            if a.action_type == ActionType.CHOOSE_DOGFIGHT and a.row == 2 and a.col == 0:
+                choice_idx = i
+                break
+
+        engine.apply_dogfight_choice(choice_idx)
+
+        self.assertFalse(engine.state.awaiting_dogfight_choice)
+        self.assertIsNone(engine.state.dogfight_choice_player)
+        self.assertEqual(engine.state.dogfight_order[-1], (2, 0))
+        self.assertNotIn((2, 0), engine.state.remaining_contested)
+        self.assertIn((0, 1), engine.state.remaining_contested)
+
+    def test_fixed_order_fallback(self):
+        """fixed_dogfight_order=True uses canonical order (center→edges→corners)."""
+        from utala.state import GameConfig
+        config = GameConfig(fixed_dogfight_order=True)
+        contested = [(0, 0), (1, 1), (2, 1)]
+        engine = self._setup_contested_board(contested, config)
+
+        # Should be in canonical priority order
+        expected = [(1, 1), (2, 1), (0, 0)]
+        self.assertEqual(engine.state.dogfight_order, expected)
+        self.assertFalse(engine.state.awaiting_dogfight_choice)
+
+
+class TestKaosDeckReshuffle(unittest.TestCase):
+    """Test Kaos deck reshuffle when deck is empty."""
+
+    def test_reshuffle_discard_when_deck_empty(self):
+        """When Kaos deck is empty, discard pile is reshuffled into deck."""
+        from utala.state import Rocketman
+
+        engine = GameEngine(seed=42)
+        engine.state.phase = Phase.DOGFIGHTS
+        engine.state.dogfight_order = [(1, 1)]
+        engine.state.current_dogfight_index = 0
+
+        engine.state.grid[1][1].rocketmen = [
+            Rocketman(Player.ONE, 5),
+            Rocketman(Player.TWO, 6),
+        ]
+
+        # Empty P1's deck, put cards in discard
+        engine.state.player_resources[Player.ONE].kaos_deck = []
+        engine.state.player_resources[Player.ONE].kaos_discard = [3, 7, 11]
+
+        # P2 has a normal deck
+        engine.state.player_resources[Player.TWO].kaos_deck = [5]
+        engine.state.player_resources[Player.TWO].kaos_discard = []
+
+        # Begin dogfight and both pass → Kaos resolution draws from P1's reshuffled deck
+        engine.begin_current_dogfight()
+        pass_act = None
+        for i, a in enumerate(engine.action_space.actions):
+            if a.action_type == ActionType.PASS:
+                pass_act = i
+                break
+
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        engine.apply_dogfight_turn_action(engine.get_dogfight_current_actor(), pass_act)
+        result = engine.finish_current_dogfight()
+
+        # P1 should have drawn a card (deck was reshuffled from discard)
+        self.assertEqual(len(result.kaos_draws[Player.ONE]), 1)
+        drawn = result.kaos_draws[Player.ONE][0]
+        self.assertIn(drawn, [3, 7, 11], "Drawn card should come from reshuffled discard")
+
+        # After draw: deck should have 2 cards, discard should have 1
+        p1_res = engine.state.player_resources[Player.ONE]
+        self.assertEqual(len(p1_res.kaos_deck) + len(p1_res.kaos_discard), 3,
+                        "Total Kaos cards should be conserved")
+
+
 if __name__ == '__main__':
     unittest.main()

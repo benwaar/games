@@ -13,93 +13,56 @@ Everything is text-based, inspectable, and hackable.
 
 ---
 
-# Utala: KAOS 9 - A competitive 2-player tactical duel playable with any standard 52-card deck
+# Utala: KAOS 9
 
-[Read or Print the Utala: KAOS 9 Game rules](utala-kaos-9-rules.pdf)
+A competitive 2-player tactical duel playable with any standard 52-card deck.
 
-[View the Utala: KAOS 9 Game Folder](./utala/kaos9/)
-
-Download and play the game (requires Python)
+[Read or Print the Game Rules (PDF)](utala-kaos-9-rules.pdf) | [View the Game Folder](./utala/kaos9/)
 
 ![Human gameplay screenshot](utala/kaos9/screenshot.png)
 
-## 🚀 Live Player
+## Live Player
 
 Deployed automatically via GitHub Pages on pushes to `main`.
-The text based game can be played in a Jupyter lab so it works at
-`https://benwaar.github.io/games/`.
 
-**[Play online →](https://benwaar.github.io/games/)**
+**[Play online](https://benwaar.github.io/games/)**
 
 ## Quick Start
 
 ```bash
-# Setup
-./setup.sh              # Creates Python 3.11 venv and installs dependencies
-
-# Play the game yourself
-./run.sh                # Play as human vs AI (default)
-
-# Watch AI vs AI demos
-./run.sh demo.py        # Quick tournament view
-./run.sh demo_heuristic.py      # Verbose gameplay
-./run.sh demo_montecarlo.py     # Monte Carlo analysis
-
-# Run tests
-python run_tests.py     
+cd utala/kaos9
+./setup.sh              # Python 3.11 venv + dependencies
+./run.sh                # Play as human vs AI
+make test               # Run tests
 ```
-
-
-# Phase 1 — Baselines and instrumentation (no learning) - COMPLETE
-
-**Question:**  
-_Do I understand the game well enough to measure anything at all?_
-
-### Scope
-- Implement the full game rules in Python (canonical for the study)
-- Ensure determinism:
-  - explicit RNG
-  - versioned replay format
-- Build an evaluation harness:
-  - self-play
-  - cross-play
-  - tournament metrics
-
-**Note:**  
-All randomness lives in the **engine**, never in agents.  
-Agents observe sampled state; they do not own RNG.
-
-### Agents
-Implement several **fully readable** agents:
-- random legal
-- simple heuristics
-- rollout-based evaluator (Monte Carlo)
-
-No learning.  
-No gradients.  
-No frameworks.
-
-**Note:**  
-Rollouts simulate *legal futures only*.  
-If an agent proposes an illegal action, it is a bug in the agent, not the engine.
-
-### Deliverables
-- canonical Python engine
-- replay format v1 (seed + action list)
-- baseline agents ordered by strength
-- bulk evaluation results
 
 ---
 
-## Checkpoint — is the game worth studying? - PASSED
+## AI Research Phases
 
-This checkpoint exists **before any learning is added**.
+### Phase 1 — Baselines (no learning) — COMPLETE
 
-**Pass if:**
-- stronger baseline agents consistently outperform weaker ones
-- weaker agents still win sometimes
-- different strategies produce different outcomes
-- randomness affects *close* matches, not everything
+Canonical Python engine, deterministic replay, evaluation harness. Baseline agents: random legal, heuristic, Monte Carlo rollout.
+
+**Checkpoint: Is the game worth studying? PASS** — Heuristic 65% vs Random, Monte Carlo 79% vs Random. Clear skill gradient with meaningful variance.
+
+### Phase 2 — Learning without frameworks — COMPLETE
+
+Hand-built TD-linear value agent with manual gradient updates. Fixed state encoding, fixed action space, illegal actions masked by engine. Plateau ~47% vs Heuristic.
+
+### Phase 3 — Deep learning — COMPLETE
+
+DQN with bluffing-aware 80-dim state features (39K params). Imitation learning to distill search/DQN into tiny production models.
+
+### Phase 4 — Rule evolution — COMPLETE
+
+Variant A (v1.9): choosable dogfight order — winner picks the next contested square. Action space grows from 86 to 95. All agents retrained and validated on new rules.
+
+**Checkpoint: Is the game rich enough to require deep learning? PASS** — DQN reaches 53% vs Heuristic (peak), linear models plateau at 38%.
+
+### Phase 5 — Improve, distill, ship — COMPLETE
+
+Improved DQN to consistent >50% vs Heuristic. Distilled into tiny production model. Variant A rules and distilled agent ported to the Flutter game app.
 
 ---
 

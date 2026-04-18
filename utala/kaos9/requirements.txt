@@ -1,7 +1,9 @@
-# utala: kaos 9 - Phase 1 dependencies
-# No ML/DL frameworks allowed in Phase 1 per CLAUDE.md
+# utala: kaos 9 dependencies
+# No ML/DL frameworks allowed per CLAUDE.md
+# Phase 2 uses numpy for manual learning implementations
 
-# Core dependencies will be added as needed
+# Phase 2 learning dependencies
+numpy>=1.24.0    # For linear algebra and feature vectors (manual learning)
 
 # Development dependencies
 coverage>=7.4.0  # Code coverage measurement

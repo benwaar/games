@@ -9,7 +9,7 @@ the engine validates and applies them.
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from .state import GameState, Phase, Player
+from .state import GameConfig, GameState, Phase, Player
 
 
 class ActionType(Enum):
@@ -17,6 +17,7 @@ class ActionType(Enum):
     PLACE_ROCKETMAN = auto()  # Place a rocketman during placement phase
     PLAY_WEAPON = auto()       # Play a weapon (dual-purpose: Rocket or Flare based on context)
     PASS = auto()              # Pass (play nothing) during dogfight
+    CHOOSE_DOGFIGHT = auto()   # Choose next dogfight square (Variant A: choosable order)
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,8 @@ class Action:
             return f"PLACE({self.rocketman_power} @ [{self.row},{self.col}])"
         elif self.action_type == ActionType.PLAY_WEAPON:
             return f"WEAPON[{self.card_index}]"
+        elif self.action_type == ActionType.CHOOSE_DOGFIGHT:
+            return f"CHOOSE_FIGHT[{self.row},{self.col}]"
         else:  # PASS
             return "PASS"
 
@@ -47,15 +50,16 @@ class ActionSpace:
     Each action has a unique index. Illegal actions are masked, not removed.
     """
 
-    def __init__(self):
+    def __init__(self, config: GameConfig | None = None):
         """Initialize the complete action space."""
+        self.config = config or GameConfig()
         self.actions: list[Action] = []
         self._build_action_space()
 
     def _build_action_space(self):
         """Build the complete fixed action space."""
-        # Placement actions: 9 rocketmen × 9 grid positions = 81 actions
-        for power in range(2, 11):  # Rocketmen 2-10
+        # Placement actions: rocketmen × 9 grid positions
+        for power in self.config.rocketman_powers:
             for row in range(3):
                 for col in range(3):
                     action = Action(
@@ -79,7 +83,19 @@ class ActionSpace:
         # - Pass = 1 action
         self.actions.append(Action(action_type=ActionType.PASS))
 
-        # Total: 81 + 4 + 1 = 86 actions
+        # Choosable dogfight order: 9 grid positions to choose from
+        if not self.config.fixed_dogfight_order:
+            for row in range(3):
+                for col in range(3):
+                    action = Action(
+                        action_type=ActionType.CHOOSE_DOGFIGHT,
+                        row=row,
+                        col=col,
+                    )
+                    self.actions.append(action)
+
+        # Default config: 9×9 + 4 + 1 = 86 actions
+        # Variant A config: 86 + 9 = 95 actions
 
     def size(self) -> int:
         """Return the size of the action space."""
@@ -118,15 +134,23 @@ class ActionSpace:
                             mask[i] = True
 
         elif state.phase == Phase.DOGFIGHTS:
-            # During dogfights: can play weapons or pass
-            # Note: Context (turn sequence) determines weapon role (Rocket vs Flare)
-            for i, action in enumerate(self.actions):
-                if action.action_type == ActionType.PLAY_WEAPON:
-                    assert action.card_index is not None
-                    if action.card_index < len(resources.weapons):
+            if state.awaiting_dogfight_choice and player == state.dogfight_choice_player:
+                # Variant A: choosable order — only CHOOSE_DOGFIGHT actions for
+                # remaining contested squares are legal
+                for i, action in enumerate(self.actions):
+                    if action.action_type == ActionType.CHOOSE_DOGFIGHT:
+                        pos = (action.row, action.col)
+                        if pos in state.remaining_contested:
+                            mask[i] = True
+            elif not state.awaiting_dogfight_choice:
+                # Normal dogfight: can play weapons or pass
+                for i, action in enumerate(self.actions):
+                    if action.action_type == ActionType.PLAY_WEAPON:
+                        assert action.card_index is not None
+                        if action.card_index < len(resources.weapons):
+                            mask[i] = True
+                    elif action.action_type == ActionType.PASS:
                         mask[i] = True
-                elif action.action_type == ActionType.PASS:
-                    mask[i] = True
 
         return mask
 
@@ -150,14 +174,14 @@ class ActionSpace:
             return None
 
 
-# Global singleton action space
-# (Can be instantiated once and reused across all games)
-_ACTION_SPACE = None
+# Action space cache keyed by config
+# (Each config produces a fixed action space, reused across all games with that config)
+_ACTION_SPACES: dict[GameConfig, ActionSpace] = {}
 
 
-def get_action_space() -> ActionSpace:
-    """Get the global action space singleton."""
-    global _ACTION_SPACE
-    if _ACTION_SPACE is None:
-        _ACTION_SPACE = ActionSpace()
-    return _ACTION_SPACE
+def get_action_space(config: GameConfig | None = None) -> ActionSpace:
+    """Get the action space for a config (cached per config)."""
+    config = config or GameConfig()
+    if config not in _ACTION_SPACES:
+        _ACTION_SPACES[config] = ActionSpace(config)
+    return _ACTION_SPACES[config]

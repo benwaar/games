@@ -1,11 +1,6 @@
-# Utala KAOS 9: AI Study Plan
+# utala: kaos 9 — AI Research
 
-## Project Ethos
-
-This project is about:
-- understanding algorithms by building them
-- seeing how different approaches *think*
-- learning by stripping problems down to their **nuts and bolts**
+A study of skill expression, risk management, and learning algorithms through a 2-player tactical grid combat card game.
 
 Everything is text-based, inspectable, and hackable.
 
@@ -18,152 +13,50 @@ Everything is text-based, inspectable, and hackable.
 ## Quick Start
 
 ```bash
-# Setup
-./setup.sh              # Creates Python 3.11 venv and installs dependencies
-
-# Play the game yourself
-./run.sh                # Play as human vs AI (default)
-
-# Watch AI vs AI demos
-./run.sh demo.py        # Quick tournament view
-./run.sh demo_heuristic.py      # Verbose gameplay
-./run.sh demo_montecarlo.py     # Monte Carlo analysis
-
-# Run tests
-python run_tests.py     # 79 tests, 94% coverage
+./setup.sh              # Python 3.11 venv + dependencies
+./run.sh                # Play as human vs AI
+python run_tests.py     # 104 tests
 ```
 
 ---
 
-## Core goal
+## Approach
 
-Build one game engine and one evaluation harness, then plug in different
-decision-making systems and compare them.
+Build one game engine and one evaluation harness, then plug in progressively sophisticated decision-making systems and compare them.
 
-We care about:
-- win / draw / loss vs fixed opponents
-- robustness under randomness
-- interpretability
-- simplicity vs performance
+### Phase 1 — Baselines (no learning)
 
-For stochastic games, “solved” means:
-- strong, measurable baselines
-- clarity about where skill matters
-- predictable behaviour under self-play
+Canonical Python engine, deterministic replay, evaluation harness. Baseline agents: random legal, heuristic, Monte Carlo rollout.
 
----
+**Checkpoint 1 — Is the game worth studying? : PASS**
+Pass: stronger agents consistently beat weaker ones, weaker agents still win sometimes, randomness affects close matches not everything. Fail: outcomes dominated by luck or trivial heuristics. **Result: PASS** — Heuristic 65% vs Random, Monte Carlo 79% vs Random, clear skill gradient with meaningful variance.
 
-# Phase 1 — Baselines and instrumentation (no learning)
+### Phase 2 — Learning without frameworks
 
-**Question:**  
-_Do I understand the game well enough to measure anything at all?_
+Hand-built learning: TD-linear value agent with manual gradient updates. Fixed state encoding, fixed action space, illegal actions masked by engine.
 
-### Scope
-- Implement the full game rules in Python (canonical for the study)
-- Ensure determinism:
-  - explicit RNG
-  - versioned replay format
-- Build an evaluation harness:
-  - self-play
-  - cross-play
-  - tournament metrics
+### Phase 3 — Deep learning
 
-**Note:**  
-All randomness lives in the **engine**, never in agents.  
-Agents observe sampled state; they do not own RNG.
+DQN with bluffing-aware 80-dim state features. Imitation learning to distill search/DQN into tiny production models.
 
-### Agents
-Implement several **fully readable** agents:
-- random legal
-- simple heuristics
-- rollout-based evaluator (Monte Carlo)
+### Phase 4 — Rule evolution
 
-No learning.  
-No gradients.  
-No frameworks.
+Variant A (v1.9): choosable dogfight order — winner picks the next contested square. Action space grows from 86 to 95. Retrained all agents on new rules, validated with invariant checking.
 
-**Note:**  
-Rollouts simulate *legal futures only*.  
-If an agent proposes an illegal action, it is a bug in the agent, not the engine.
+**Checkpoint 2 — Is the game rich enough to require deep learning? : PASS**
+Pass: DQN or neural methods outperform hand-crafted heuristics. Fail: linear models match DQN, or heuristic remains unbeatable. **Result: PASS** — DQN reaches 53% vs Heuristic (peak), linear models plateau at 38%. The game rewards pattern recognition beyond what hand-tuned rules capture.
 
-### Deliverables
-- canonical Python engine
-- replay format v1 (seed + action list)
-- baseline agents ordered by strength
-- bulk evaluation results
+### Phase 5 — Improve, distill, ship *(current)*
+
+Improve DQN to consistent >50% vs Heuristic. Distill into tiny production model. Port Variant A rules and distilled agent to the Flutter game app.
+
+**Checkpoint 3 — Can I improve the DL agent and ship to production? : PASS**
 
 ---
 
-## Checkpoint — is the game worth studying?
+## Architecture Rules
 
-This checkpoint exists **before any learning is added**.
-
-**Pass if:**
-- stronger baseline agents consistently outperform weaker ones
-- weaker agents still win sometimes
-- different strategies produce different outcomes
-- randomness affects *close* matches, not everything
-
-**Fail if:**
-- outcomes are dominated by luck
-- trivial heuristics dominate
-- play collapses into forced lines
-
-If this checkpoint fails, **change or abandon the game**.
-
-Only if it passes do we proceed.
-
-**Note:**  
-Learning is *not* used to rescue a weak game.  
-This checkpoint protects time, not pride.
-
----
-
-
-# Phase 2 — Learning without frameworks
-
-**Question:**  
-_Can learning improve play in ways I can still understand?_
-
-### Scope
-- Implement learning systems by hand:
-  - associative memory / nearest neighbour
-  - simple linear scorers with manual updates
-- Train only on internally generated data
-- Keep all intermediate state readable
-
-### Constraints
-- fixed state encoding
-- fixed action enumeration
-- illegal moves are masked by the engine
-
-**Note:**  
-The action space is **fixed and fully enumerated**.  
-Illegal actions are masked, never removed.  
-If a learning method requires a variable action set, it is rejected.
-
-**Note:**  
-Models only **propose actions**.  
-They never apply actions, mutate state, or validate legality.
-
-## Simulation Metrics to Report in phase 2
-
-- **Win rate vs. skill gap:** Strong→medium→weak should form a smooth curve, not a cliff.  
-- **First-player advantage:** Keep near 52–56% unless intentionally asymmetric.  
-- **Weapon spend profile:** Avg. use + attack/defense split; always-spend or always-hoard is a red flag.  
-- **Rocket hit value:** 7+ (7/13 ≈ 53.85%); if rockets are almost always right/wrong, choice collapses.  
-- **Tie rate & wipeouts:** Too many “both removed” results make endgames swingy/empty.  
-- **Comeback rate:** Underdogs should recover sometimes—but through skill, not randomness.  
-
-## Common Simulation Pitfalls
-
-- **Symmetry trap:** Identical AI strategies can mask a dominant line.  
-- **Reward hacking:** Optimizing a proxy metric instead of win probability.  
-- **Limited state awareness:** Undervaluing discards lowers the apparent skill ceiling.  
-- **Policy overfitting:** Agents beat each other but lose to simple human heuristics.
-
-
-### Deliverables
-- at least one learning agent that beats Phase 1 heuristics
-- readable model state (tables, weights, examples)
-- evaluation vs baseline agents
+- All randomness lives in the engine, never in agents
+- Agents only propose actions — never apply, mutate, or validate
+- Action space is fixed and fully enumerated; illegal actions are masked, never removed
+- Determinism required: explicit RNG seeds, versioned replay format

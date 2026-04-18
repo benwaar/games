@@ -4,18 +4,19 @@ Human agent for utala: kaos 9.
 Allows a human player to select actions via text input.
 """
 
-from ..actions import get_action_space
-from ..state import GameState, Phase, Player
+from ..actions import ActionType, get_action_space
+from ..state import GameConfig, GameState, Phase, Player
 from .base import Agent
 
 
 class HumanAgent(Agent):
     """Agent that prompts human for actions via text input."""
 
-    def __init__(self, name: str = "Human"):
+    def __init__(self, name: str = "Human", config: GameConfig | None = None):
         """Initialize human agent."""
         super().__init__(name)
-        self.action_space = get_action_space()
+        self.config = config or GameConfig()
+        self.action_space = get_action_space(self.config)
         self.player: Player | None = None
         self.rocket_in_play: bool = False  # Set by external context
 
@@ -43,15 +44,19 @@ class HumanAgent(Agent):
 
         for action_idx in legal_actions:
             action = self.action_space.get_action(action_idx)
-            action_type = action.action_type.name
 
-            # For dogfight actions, only show first of each type
-            if action_type in ["PLAY_WEAPON", "PASS"]:
-                if action_type not in seen_types:
-                    seen_types.add(action_type)
-                    display_options.append((action_idx, action_type))
+            if action.action_type == ActionType.PLAY_WEAPON:
+                if "PLAY_WEAPON" not in seen_types:
+                    seen_types.add("PLAY_WEAPON")
+                    display_options.append((action_idx, "PLAY_WEAPON"))
+            elif action.action_type == ActionType.PASS:
+                if "PASS" not in seen_types:
+                    seen_types.add("PASS")
+                    display_options.append((action_idx, "PASS"))
+            elif action.action_type == ActionType.CHOOSE_DOGFIGHT:
+                label = self._format_dogfight_choice(action, state, player)
+                display_options.append((action_idx, label))
             else:
-                # For placement actions, show all
                 display_options.append((action_idx, str(action)))
 
         # Display consolidated options
@@ -82,10 +87,34 @@ class HumanAgent(Agent):
             except Exception as e:
                 print(f"Error: {e}")
 
+    def _format_dogfight_choice(self, action, state: GameState, player: Player) -> str:
+        """Format a CHOOSE_DOGFIGHT action with strategic context."""
+        row, col = action.row, action.col
+        pos_names = {(0,0): "top-left", (0,1): "top", (0,2): "top-right",
+                     (1,0): "left", (1,1): "center", (1,2): "right",
+                     (2,0): "bottom-left", (2,1): "bottom", (2,2): "bottom-right"}
+        name = pos_names.get((row, col), f"r{row+1},c{col+1}")
+
+        # Show matchup power if available
+        square = state.get_square(row, col)
+        hint = ""
+        if len(square.rocketmen) == 2:
+            my_rm = next((rm for rm in square.rocketmen if rm.player == player), None)
+            opp_rm = next((rm for rm in square.rocketmen if rm.player != player), None)
+            if my_rm and opp_rm:
+                my_pow = str(my_rm.power) if not my_rm.face_down else "??"
+                opp_pow = str(opp_rm.power) if not opp_rm.face_down else "??"
+                hint = f" (you {my_pow} vs {opp_pow})"
+
+        return f"Fight at {name}{hint}"
+
     def _display_state(self, state: GameState, player: Player, dogfight_info=None):
         """Display current game state with optional dogfight turn information."""
         print("\n" + "=" * 60)
-        if state.phase == Phase.DOGFIGHTS and state.current_dogfight_index < len(state.dogfight_order):
+        if state.awaiting_dogfight_choice:
+            remaining = len(state.remaining_contested)
+            print(f"Choose next dogfight ({remaining} contested square{'s' if remaining != 1 else ''} remaining)")
+        elif state.phase == Phase.DOGFIGHTS and state.current_dogfight_index < len(state.dogfight_order):
             row, col = state.dogfight_order[state.current_dogfight_index]
             print(
                 f"Dogfight {state.current_dogfight_index + 1}/{len(state.dogfight_order)} "

@@ -23,13 +23,13 @@ class MonteCarloAgent(Agent):
     - Dogfights: Optionally evaluates via rollouts (if evaluate_dogfights=True)
 
     Information handling:
-    - use_information_sets=False (default): Perfect information rollouts
-      Uses deepcopy which sees face-down cards and opponent Kaos deck.
-      Matches v1.8 baseline behavior.
-
-    - use_information_sets=True: Information set sampling
+    - use_information_sets=True (default): Information set sampling
       Samples possible face-down cards (2, 3, 9, 10) and Kaos deck orders
-      consistent with observations. More realistic but slower.
+      consistent with observations. Agents only act on what they can observe.
+
+    - use_information_sets=False: Perfect information rollouts
+      Uses deepcopy which sees face-down cards and opponent Kaos deck.
+      Legacy behavior — gives MC an unfair advantage over learning agents.
 
     v1.8: Automatically respects joker tie-breaking and early 3-in-a-row wins
     through engine delegation.
@@ -40,7 +40,7 @@ class MonteCarloAgent(Agent):
         name: str = "MonteCarlo",
         num_rollouts: int = 50,
         seed: int | None = None,
-        use_information_sets: bool = False,
+        use_information_sets: bool = True,
         is_samples_per_rollout: int = 1,
         evaluate_dogfights: bool = False
     ):
@@ -79,6 +79,10 @@ class MonteCarloAgent(Agent):
 
         # For dogfights
         if state.phase == Phase.DOGFIGHTS:
+            # Variant A: dogfight square choice — pick randomly for now
+            if state.awaiting_dogfight_choice:
+                return self.rng.choice(legal_actions)
+
             if self.evaluate_dogfights:
                 # Check if we're at the start of a dogfight (can evaluate)
                 # or mid-dogfight (fall back to random)
@@ -138,7 +142,7 @@ class MonteCarloAgent(Agent):
         Sample a possible state consistent with player's observations.
 
         Hidden information to sample:
-        1. Face-down cards (2, 3, 9, 10): player doesn't know opponent's values
+        1. Face-down cards (per config): player doesn't know opponent's values
         2. Opponent's Kaos deck: player only knows discard pile
 
         Args:
@@ -166,12 +170,13 @@ class MonteCarloAgent(Agent):
                     if rm.player == opponent and not rm.face_down:
                         known_powers.add(rm.power)
 
-        # Available powers for face-down cards: {2,3,9,10} minus known
-        face_down_options = [p for p in [2, 3, 9, 10] if p not in known_powers]
+        # Available powers for face-down cards: config set minus known
+        config_face_down = sampled_state.config.face_down_powers
+        face_down_options = [p for p in config_face_down if p not in known_powers]
 
         # If no options (all face-down powers already visible), fall back to all
         if not face_down_options:
-            face_down_options = [2, 3, 9, 10]
+            face_down_options = list(config_face_down)
 
         # Now sample face-down cards
         for row in range(3):
@@ -187,7 +192,7 @@ class MonteCarloAgent(Agent):
                                                if p != sampled_power]
                         else:
                             # Shouldn't happen, but fallback
-                            sampled_power = sample_rng.choice([2, 3, 9, 10])
+                            sampled_power = sample_rng.choice(list(config_face_down))
 
                         # Replace with sampled value (frozen dataclass, create new)
                         from ..state import Rocketman
@@ -203,8 +208,8 @@ class MonteCarloAgent(Agent):
         # Known: cards in discard pile
         known_cards = set(opp_resources.kaos_discard)
 
-        # Unknown: cards still in deck (1-13 minus discarded)
-        all_kaos = list(range(1, 14))
+        # Unknown: cards still in deck (config values minus discarded)
+        all_kaos = list(sampled_state.config.kaos_deck_values)
         unknown_cards = [c for c in all_kaos if c not in known_cards]
 
         # IMPORTANT: Preserve the original deck size
@@ -383,19 +388,27 @@ class MonteCarloAgent(Agent):
                 engine.apply_action(action)
 
             elif state.phase == Phase.DOGFIGHTS:
-                # Continue current dogfight
-                if engine.current_dogfight is None:
-                    engine.begin_current_dogfight()
-
-                # Play out remaining dogfight turns
-                while not engine.is_dogfight_complete():
-                    actor = engine.get_dogfight_current_actor()
-                    legal = engine.get_dogfight_legal_actions_for_player(actor)
+                if state.awaiting_dogfight_choice:
+                    # Variant A: randomly choose next dogfight square
+                    chooser = state.dogfight_choice_player
+                    assert chooser is not None
+                    legal = engine.get_legal_actions(chooser)
                     action = self.rng.choice(legal)
-                    engine.apply_dogfight_turn_action(actor, action)
+                    engine.apply_dogfight_choice(action)
+                else:
+                    # Continue current dogfight
+                    if engine.current_dogfight is None:
+                        engine.begin_current_dogfight()
 
-                # Finish and move to next dogfight
-                engine.finish_current_dogfight()
+                    # Play out remaining dogfight turns
+                    while not engine.is_dogfight_complete():
+                        actor = engine.get_dogfight_current_actor()
+                        legal = engine.get_dogfight_legal_actions_for_player(actor)
+                        action = self.rng.choice(legal)
+                        engine.apply_dogfight_turn_action(actor, action)
+
+                    # Finish and move to next dogfight
+                    engine.finish_current_dogfight()
 
         winner: Player | None = engine.get_winner()
         return winner
@@ -415,17 +428,25 @@ class MonteCarloAgent(Agent):
                 engine.apply_action(action)
 
             elif state.phase == Phase.DOGFIGHTS:
-                # Handle turn-based dogfights
-                if engine.current_dogfight is None:
-                    engine.begin_current_dogfight()
-
-                while not engine.is_dogfight_complete():
-                    actor = engine.get_dogfight_current_actor()
-                    legal = engine.get_dogfight_legal_actions_for_player(actor)
+                if state.awaiting_dogfight_choice:
+                    # Variant A: randomly choose next dogfight square
+                    chooser = state.dogfight_choice_player
+                    assert chooser is not None
+                    legal = engine.get_legal_actions(chooser)
                     action = self.rng.choice(legal)
-                    engine.apply_dogfight_turn_action(actor, action)
+                    engine.apply_dogfight_choice(action)
+                else:
+                    # Handle turn-based dogfights
+                    if engine.current_dogfight is None:
+                        engine.begin_current_dogfight()
 
-                engine.finish_current_dogfight()
+                    while not engine.is_dogfight_complete():
+                        actor = engine.get_dogfight_current_actor()
+                        legal = engine.get_dogfight_legal_actions_for_player(actor)
+                        action = self.rng.choice(legal)
+                        engine.apply_dogfight_turn_action(actor, action)
+
+                    engine.finish_current_dogfight()
 
         winner: Player | None = engine.get_winner()
         return winner
@@ -438,7 +459,7 @@ class FastMonteCarloAgent(MonteCarloAgent):
         self,
         name: str = "MonteCarlo-Fast",
         seed: int | None = None,
-        use_information_sets: bool = False,
+        use_information_sets: bool = True,
         evaluate_dogfights: bool = True  # Strategic dogfights by default
     ):
         super().__init__(
@@ -457,7 +478,7 @@ class StrongMonteCarloAgent(MonteCarloAgent):
         self,
         name: str = "MonteCarlo-Strong",
         seed: int | None = None,
-        use_information_sets: bool = False,
+        use_information_sets: bool = True,
         evaluate_dogfights: bool = False
     ):
         super().__init__(
@@ -476,7 +497,7 @@ class VeryStrongMonteCarloAgent(MonteCarloAgent):
         self,
         name: str = "MonteCarlo-VeryStrong",
         seed: int | None = None,
-        use_information_sets: bool = False,
+        use_information_sets: bool = True,
         evaluate_dogfights: bool = False
     ):
         super().__init__(
@@ -495,7 +516,7 @@ class UltraStrongMonteCarloAgent(MonteCarloAgent):
         self,
         name: str = "MonteCarlo-Ultra",
         seed: int | None = None,
-        use_information_sets: bool = False,
+        use_information_sets: bool = True,
         evaluate_dogfights: bool = False
     ):
         super().__init__(

@@ -8,7 +8,7 @@ v1.8 update: Added 3-in-a-row awareness and joker consideration.
 import random
 
 from ..actions import ActionType, get_action_space
-from ..state import GameState, Phase, Player
+from ..state import GameConfig, GameState, Phase, Player
 from .base import Agent
 
 
@@ -38,17 +38,19 @@ class HeuristicAgent(Agent):
     - Attacking as favorite: Pass and win via Kaos resolution
     """
 
-    def __init__(self, name: str = "Heuristic", seed: int | None = None):
+    def __init__(self, name: str = "Heuristic", seed: int | None = None,
+                 config: GameConfig | None = None):
         """
         Initialize heuristic agent.
 
         Args:
             name: Agent name
             seed: Optional seed for tie-breaking randomness
+            config: Game config (determines action space). If None, uses default.
         """
         super().__init__(name)
         self.rng = random.Random(seed)
-        self.action_space = get_action_space()
+        self.action_space = get_action_space(config)
 
         # Position values: center > edges > corners
         self.position_values = {
@@ -67,6 +69,8 @@ class HeuristicAgent(Agent):
         if state.phase == Phase.PLACEMENT:
             return self._select_placement(state, legal_actions, player)
         elif state.phase == Phase.DOGFIGHTS:
+            if state.awaiting_dogfight_choice:
+                return self._select_dogfight_choice(state, legal_actions, player)
             return self._select_dogfight(state, legal_actions, player)
         else:
             return self.rng.choice(legal_actions)
@@ -250,6 +254,55 @@ class HeuristicAgent(Agent):
         # No weapons left or can't play - just pass
         else:
             return self._get_action_by_type(legal_actions, ActionType.PASS)
+
+    def _select_dogfight_choice(
+        self,
+        state: GameState,
+        legal_actions: list[int],
+        player: Player
+    ) -> int:
+        """
+        Select which contested square to fight next (Variant A: choosable order).
+
+        Strategy: prioritize squares where winning completes a 3-in-a-row or
+        where losing gives the opponent one. Among equal options, prefer squares
+        where we have a power advantage.
+        """
+        best_score = -float('inf')
+        best_actions = []
+
+        for action_idx in legal_actions:
+            action = self.action_space.get_action(action_idx)
+            if action.action_type != ActionType.CHOOSE_DOGFIGHT:
+                continue
+
+            assert action.row is not None
+            assert action.col is not None
+            row, col = action.row, action.col
+            square = state.get_square(row, col)
+
+            # Strategic importance of this square
+            importance = self._evaluate_dogfight_importance(state, player, row, col)
+
+            # Power advantage (if cards are visible)
+            power_bonus = 0.0
+            my_rm = next((rm for rm in square.rocketmen if rm.player == player), None)
+            opp_rm = next((rm for rm in square.rocketmen if rm.player != player), None)
+            if my_rm and opp_rm and not my_rm.face_down and not opp_rm.face_down:
+                power_bonus = (my_rm.power - opp_rm.power) * 2.0
+
+            # Position value as tiebreaker
+            pos_value = self.position_values.get((row, col), 0)
+
+            total = importance + power_bonus + pos_value * 0.1
+
+            if total > best_score:
+                best_score = total
+                best_actions = [action_idx]
+            elif total == best_score:
+                best_actions.append(action_idx)
+
+        return self.rng.choice(best_actions) if best_actions else self.rng.choice(legal_actions)
 
     def _evaluate_placement_for_three_in_row(
         self,
