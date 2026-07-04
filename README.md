@@ -1,19 +1,27 @@
-# Games and Game AI
+# Aerythen card game rules and AI development early stages archive
 
-[![Deploy to GitHub Pages](https://github.com/benwaar/games/actions/workflows/deploy-jupyterlite.yml/badge.svg)](https://github.com/benwaar/games/actions/workflows/deploy-jupyterlite.yml)
+## UPDATE July 20206
 
-## Project Ethos
+This repository contains the artificial intelligence source code driving the [Aerythen interactive demo](https://aerythen.com/demo). 
 
-These projects are about:
+Aerythen is a Dark Aero Command Line Punk universe createdd by [David Benoy](https://aerythen.com). The overarching project bridges together art, software development, an upcoming card game, and a developing series of companion novels.
+
+### Explore the Universe
+* 🎮 **Experience the code in action:** [Play the Aerythen Demo](https://aerythen.com/demo)
+* 📖 **Dive into the lore:** [Read Utala - An Aerythen Novel](https://mybook.to/utala)
+
+---
+
+## Development Project Ethos
+
+This project was about:
 - understanding algorithms by building them
 - seeing how different approaches *think*
 - learning by stripping problems down to their **nuts and bolts**
 
 Everything is text-based, inspectable, and hackable.
 
----
-
-# Utala: KAOS 9
+**Utala: KAOS 9** was the working title for the game during development.
 
 A competitive 2-player tactical duel playable with any standard 52-card deck.
 
@@ -68,6 +76,6 @@ Improved DQN to consistent >50% vs Heuristic. Distilled into tiny production mod
 
 ## License
 
-Source code is licensed under the MIT License.
+This Source code is licensed under the MIT License.
 
-The game name "utala: kaos 9", rulebook text, and branding are © 2026 David Benoy. All rights reserved.
+Aerythen, the associated artwork, the game name "utala: kaos 9", rulebook text, and branding are © 2026 David Benoy. All rights reserved.
