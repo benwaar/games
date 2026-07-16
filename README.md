@@ -4,7 +4,7 @@
 
 This repository contains the artificial intelligence source code driving the [Aerythen interactive demo](https://aerythen.com/demo). 
 
-Aerythen is a Dark Aero Command Line Punk universe createdd by [David Benoy](https://aerythen.com). The overarching project bridges together art, software development, an upcoming card game, and a developing series of companion novels.
+Aerythen is a Dark Aero Command Line Punk universe created by [David Benoy](https://aerythen.com). The overarching project bridges together art, software development, an upcoming card game, and a developing series of companion novels.
 
 ### Explore the Universe
 * 🎮 **Experience the code in action:** [Play the Aerythen Demo](https://aerythen.com/demo)
