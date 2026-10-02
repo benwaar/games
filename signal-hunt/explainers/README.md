@@ -21,6 +21,14 @@ See: [pipeline/ingest.py](../pipeline/ingest.py)
 
 ---
 
+## 1a. Reading Waveforms & Spectrograms
+
+The two core visualisations for understanding audio. A waveform shows amplitude over time (when things happen); a spectrogram shows frequency over time with brightness for intensity (what frequencies are present). If you can read these, you can debug every step of the pipeline.
+
+→ [How to read waveforms and spectrograms](reading-plots.md) — with annotated examples from our pipeline output
+
+---
+
 ## 2. Augmentation
 
 A model trained on clean recordings fails on real-world audio. Augmentation injects realistic variation at the data layer so the model learns to generalise.
