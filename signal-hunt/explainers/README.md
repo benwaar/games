@@ -86,6 +86,24 @@ See: [pipeline/features.py](../pipeline/features.py) — `normalise()`, `extract
 
 ---
 
+## 4a. Batch Processing & Dataset
+
+The glue that turns a folder of `.wav` files into a training-ready tensor dataset. Runs every file through the full pipeline (ingest → augment → extract → save), producing 7 variants per source file and a JSON manifest linking each tensor to its source, label, and augmentation.
+
+- **One command:** `python -m pipeline.batch data/raw data/processed` — walks the input folder, produces `.pt` files and a `manifest.json`
+- **7 augmentations per file** — clean + 2 noise levels + pitch up/down + slow/fast. 3 source files become 21 training samples.
+- **Deterministic** — same seed produces identical tensors. Reproducible across machines.
+- **Manifest** — JSON file mapping each tensor to its source, label, and augmentation. Makes it easy to build a `Dataset` class or filter by augmentation type.
+- **DataLoader-ready** — tensors are uniform `(1, 128, 65)`, so they stack directly into batches.
+
+> **In practice:** This is the ETL step of any ML project. Raw data in various formats → standardised, augmented, labelled tensors ready for training. The manifest pattern (a metadata sidecar that describes the dataset) is how teams track data provenance — which version of the pipeline produced which training set, with what parameters. Without it, you're guessing what your model trained on.
+
+→ [Batch processing explained](batch-processing.md) — augmentation strategy, manifest schema, DataLoader integration
+
+See: [pipeline/batch.py](../pipeline/batch.py)
+
+---
+
 ## 5. CNN Feature Extraction
 
 *Coming in M8.* Convolutional layers scan the spectrogram for local frequency patterns — the shapes that distinguish a hum from a clap.

@@ -50,13 +50,13 @@ Load a sample audio file, print its shape and sample rate. Plot the raw waveform
 
 **Gate:** Unit tests verify tensor shape `(1, n_mels, time_frames)`, mean ≈ 0, std ≈ 1. Spectrogram plot saved for visual sanity check. **PASSED — 24/24 tests**
 
-#### M5: Batch processing & dataset (~2 hrs)
+#### M5: Batch processing & dataset (~2 hrs) ✅
 `pipeline/batch.py` — process a folder of audio files through the full pipeline (ingest → augment → features → save). Output `.pt` tensor files. Generate augmented variants per source file.
 
 `data/raw/` — a handful of baseline audio clips (hums, whistles, claps).
 `data/processed/` — tensor output from batch processing.
 
-**Gate:** `python -m pipeline.batch data/raw data/processed` produces tensors. A `DataLoader` can iterate them.
+**Gate:** `python -m pipeline.batch data/raw data/processed` produces tensors. A `DataLoader` can iterate them. **PASSED — 12/12 tests, 21 tensors produced**
 
 #### M6: Integration & documentation (~1 hr)
 End-to-end: record or load → augment → extract → tensor. README updated with usage. All tests green.
