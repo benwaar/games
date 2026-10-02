@@ -52,7 +52,9 @@ See: [pipeline/augment.py](../pipeline/augment.py)
 
 ## 3. Mel-Spectrograms
 
-Raw waveforms are 33,075 numbers with no structure. The Mel-spectrogram pipeline compresses that into a `(128, 65)` perceptually-weighted frequency-over-time image:
+This is the core transform — it takes a raw waveform and produces a compact, CNN-ready tensor. A 33,075-sample clip becomes a `(1, 128, 65)` PyTorch tensor (one channel, 128 Mel frequency bands, 65 time frames) with mean≈0 and std≈1. Each step throws away information the model doesn't need and amplifies what it does.
+
+The pipeline compresses the waveform into a `(128, 65)` perceptually-weighted frequency-over-time image:
 
 1. **STFT** — break the waveform into overlapping windows, FFT each one → frequency bins × time frames
 2. **Mel filterbank** — compress 1025 linear frequency bins into 128 Mel-scaled bands (fine detail at low frequencies, coarse at high — matching human hearing)
