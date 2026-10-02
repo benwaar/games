@@ -10,6 +10,9 @@ This is a study project. When there's a choice between the fast way and the way 
 ## Document as you build
 When a concept clicks — why Mel-spectrograms work, what a stride does in a conv layer, why normalisation matters — write it down in `explainers/`. Short, plain-language notes for future-you. The [overview](explainers/README.md) covers each step briefly; detailed explainers branch off from there. If you can't explain it simply, you don't understand it yet. Add to the docs with each milestone, not in a batch at the end.
 
+## Bridge from what you know
+This project is for people coming from other languages — C, JS/TS, or both. When a Python or ML concept appears, map it to the equivalent in those languages. "A tuple is like destructuring an array" lands faster than a definition from scratch. The [Python concepts](explainers/python-concepts.md) doc has "Coming from C" and "Coming from JS/TS" callouts for each pattern — keep adding these as new concepts appear.
+
 ## Mel-spectrograms over raw waveforms
 Raw audio is high-dimensional and noisy. Mel-spectrograms compress frequency into perceptually meaningful bands — what a CNN needs to spot patterns humans hear.
 
