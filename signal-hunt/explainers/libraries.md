@@ -42,7 +42,9 @@ Audio analysis toolkit built on NumPy. The heavy lifter for this project.
 - `librosa.load()` — read any audio format, resample in one call
 - `librosa.effects.trim()` — silence trimming based on decibel threshold
 - `librosa.effects.pitch_shift()` / `time_stretch()` — augmentation primitives
-- `librosa.feature.melspectrogram()` — the core feature extraction (M4)
+- `librosa.stft()` — Short-Time Fourier Transform, the first step in feature extraction. Breaks audio into overlapping windows and FFTs each one.
+- `librosa.feature.melspectrogram()` — Mel-scaled spectrogram in one call. Applies the STFT, then a Mel filterbank to compress frequency bins into perceptual bands.
+- `librosa.power_to_db()` — converts power spectrogram to decibels. Compresses dynamic range so quiet sounds are visible alongside loud ones.
 - `librosa.display` — spectrogram and waveform plotting helpers
 
 **Mental model:** librosa is to audio what pandas is to tabular data — a high-level API over lower-level ops. Under the hood it uses `soundfile` for I/O and NumPy for computation.
@@ -62,6 +64,12 @@ Reads and writes audio files (WAV, FLAC, OGG). librosa uses it internally for fi
 ## PyTorch (`torch`)
 
 The deep learning framework. In Phase 1 we only use it for the final tensor conversion (`torch.Tensor`). Phase 2 is where it takes over — model architecture, training loops, GPU acceleration.
+
+**Phase 1 usage:**
+- `torch.from_numpy()` — convert a NumPy spectrogram to a PyTorch tensor
+- `tensor.unsqueeze(0)` — add the channel dimension: `(128, 65)` → `(1, 128, 65)`
+- `torch.save()` / `torch.load()` — persist and reload tensors as `.pt` files. Binary format, fast, preserves dtype and shape exactly.
+- `TensorDataset` + `DataLoader` — wrap tensors into a dataset and iterate in shuffled batches. The batch pipeline produces tensors that slot directly into this.
 
 **Why PyTorch over TensorFlow?** Both do the same job — tensor math, automatic differentiation, GPU acceleration. The difference is how you write code:
 
