@@ -31,10 +31,10 @@ Load a sample audio file, print its shape and sample rate. Plot the raw waveform
 
 **Gate:** `python hello_audio.py` runs, prints shape, saves a waveform plot. **PASSED**
 
-#### M2: Ingestion wrapper (~2 hrs)
+#### M2: Ingestion wrapper (~2 hrs) ✅
 `pipeline/ingest.py` — functions to load audio from file or record from mic. Resample to a standard rate (22050 Hz). Trim silence. Output a consistent numpy array.
 
-**Gate:** Unit tests pass for shape, dtype, sample rate. Handles both mono and stereo input.
+**Gate:** Unit tests pass for shape, dtype, sample rate. Handles both mono and stereo input. **PASSED — 9/9 tests**
 
 #### M3: Augmentation engine (~2 hrs)
 `pipeline/augment.py` — composable augmentation functions:
