@@ -26,5 +26,35 @@ Step-by-step notes on each part of the pipeline — what it does and why: [expla
 ```bash
 bash setup.sh              # install Python, venv, deps
 source .venv/bin/activate
-python hello_audio.py      # M1: verify everything works
+python hello_audio.py      # verify everything works
+```
+
+## Usage
+
+### Run the full pipeline
+
+```bash
+python -m pipeline.batch data/raw data/processed
+```
+
+Takes every `.wav` in `data/raw/`, runs it through ingest → augment (7 variants) → feature extraction, and saves `.pt` tensors + a `manifest.json` to `data/processed/`. Output tensors are `(1, 128, 65)` — one channel, 128 Mel bands, 65 time frames.
+
+### Run tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+### Project structure
+
+```
+pipeline/
+  ingest.py      — load, resample, trim, pad/truncate audio
+  augment.py     — noise, ambient, pitch shift, time stretch
+  features.py    — STFT → Mel-spectrogram → log-dB → normalise → tensor
+  batch.py       — folder → augmented tensors + manifest
+tests/             — unit tests for each module
+data/raw/          — source .wav files (hum, whistle, clap)
+data/processed/    — generated .pt tensors (gitignored)
+explainers/        — step-by-step notes on each part of the pipeline
 ```
