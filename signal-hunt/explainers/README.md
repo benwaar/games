@@ -104,6 +104,23 @@ See: [pipeline/batch.py](../pipeline/batch.py)
 
 ---
 
+## 5a. End-to-End Integration
+
+The demo script ties every module together — a single command that shows the full pipeline from raw audio to normalised tensor. Useful for verifying the pipeline works on new audio files and for understanding what each step produces.
+
+`python -m pipeline.demo` loads a `.wav` file and runs it through:
+1. **Ingest** — resample, trim, pad to 1.5s
+2. **Augment** — generate all 7 variants (clean + noise + pitch + speed)
+3. **Extract** — Mel-spectrogram → log-dB → normalise → `(1, 128, 65)` tensor
+
+Prints shape, mean, and std for each variant — confirming normalisation holds across all augmentations.
+
+> **In practice:** An end-to-end demo script is a smoke test for your pipeline. In production ML, this is the script you run after deploying a new version of the feature pipeline to verify it still produces sane output. If the shapes or stats change unexpectedly, something broke upstream.
+
+See: [pipeline/demo.py](../pipeline/demo.py)
+
+---
+
 ## 6. CNN Feature Extraction
 
 *Coming in M8.* Convolutional layers scan the spectrogram for local frequency patterns — the shapes that distinguish a hum from a clap.

@@ -39,6 +39,15 @@ python -m pipeline.batch data/raw data/processed
 
 Takes every `.wav` in `data/raw/`, runs it through ingest → augment (7 variants) → feature extraction, and saves `.pt` tensors + a `manifest.json` to `data/processed/`. Output tensors are `(1, 128, 65)` — one channel, 128 Mel bands, 65 time frames.
 
+### Run the demo
+
+```bash
+python -m pipeline.demo                        # default: data/raw/hum_440hz.wav
+python -m pipeline.demo data/raw/clap_burst.wav  # any .wav file
+```
+
+Runs a single file through the full pipeline (ingest → all 7 augmentation variants → feature extraction) and prints summary stats for each variant. Useful for sanity-checking the pipeline on new audio.
+
 ### Run tests
 
 ```bash
@@ -53,7 +62,8 @@ pipeline/
   augment.py     — noise, ambient, pitch shift, time stretch
   features.py    — STFT → Mel-spectrogram → log-dB → normalise → tensor
   batch.py       — folder → augmented tensors + manifest
-tests/             — unit tests for each module
+  demo.py        — end-to-end demo on a single file
+tests/             — unit tests for each module (57 tests)
 data/raw/          — source .wav files (hum, whistle, clap)
 data/processed/    — generated .pt tensors (gitignored)
 explainers/        — step-by-step notes on each part of the pipeline

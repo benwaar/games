@@ -181,3 +181,40 @@ manifest_path.write_text(json.dumps(manifest, indent=2))
 > **Coming from C:** Like `fprintf()` with manual JSON formatting — except `json.dumps` handles escaping, nesting, and pretty-printing for you. No need to build the string yourself.
 
 > **Coming from JS/TS:** `JSON.stringify(manifest, null, 2)` + `fs.writeFileSync()`. Nearly identical — Python's `json` module has the same API shape. The `indent=2` parameter matches JS's third argument to `stringify`.
+
+---
+
+## sys.argv — lightweight CLI arguments
+
+```python
+import sys
+
+if len(sys.argv) > 1:
+    path = sys.argv[1]
+else:
+    path = "data/raw/hum_440hz.wav"
+```
+
+`sys.argv` is a list of command-line arguments. `sys.argv[0]` is the script name, `sys.argv[1]` onward are user arguments. For scripts with one or two optional args, this is simpler than `argparse`.
+
+> **Coming from C:** Exactly `argv[1]` from `int main(int argc, char *argv[])`. Same indexing, same concept. Python just wraps it in a list instead of a pointer array.
+
+> **Coming from JS/TS:** Like `process.argv[2]` in Node (Node's `argv[0]` is the node binary, `argv[1]` is the script — so user args start at index 2). Python's `sys.argv[0]` is the script, user args start at index 1.
+
+**When to use which:**
+- **`sys.argv`** — 0–2 optional args, simple scripts, demos
+- **`argparse`** — named flags, help text, type validation, anything a user will run regularly
+
+---
+
+## np.pad — padding arrays
+
+```python
+padded = np.pad(signal, (0, max(0, target_len - len(signal))))[:target_len]
+```
+
+`np.pad` adds values to the edges of an array. The tuple `(before, after)` controls how many elements to add at each end. Default padding value is 0. Combined with slicing `[:target_len]`, it handles both too-short and too-long inputs in one line.
+
+> **Coming from C:** Like `memset` after a `realloc` — extend the buffer and zero-fill the new space. Python does it without manual memory management.
+
+> **Coming from JS/TS:** No built-in equivalent. You'd spread into a new array: `[...signal, ...new Array(padding).fill(0)]`. NumPy's `np.pad` is more flexible — supports constant, edge, reflect, and wrap modes for different padding strategies.
