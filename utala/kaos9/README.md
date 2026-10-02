@@ -46,7 +46,7 @@ Variant A (v1.9): choosable dogfight order — winner picks the next contested s
 **Checkpoint 2 — Is the game rich enough to require deep learning? : PASS**
 Pass: DQN or neural methods outperform hand-crafted heuristics. Fail: linear models match DQN, or heuristic remains unbeatable. **Result: PASS** — DQN reaches 53% vs Heuristic (peak), linear models plateau at 38%. The game rewards pattern recognition beyond what hand-tuned rules capture.
 
-### Phase 5 — Improve, distill, ship *(current)*
+### Phase 5 — Improve, distill, ship
 
 Improve DQN to consistent >50% vs Heuristic. Distill into tiny production model. Port Variant A rules and distilled agent to the Flutter game app.
 
