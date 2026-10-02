@@ -7,80 +7,36 @@
 
 ---
 
-## Phase 1: Data Pipelines & Feature Extraction
+## Phase 1: Data Pipelines & Feature Extraction ✅
 
 Turn raw audio (hums, whistles, claps) into clean, normalised Mel-spectrogram tensors.
 
 **Business goal:** Learn unstructured data ingestion and preprocessing — required for any ML feature pipeline.
 **Business value:** Teaches you how to turn raw, messy customer or sensor inputs into clean machine-readable data while preventing model failure due to real-world edge cases.
 
-### The problem
+### What was built
 
-Real-world audio is messy. Background noise, mic quality, room acoustics — all vary wildly. A model trained on clean studio recordings fails the moment it meets a laptop mic in a kitchen. Phase 1 builds the pipeline that handles this before a model ever sees the data.
+A four-module pipeline that takes a folder of `.wav` files and produces augmented, normalised `(1, 128, 65)` PyTorch tensors ready for a CNN:
 
-### What to build
+| Module | What it does |
+|--------|-------------|
+| `pipeline/ingest.py` | Load any audio format, resample to 22050 Hz mono, trim silence, pad/truncate to 1.5s |
+| `pipeline/augment.py` | Four composable transforms: white noise, ambient mixing, pitch shift, time stretch |
+| `pipeline/features.py` | STFT → 128-band Mel-spectrogram → log-dB → z-score normalisation → PyTorch tensor |
+| `pipeline/batch.py` | Walk a folder, generate 7 augmented variants per file, save `.pt` tensors + `manifest.json` |
 
-1. **Ingestion wrapper** — load or record 1–2 second audio clips via `librosa` / `soundfile`
-2. **Augmentation engine** — inject white noise, ambient room sound, pitch shift, time stretch
-3. **Feature transform** — STFT → Mel-spectrogram (log-dB) → normalise (mean=0, std=1) → PyTorch tensor
+**End-to-end:** `python -m pipeline.batch data/raw data/processed` (3 source files → 21 tensors). `python -m pipeline.demo` shows the full pipeline on a single file with summary stats.
 
-### Milestones
+**Tests:** 57 passing across 4 test files. All gates met.
 
-#### M1: Environment & hello-audio (~1 hr) ✅
-Load a sample audio file, print its shape and sample rate. Plot the raw waveform. Confirm librosa, soundfile, torch all import cleanly in the venv.
+**Decisions made along the way:**
+- Fixed-length tensors (pad/truncate) over variable-length — simplifies batching
+- Mel scale over linear STFT — perceptual weighting matches human hearing and our label scheme
+- Per-spectrogram normalisation — removes mic/volume bias between recordings
+- Deterministic augmentation (seeded RNG) — reproducible datasets across machines
+- Manifest pattern — JSON sidecar tracks data provenance
 
-**Gate:** `python hello_audio.py` runs, prints shape, saves a waveform plot. **PASSED**
-
-#### M2: Ingestion wrapper (~2 hrs) ✅
-`pipeline/ingest.py` — functions to load audio from file or record from mic. Resample to a standard rate (22050 Hz). Trim silence. Output a consistent numpy array.
-
-**Gate:** Unit tests pass for shape, dtype, sample rate. Handles both mono and stereo input. **PASSED — 9/9 tests**
-
-#### M3: Augmentation engine (~2 hrs) ✅
-`pipeline/augment.py` — composable augmentation functions:
-- `add_noise(signal, snr_db)` — white noise at specified SNR
-- `add_ambient(signal, ambient_path, snr_db)` — mix with ambient recording
-- `pitch_shift(signal, sr, n_steps)` — shift pitch up/down
-- `time_stretch(signal, rate)` — speed up/slow down without pitch change
-
-**Gate:** Unit tests verify output shape matches input. Augmented audio sounds different but recognisable (manual listen check). **PASSED — 12/12 tests**
-
-#### M4: Feature extraction (~2 hrs) ✅
-`pipeline/features.py` — STFT, Mel-spectrogram, log-dB conversion, normalisation. Output: PyTorch tensor ready for a CNN.
-
-**Gate:** Unit tests verify tensor shape `(1, n_mels, time_frames)`, mean ≈ 0, std ≈ 1. Spectrogram plot saved for visual sanity check. **PASSED — 24/24 tests**
-
-#### M5: Batch processing & dataset (~2 hrs) ✅
-`pipeline/batch.py` — process a folder of audio files through the full pipeline (ingest → augment → features → save). Output `.pt` tensor files. Generate augmented variants per source file.
-
-`data/raw/` — a handful of baseline audio clips (hums, whistles, claps).
-`data/processed/` — tensor output from batch processing.
-
-**Gate:** `python -m pipeline.batch data/raw data/processed` produces tensors. A `DataLoader` can iterate them. **PASSED — 12/12 tests, 21 tensors produced**
-
-#### M6: Integration & documentation (~1 hr)
-End-to-end: record or load → augment → extract → tensor. README updated with usage. All tests green.
-
-**Gate:** `pytest` passes. `python -m pipeline.demo` runs the full pipeline on a sample file and prints summary stats.
-
-### What's tricky
-
-1. **Mic access.** `sounddevice` needs PortAudio. May need `brew install portaudio`. Don't block on this — file-based ingestion is the core path.
-2. **Spectrogram dimensions.** Different audio lengths produce different time frames. Need to decide: pad/truncate to fixed length, or handle variable?
-3. **Augmentation realism.** Too much noise = garbage. Too little = no robustness. SNR range matters.
-
-### When to stop
-
-| After | Stop if | Meaning |
-|---|---|---|
-| M1 | Can't get libs installed | Environment issue, not a learning blocker — fix and retry |
-| M2 | Ingestion works for files | Mic recording is nice-to-have, file loading is the core |
-| M4 | Features look wrong in plots | Spectrogram not showing expected patterns — debug before proceeding |
-| M5 | Batch pipeline works | Dataset is ready for Phase 2 |
-
-### Effort
-
-~10 hours across 2–3 sessions.
+**Docs:** [explainers/](explainers/README.md) covers each step with C/JS/TS callouts and business parallels.
 
 ---
 

@@ -86,7 +86,7 @@ See: [pipeline/features.py](../pipeline/features.py) — `normalise()`, `extract
 
 ---
 
-## 4a. Batch Processing & Dataset
+## 5. Batch Processing & Dataset
 
 The glue that turns a folder of `.wav` files into a training-ready tensor dataset. Runs every file through the full pipeline (ingest → augment → extract → save), producing 7 variants per source file and a JSON manifest linking each tensor to its source, label, and augmentation.
 
@@ -104,12 +104,12 @@ See: [pipeline/batch.py](../pipeline/batch.py)
 
 ---
 
-## 5. CNN Feature Extraction
+## 6. CNN Feature Extraction
 
 *Coming in M8.* Convolutional layers scan the spectrogram for local frequency patterns — the shapes that distinguish a hum from a clap.
 
 ---
 
-## 6. RNN Temporal Learning
+## 7. RNN Temporal Learning
 
 *Coming in M9.* Recurrent layers learn how features change over time — the sequence that makes a whistle different from a sustained hum.
