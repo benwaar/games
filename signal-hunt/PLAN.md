@@ -36,14 +36,14 @@ Load a sample audio file, print its shape and sample rate. Plot the raw waveform
 
 **Gate:** Unit tests pass for shape, dtype, sample rate. Handles both mono and stereo input. **PASSED — 9/9 tests**
 
-#### M3: Augmentation engine (~2 hrs)
+#### M3: Augmentation engine (~2 hrs) ✅
 `pipeline/augment.py` — composable augmentation functions:
 - `add_noise(signal, snr_db)` — white noise at specified SNR
 - `add_ambient(signal, ambient_path, snr_db)` — mix with ambient recording
 - `pitch_shift(signal, sr, n_steps)` — shift pitch up/down
 - `time_stretch(signal, rate)` — speed up/slow down without pitch change
 
-**Gate:** Unit tests verify output shape matches input. Augmented audio sounds different but recognisable (manual listen check).
+**Gate:** Unit tests verify output shape matches input. Augmented audio sounds different but recognisable (manual listen check). **PASSED — 12/12 tests**
 
 #### M4: Feature extraction (~2 hrs)
 `pipeline/features.py` — STFT, Mel-spectrogram, log-dB conversion, normalisation. Output: PyTorch tensor ready for a CNN.
