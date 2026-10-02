@@ -63,7 +63,12 @@ Reads and writes audio files (WAV, FLAC, OGG). librosa uses it internally for fi
 
 The deep learning framework. In Phase 1 we only use it for the final tensor conversion (`torch.Tensor`). Phase 2 is where it takes over — model architecture, training loops, GPU acceleration.
 
-**Why PyTorch over TensorFlow?** More Pythonic, easier to debug (eager execution by default), dominant in research. For a learning project, the imperative style makes it clearer what's happening.
+**Why PyTorch over TensorFlow?** Both do the same job — tensor math, automatic differentiation, GPU acceleration. The difference is how you write code:
+
+- **TensorFlow** (historically) builds a computation graph first, then executes it. Like writing a full recipe before cooking. You can't easily inspect intermediate values or step through with a debugger. TF2 added eager mode, but the ecosystem still leans on graph-based patterns.
+- **PyTorch** runs each operation immediately as you write it — standard Python. You can `print()` a tensor mid-computation, set breakpoints, use normal `if/else` and `for` loops. No special "session" or "graph compilation" step.
+
+For learning, this matters a lot. When something goes wrong (and it will), you want to inspect the actual numbers at each step — not wrestle with framework abstractions. PyTorch also dominates in research papers, so most tutorials and examples you'll find use it.
 
 ---
 
