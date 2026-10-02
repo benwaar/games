@@ -17,6 +17,10 @@ Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then 
 - **Training loop** — loss, backprop, validation, early stopping, checkpoints
 - **Evaluation** — accuracy, confusion matrix, overfitting analysis
 
+## Learn
+
+Step-by-step notes on each part of the pipeline — what it does and why: [explainers/](explainers/README.md)
+
 ## Quick start
 
 ```bash
