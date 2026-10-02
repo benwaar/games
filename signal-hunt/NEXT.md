@@ -1,5 +1,7 @@
 # Next: Phase 2 — Sound Type Classification
 
+*** use /study skill ***
+
 Start at **M7: Dataset & DataLoader**.
 
 Before coding:
