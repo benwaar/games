@@ -17,6 +17,8 @@ Raw audio comes in many formats, sample rates, and channel layouts. The ingestio
 - **Silence trimming** — leading/trailing silence varies by recording. Trimming it means the model sees signal, not dead air.
 - **Fixed-length output** — pad short clips with zeros, truncate long ones. Consistent tensor shapes simplify batching and model architecture.
 
+> **In practice:** This is the same problem as normalising data from different sources. Financial tick data arrives at different rates per exchange; IoT sensors report at different intervals; customer event logs have different schemas. The ingestion step — resample to a common rate, trim noise, enforce a fixed shape — is the universal first step in any ML pipeline.
+
 See: [pipeline/ingest.py](../pipeline/ingest.py)
 
 ---
@@ -39,6 +41,8 @@ A model trained on clean recordings fails on real-world audio. Augmentation inje
 - **Time stretch** (`time_stretch`) — speeds up or slows down without changing pitch. Simulates tempo variation.
 
 All augmentations are composable — chain them in any order. Applied *before* feature extraction so the model trains on diverse inputs.
+
+> **In practice:** Augmentation is how you deal with imbalanced or small datasets in any domain. In fraud detection, you synthesise rare fraud patterns to stop the model ignoring them. In medical imaging, you rotate and flip scans to multiply your training data. The principle is the same: inject realistic variation at the data layer so the model generalises instead of memorising.
 
 → [Why SNR matters](snr.md)
 

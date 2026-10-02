@@ -56,3 +56,5 @@ A spectrogram plots **frequency over time**, with brightness showing intensity. 
 | Spectrogram looks right but model fails | Features are fine — problem is downstream | Check labels, model architecture, training |
 
 More plots will appear as the pipeline grows — augmented variants, batch outputs, model predictions. They all build on these two views.
+
+> **In practice:** Visualising your data before modelling it is a universal discipline. In finance you'd plot price series and volume histograms before building a trading model. In healthcare you'd look at distributions of patient metrics. The spectrogram is just the audio version of "look at your data first" — and the debugging table above works the same way in any domain: if the visualisation looks wrong, the model will learn wrong.

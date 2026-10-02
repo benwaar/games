@@ -23,3 +23,5 @@ Higher `snr_db` → less noise added. For training augmentation, we typically sa
 ## Why it matters
 
 A model trained only on SNR=40 (clean) audio will fail on SNR=10 (noisy) real-world input. By augmenting across a range of SNRs, the model learns to extract signal regardless of noise level.
+
+> **In practice:** Every real-world dataset has noise. In finance, it's market microstructure noise in tick data. In NLP, it's typos and slang in customer messages. In sensor data, it's electrical interference. The skill here — quantifying the signal-to-noise ratio and training your model to be robust across a range of it — applies everywhere you're trying to extract a pattern from messy inputs.

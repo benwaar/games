@@ -13,6 +13,9 @@ When a concept clicks — why Mel-spectrograms work, what a stride does in a con
 ## Bridge from what you know
 This project is for people coming from other languages — C, JS/TS, or both. When a Python or ML concept appears, map it to the equivalent in those languages. "A tuple is like destructuring an array" lands faster than a definition from scratch. The [Python concepts](explainers/python-concepts.md) doc has "Coming from C" and "Coming from JS/TS" callouts for each pattern — keep adding these as new concepts appear.
 
+## Connect to business
+This is audio, but the techniques are universal. Resampling is normalising data from different sources. Augmentation is synthetic data for imbalanced datasets. Normalisation is feature scaling. When a step has a clear business parallel, flag it with an **"In practice"** callout in the explainers — one or two per doc, only where the connection is strong and non-obvious. The goal: someone doing this project sees *why* these skills transfer, not just *how* to apply them to audio.
+
 ## Mel-spectrograms over raw waveforms
 Raw audio is high-dimensional and noisy. Mel-spectrograms compress frequency into perceptually meaningful bands — what a CNN needs to spot patterns humans hear.
 
