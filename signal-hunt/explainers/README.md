@@ -9,6 +9,8 @@ Brief notes on each step of the pipeline — what it does and why. Detailed expl
 
 ## 1. Audio Loading & Resampling
 
+The entry point of the pipeline — takes audio in any format, sample rate, or channel layout and produces a consistent fixed-length mono numpy array at 22050 Hz. Everything downstream depends on this uniformity.
+
 Raw audio comes in many formats, sample rates, and channel layouts. The ingestion step normalises all of that:
 
 - **Resample to 22050 Hz** — a standard rate that captures frequencies up to ~11 kHz (Nyquist). Human speech and most musical content sit well below this. Higher rates waste compute; lower rates lose detail.
@@ -32,6 +34,8 @@ The two core visualisations for understanding audio. A waveform shows amplitude 
 ---
 
 ## 2. Augmentation
+
+Four composable transforms that inject realistic variation into clean recordings — noise, ambient sound, pitch shift, and time stretch. Applied before feature extraction so the model trains on diverse conditions instead of memorising one mic in one room.
 
 A model trained on clean recordings fails on real-world audio. Augmentation injects realistic variation at the data layer so the model learns to generalise.
 
