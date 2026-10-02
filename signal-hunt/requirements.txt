@@ -1,0 +1,6 @@
+librosa>=0.10.0
+soundfile
+numpy
+torch
+matplotlib
+pytest
