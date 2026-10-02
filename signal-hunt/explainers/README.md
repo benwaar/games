@@ -52,15 +52,31 @@ See: [pipeline/augment.py](../pipeline/augment.py)
 
 ## 3. Mel-Spectrograms
 
-*Coming in M4.* Raw waveforms are high-dimensional and hard for models to learn from. Mel-spectrograms compress frequency into perceptually meaningful bands — matching how humans hear.
+Raw waveforms are 33,075 numbers with no structure. The Mel-spectrogram pipeline compresses that into a `(128, 65)` perceptually-weighted frequency-over-time image:
 
-→ [Mel-spectrograms explained](mel-spectrograms.md) *(to write in M4)*
+1. **STFT** — break the waveform into overlapping windows, FFT each one → frequency bins × time frames
+2. **Mel filterbank** — compress 1025 linear frequency bins into 128 Mel-scaled bands (fine detail at low frequencies, coarse at high — matching human hearing)
+3. **Log-dB** — convert power to decibels so quiet sounds are visible alongside loud ones
+
+The result looks like a greyscale image: a hum is a horizontal line, a whistle chirp is a rising diagonal, a clap is a vertical broadband burst. These visually distinct patterns are what the CNN will learn to classify.
+
+> **In practice:** This is dimensionality reduction with domain knowledge baked in — like using business-informed feature engineering instead of dumping raw columns into a model. The Mel scale encodes what we know about human perception, just as a financial feature pipeline might encode what we know about market microstructure.
+
+→ [Mel-spectrograms explained](mel-spectrograms.md) — STFT, Mel scale, log-dB, with C/JS/TS parallels and annotated output from our samples
+
+See: [pipeline/features.py](../pipeline/features.py) — `stft()`, `mel_spectrogram()`, `to_log_db()`
 
 ---
 
 ## 4. Normalisation
 
-*Coming in M4.* Different recordings have different volumes. Without normalisation (mean=0, std=1), the same sound at different gains looks completely different to the model.
+Different recordings have different absolute volumes. A hum on a laptop mic vs. a studio condenser mic produces wildly different dB ranges — but they're the same sound. Per-spectrogram normalisation (mean=0, std=1) removes this bias so the model sees *relative patterns*, not absolute levels.
+
+Edge case: a completely silent signal has std ≈ 0. Dividing by near-zero would explode, so the code returns all-zeros for silence — no features means no features.
+
+> **In practice:** This is z-score / `StandardScaler` — the same normalisation you'd apply to any ML feature set. Stock prices and trading volumes differ by orders of magnitude; temperature and pressure readings do too. Without scaling, the model fixates on whichever feature has the biggest numbers.
+
+See: [pipeline/features.py](../pipeline/features.py) — `normalise()`, `extract_features()`
 
 ---
 
