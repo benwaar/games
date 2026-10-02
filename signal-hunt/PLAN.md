@@ -45,10 +45,10 @@ Load a sample audio file, print its shape and sample rate. Plot the raw waveform
 
 **Gate:** Unit tests verify output shape matches input. Augmented audio sounds different but recognisable (manual listen check). **PASSED — 12/12 tests**
 
-#### M4: Feature extraction (~2 hrs)
+#### M4: Feature extraction (~2 hrs) ✅
 `pipeline/features.py` — STFT, Mel-spectrogram, log-dB conversion, normalisation. Output: PyTorch tensor ready for a CNN.
 
-**Gate:** Unit tests verify tensor shape `(1, n_mels, time_frames)`, mean ≈ 0, std ≈ 1. Spectrogram plot saved for visual sanity check.
+**Gate:** Unit tests verify tensor shape `(1, n_mels, time_frames)`, mean ≈ 0, std ≈ 1. Spectrogram plot saved for visual sanity check. **PASSED — 24/24 tests**
 
 #### M5: Batch processing & dataset (~2 hrs)
 `pipeline/batch.py` — process a folder of audio files through the full pipeline (ingest → augment → features → save). Output `.pt` tensor files. Generate augmented variants per source file.
