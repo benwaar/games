@@ -2,6 +2,8 @@
 
 Brief notes on each step of the pipeline — what it does and why. Detailed explainers linked where the concept needs more depth.
 
+→ [Key Libraries](libraries.md) — what each dependency does and when you'd reach for it
+
 ---
 
 ## 1. Audio Loading & Resampling
