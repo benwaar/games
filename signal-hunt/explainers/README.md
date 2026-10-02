@@ -9,6 +9,7 @@ Brief notes on each step of the pipeline — what it does and why. Detailed expl
 Raw audio comes in many formats, sample rates, and channel layouts. The ingestion step normalises all of that:
 
 - **Resample to 22050 Hz** — a standard rate that captures frequencies up to ~11 kHz (Nyquist). Human speech and most musical content sit well below this. Higher rates waste compute; lower rates lose detail.
+  - https://share.google/ZVNmS9fvoroRms70g 
 - **Mono conversion** — stereo channels carry spatial info we don't need. Averaging to mono halves the data and keeps the model focused on *what* sounds are present, not *where*.
 - **Silence trimming** — leading/trailing silence varies by recording. Trimming it means the model sees signal, not dead air.
 - **Fixed-length output** — pad short clips with zeros, truncate long ones. Consistent tensor shapes simplify batching and model architecture.
