@@ -89,7 +89,7 @@ The leading `1` is the channel dimension — like a single-channel (greyscale) i
 
 ## What our samples look like
 
-![Mel feature extraction — all three samples](../output/mel_features.png)
+![Mel feature extraction — all three samples](images/mel_features.png)
 
 Three columns show the progressive transformation:
 
