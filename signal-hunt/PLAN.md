@@ -94,12 +94,12 @@ A common mistake is overbuilding. For 3-class sound type classification, the spe
 **Data requirement:** Need at least 10 recordings per class (× 7 augmentations = 70 tensors per class, 210 total). If we don't have enough, M7 includes recording or sourcing more clips.
 
 #### M8: CNN architecture (~2 hrs)
-- [ ] `model/cnn.py` — the classifier:
+- [x] `model/cnn.py` — the classifier:
   - 3 Conv2d blocks: Conv → BatchNorm → ReLU → MaxPool
   - Global Average Pooling (not flatten — reduces parameters, prevents overfitting)
   - Linear → Dropout → Linear → 3-class output
-- [ ] Input: `(batch, 1, 128, 65)` → Output: `(batch, 3)`
-- [ ] Parameter count logged (target: <500K for this task)
+- [x] Input: `(batch, 1, 128, 65)` → Output: `(batch, 3)`
+- [x] Parameter count logged (target: <500K for this task)
 
 **Gate:** Forward pass on dummy batch produces `(B, 3)` logits. No NaNs. Softmax sums to 1. Parameter count reasonable.
 
