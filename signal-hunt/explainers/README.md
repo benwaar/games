@@ -141,7 +141,22 @@ See: [model/dataset.py](../model/dataset.py) — `SignalDataset`, `make_label_ma
 
 ## 7. CNN Architecture (Phase 2 — M8)
 
-*Coming in M8.* Convolutional layers scan the spectrogram for local frequency patterns — the shapes that distinguish a hum from a clap.
+Three stacked conv blocks scan the spectrogram for frequency patterns, then Global Average
+Pooling collapses the spatial dimensions into a fixed-length vector, and a small linear
+head outputs 3 class logits.
+
+- **Conv2d → BatchNorm2d → ReLU → MaxPool2d** — one block. Three blocks in sequence
+  progressively extract higher-level features (edges → shapes → patterns).
+- **Global Average Pooling** — collapses `(B, 64, H, W)` → `(B, 64)` by averaging each
+  channel. Fewer parameters than Flatten; invariant to exact spatial position.
+- **Linear → Dropout → Linear** — classification head. Dropout (p=0.3) prevents
+  memorisation on our small dataset.
+- **~25,700 parameters** — deliberately small. Right-sized for 3 classes and ~150
+  training samples.
+
+→ [CNN architecture explained](cnn-architecture.md) — Conv2d, BatchNorm, GAP, Dropout, with C/JS/TS callouts and parameter count breakdown
+
+See: [model/cnn.py](../model/cnn.py) — `SoundClassifier`
 
 ---
 

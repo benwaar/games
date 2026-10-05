@@ -136,3 +136,41 @@ The `stratify` argument is the key one — it ensures each split contains the sa
 `random_state=42` makes the split reproducible — same split every run, on every machine.
 
 **Docs:** https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+
+---
+
+## torch.nn — building neural networks
+
+`torch.nn` is PyTorch's layer library. Every layer is an `nn.Module` — a callable that
+holds learnable parameters and can be stacked into a model.
+
+**Layers used in `model/cnn.py`:**
+
+| Layer | What it does |
+|-------|-------------|
+| `nn.Conv2d(in, out, kernel_size, padding)` | Learnable kernel that scans the input for local patterns |
+| `nn.BatchNorm2d(num_features)` | Normalises activations per channel across the batch |
+| `nn.ReLU()` | Non-linearity: `max(0, x)`. Makes stacking layers non-trivial |
+| `nn.MaxPool2d(kernel_size, stride)` | Downsamples by keeping the max in each window |
+| `nn.AdaptiveAvgPool2d(output_size)` | Global Average Pooling — averages each channel to a target spatial size |
+| `nn.Linear(in, out)` | Fully-connected layer: `y = xW + b` |
+| `nn.Dropout(p)` | Randomly zeros activations during training (inactive at eval time) |
+| `nn.Sequential(*layers)` | Chains layers so `forward` calls them in order |
+
+**Model definition pattern:**
+
+```python
+class MyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2)
+
+    def forward(self, x):
+        return self.pool(torch.relu(self.conv(x)))
+```
+
+`super().__init__()` must be called — it registers the layer as an `nn.Module` so
+PyTorch can find its parameters for optimisation.
+
+**Docs:** https://pytorch.org/docs/stable/nn.html
