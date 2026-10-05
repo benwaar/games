@@ -1,108 +1,93 @@
-# M7 Plan — Dataset & DataLoader
+# M8 Plan — CNN Architecture
 
-**Goal:** Build `model/dataset.py` — a PyTorch `Dataset` that loads tensors from `data/processed/`
-using the manifest, encodes labels as integers, and exposes a factory that returns stratified
-train/val/test splits ready for a `DataLoader`.
+**Goal:** Build `model/cnn.py` — a 3-class CNN classifier that takes `(B, 1, 128, 65)` spectrograms
+and outputs `(B, 3)` logits. Parameter count under 500K.
 
 ## Prerequisites
 
-- `data/processed/` exists with 231 tensors and `manifest.json` (run `python -m pipeline.batch data/raw data/processed` if missing)
-- `scikit-learn` in `requirements.txt` ✅ (added in research step)
+- M7 complete ✅ — `load_splits` and `DataLoader` working
 - venv active: `source .venv/bin/activate`
+
+## Research to do first
+
+Before writing any code, read:
+- What is a Conv2d layer? (kernel, stride, padding — how it scans the spectrogram)
+- What is BatchNorm2d? (why normalise between layers)
+- What is Global Average Pooling vs Flatten? (why GAP reduces overfitting)
+- What is Dropout? (why it helps on small datasets)
+
+Use `/research` or `/study` at the start of the session to document these before building.
 
 ---
 
 ## Loop: Plan → Implement → Test → Document → Commit → Tick → Next
 
-Each step is not done until ALL boxes are ticked — including the doc steps.
-
 ---
 
-### Step 1 — scaffold `model/` package
+### Step 1 — forward pass skeleton
 
-- [ ] Create `model/__init__.py` (empty)
-- [ ] Verify `python -c "import model"` works
+- [ ] Create `model/cnn.py`
+- [ ] `SoundClassifier(nn.Module)` with `__init__` and `forward`
+- [ ] Architecture: 3× (Conv2d → BatchNorm2d → ReLU → MaxPool2d) → Global Average Pooling → Linear → Dropout → Linear
+- [ ] Input `(B, 1, 128, 65)` → Output `(B, 3)` logits
 
-**Test:** `python -c "import model"` exits 0.
+**Test:** dummy batch `torch.zeros(4, 1, 128, 65)` → output shape `(4, 3)`, no NaNs, no errors.
 
 **Docs:**
-- [ ] Nothing to document — no new concepts introduced
+- [ ] New explainer: `explainers/cnn-architecture.md` — what each layer does, C/JS callouts
+- [ ] `explainers/README.md` section 7 — update from stub to real description + See: link
+- [ ] `explainers/libraries.md` — `torch.nn` layers used
 
-**Commit:** `feat(signal-hunt): scaffold model package`
+**Commit:** `feat(signal-hunt): SoundClassifier CNN — forward pass`
 
 ---
 
-### Step 2 — `SignalDataset` class + label encoding
+### Step 2 — parameter count check
 
-- [ ] Create `model/dataset.py`
-- [ ] Implement `SignalDataset(Dataset)` with `__init__`, `__len__`, `__getitem__`
-  - `__init__` takes `records: list[dict]`, `processed_dir: Path`, `label_map: dict[str, int]`
-  - `__getitem__` returns `(tensor, int_label)` — tensor shape `(1, 128, 65)`
-- [ ] `make_label_map(labels: list[str]) -> dict[str, int]` — sorted alphabetical, deterministic
-- [ ] Tests in `tests/test_dataset.py`
+- [ ] Log total trainable parameters (target: <500K)
+- [ ] `python -c "from model.cnn import SoundClassifier; m = SoundClassifier(); print(sum(p.numel() for p in m.parameters() if p.requires_grad), 'params')`
+- [ ] If over 500K: reduce channels in conv layers
 
-**Test:** `dataset[0][0].shape == (1, 128, 65)`, `isinstance(dataset[0][1], int)`.
-`make_label_map(["whistle", "hum", "clap"]) == make_label_map(["clap", "hum", "whistle"])`.
+**Test:** parameter count printed and under 500K.
 
 **Docs:**
-- [ ] `dataset-dataloader.md` already covers these concepts ✅ — verify code matches the explainer, update if it diverges
-- [ ] `python-concepts.md` dunder methods already added ✅
+- [ ] Add parameter count to `cnn-architecture.md` with explanation of why we target <500K for this task
 
-**Commit:** `feat(signal-hunt): SignalDataset and make_label_map`
+**Commit:** included in Step 1 commit if under budget; separate fix commit if channels need adjusting
 
 ---
 
-### Step 3 — stratified splits
+### Step 3 — softmax sanity check
 
-- [ ] `load_splits(processed_dir, manifest_path, seed=42)` factory function
-  - Reads `manifest.json`, builds label map, stratified 70/15/15 split
-  - Returns `(train_dataset, val_dataset, test_dataset)`
-- [ ] Tests: split sizes ~162/35/34, each split has all 3 classes, same seed → same split
+- [ ] `torch.softmax(output, dim=1).sum(dim=1)` ≈ 1.0 for all items in batch
+- [ ] No all-zero outputs, no all-identical outputs for different random inputs
 
-**Test:** run `load_splits` twice with same seed, check `len(train)` matches both times.
+**Test:** assert softmax sums to 1 within tolerance, assert outputs vary across batch.
 
 **Docs:**
-- [ ] `dataset-dataloader.md` already covers stratified splits ✅ — verify accuracy against implementation
-- [ ] `explainers/README.md` section 6 — update with actual function signature once written
+- [ ] `cnn-architecture.md` — explain why we check softmax (catch dead neurons, weight init issues)
 
-**Commit:** `feat(signal-hunt): load_splits — stratified train/val/test factory`
-
----
-
-### Step 4 — DataLoader integration
-
-- [ ] Verify `DataLoader(train_dataset, batch_size=32, shuffle=True)` iterates without error
-- [ ] First batch shape: `(32, 1, 128, 65)` tensors, `(32,)` labels
-- [ ] Labels are integers in `[0, 2]`
-
-**Test:** one full iteration through the train loader — no errors, correct shapes.
-
-**Docs:**
-- [ ] `dataset-dataloader.md` — add a "Putting it together" code block showing actual usage with `load_splits` + `DataLoader`
-- [ ] `explainers/README.md` section 6 — confirm the "See:" link points to the real file
-
-**Commit:** included in Step 3 commit
+**Commit:** included in Step 1 commit
 
 ---
 
-### Step 5 — close out M7
+### Step 4 — close out M8
 
-- [ ] Mark M7 checkboxes `[x]` in `PLAN.md`
-- [ ] Update `NEXT.md` to point at M8 with its own step plan
+- [ ] Mark M8 checkboxes `[x]` in `PLAN.md`
+- [ ] Update `NEXT.md` to point at M9
 
-**Commit:** `docs(signal-hunt): tick M7 checkboxes, point NEXT at M8`
+**Commit:** `docs(signal-hunt): tick M8 checkboxes, point NEXT at M9`
 
 ---
 
 ## Files to create
 
 ```
-model/__init__.py       # empty
-model/dataset.py        # SignalDataset, make_label_map, load_splits
-tests/test_dataset.py   # tests for all of the above
+model/cnn.py            # SoundClassifier
+tests/test_cnn.py       # forward pass, shapes, parameter count, softmax
+explainers/cnn-architecture.md
 ```
 
 ## Gate (from PLAN.md)
 
-`DataLoader` iterates `(tensor, label)` batches. Shapes `(B, 1, 128, 65)` and `(B,)`.
-Split reproducible with fixed seed. Each split has all 3 classes.
+Forward pass on dummy batch produces `(B, 3)` logits. No NaNs. Softmax sums to 1. Parameter count ≤500K.

@@ -84,10 +84,10 @@ A common mistake is overbuilding. For 3-class sound type classification, the spe
 ### Milestones
 
 #### M7: Dataset & DataLoader (~2 hrs)
-- [ ] `model/dataset.py` — PyTorch `Dataset` that loads `.pt` tensors from Phase 1
-- [ ] Labels from folder structure (`data/raw/hum/`, `data/raw/whistle/`, `data/raw/clap/`) or manifest
-- [ ] Stratified train/val/test split (70/15/15) with fixed seed
-- [ ] Label encoding: string → integer mapping, stored in dataset metadata
+- [x] `model/dataset.py` — PyTorch `Dataset` that loads `.pt` tensors from Phase 1
+- [x] Labels from folder structure (`data/raw/hum/`, `data/raw/whistle/`, `data/raw/clap/`) or manifest
+- [x] Stratified train/val/test split (70/15/15) with fixed seed
+- [x] Label encoding: string → integer mapping, stored in dataset metadata
 
 **Gate:** `DataLoader` iterates `(tensor, label)` batches. Shapes `(B, 1, 128, 65)` and `(B,)`. Split is reproducible.
 
