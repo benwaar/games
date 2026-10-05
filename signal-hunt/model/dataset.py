@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import torch
+from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 
@@ -37,3 +38,37 @@ class SignalDataset(Dataset):
 def make_label_map(labels: list[str]) -> dict[str, int]:
     """Map class names to integers, sorted alphabetically for determinism."""
     return {label: i for i, label in enumerate(sorted(set(labels)))}
+
+
+def load_splits(
+    processed_dir: Path,
+    manifest_path: Path | None = None,
+    seed: int = 42,
+    val_size: float = 0.15,
+    test_size: float = 0.15,
+) -> tuple[SignalDataset, SignalDataset, SignalDataset]:
+    """Load manifest and return stratified (train, val, test) datasets."""
+    processed_dir = Path(processed_dir)
+    if manifest_path is None:
+        manifest_path = processed_dir / "manifest.json"
+
+    records = json.loads(Path(manifest_path).read_text())
+    label_map = make_label_map([r["label"] for r in records])
+    stratify = [r["label"] for r in records]
+
+    rest_size = val_size + test_size
+    train_records, rest_records = train_test_split(
+        records, test_size=rest_size, random_state=seed, stratify=stratify
+    )
+    val_records, test_records = train_test_split(
+        rest_records,
+        test_size=test_size / rest_size,
+        random_state=seed,
+        stratify=[r["label"] for r in rest_records],
+    )
+
+    return (
+        SignalDataset(train_records, processed_dir, label_map),
+        SignalDataset(val_records, processed_dir, label_map),
+        SignalDataset(test_records, processed_dir, label_map),
+    )

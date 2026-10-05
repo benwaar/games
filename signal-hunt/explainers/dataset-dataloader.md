@@ -145,8 +145,8 @@ Key parameters:
 data/raw/{class}/*.wav
     ↓ pipeline.batch (Phase 1)
 data/processed/{name}.pt + manifest.json
-    ↓ SignalDataset (M7)
-Dataset(train) / Dataset(val) / Dataset(test)
+    ↓ load_splits("data/processed/")
+train_dataset / val_dataset / test_dataset
     ↓ DataLoader
 (batch_tensors, batch_labels)  ← shape (B, 1, 128, 65) + (B,)
     ↓ CNN (M8)
@@ -155,7 +155,28 @@ logits (B, 3)
 trained model
 ```
 
-The `Dataset`/`DataLoader` layer is the bridge between the Phase 1 pipeline and the Phase 2 model. It's the only place that knows about file paths, manifests, and label encoding — the model never touches disk.
+**Putting it all together:**
+
+```python
+from pathlib import Path
+from torch.utils.data import DataLoader
+from model.dataset import load_splits
+
+train, val, test = load_splits(Path("data/processed"), seed=42)
+
+train_loader = DataLoader(train, batch_size=32, shuffle=True)
+val_loader   = DataLoader(val,   batch_size=32, shuffle=False)
+test_loader  = DataLoader(test,  batch_size=32, shuffle=False)
+
+for tensors, labels in train_loader:
+    # tensors: (32, 1, 128, 65)
+    # labels:  (32,) — integers 0, 1, or 2
+    pass
+```
+
+`load_splits` reads `manifest.json`, builds the label map, runs stratified 70/15/15 splitting,
+and returns three ready-to-use `SignalDataset` instances. Each shares the same `label_map`
+so labels are consistent across splits.
 
 ---
 

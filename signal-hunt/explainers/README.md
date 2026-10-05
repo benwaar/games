@@ -135,7 +135,7 @@ Key ideas:
 
 → [Dataset & DataLoader explained](dataset-dataloader.md) — the protocol, label encoding, stratified splits, and how it connects to the training loop
 
-See: [model/dataset.py](../model/dataset.py) *(built in M7)*
+See: [model/dataset.py](../model/dataset.py) — `SignalDataset`, `make_label_map`, `load_splits`
 
 ---
 
