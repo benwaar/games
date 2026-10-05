@@ -218,3 +218,50 @@ padded = np.pad(signal, (0, max(0, target_len - len(signal))))[:target_len]
 > **Coming from C:** Like `memset` after a `realloc` — extend the buffer and zero-fill the new space. Python does it without manual memory management.
 
 > **Coming from JS/TS:** No built-in equivalent. You'd spread into a new array: `[...signal, ...new Array(padding).fill(0)]`. NumPy's `np.pad` is more flexible — supports constant, edge, reflect, and wrap modes for different padding strategies.
+
+---
+
+## Dunder methods — implementing protocols
+
+Dunder methods (double-underscore, e.g. `__len__`, `__getitem__`) are Python's way of making your class behave like a built-in type. Implement the right set of dunders and your object works with `len()`, indexing `obj[i]`, iteration, comparison operators, and more.
+
+```python
+class SignalDataset:
+    def __len__(self):
+        return len(self.records)      # enables: len(dataset)
+
+    def __getitem__(self, idx):
+        return self.records[idx]      # enables: dataset[0], dataset[-1]
+```
+
+Once those two are implemented, Python's `for item in dataset` works automatically — Python calls `__getitem__` with indices 0, 1, 2, … until `IndexError`. PyTorch's `DataLoader` uses the same mechanism.
+
+Common dunders you'll see in this codebase:
+
+| Dunder | Enables | Example |
+|--------|---------|---------|
+| `__len__` | `len(obj)` | `len(dataset)` |
+| `__getitem__` | `obj[i]` | `dataset[0]` |
+| `__repr__` | `repr(obj)` in debugger | `"SignalDataset(231 items)"` |
+| `__eq__` | `obj == other` | comparing configs |
+
+> **Coming from C:** This is a vtable. `__len__` and `__getitem__` are function pointers in a struct. Any struct (class) that populates those slots satisfies the "array-like" interface that Python's `len()` and `[]` operator check for. The double underscores mark them as protocol-level — the interpreter looks for them, not user code.
+
+> **Coming from TS:** This is like implementing a TypeScript interface, but implicit. If your class has `length` and `[Symbol.iterator]`, it's iterable — no explicit `implements Iterable` needed. Python's dunder protocol is the same: implement the right methods, get the behaviour, no declaration required. `__len__` is `.length`; `__getitem__` is indexed access.
+
+---
+
+## Dict comprehensions
+
+A compact way to build a dict from a sequence:
+
+```python
+# {"clap": 0, "hum": 1, "whistle": 2}
+label_map = {label: i for i, label in enumerate(sorted(labels))}
+```
+
+`enumerate(iterable)` yields `(index, value)` pairs. `sorted()` sorts the list first — so the mapping is alphabetical and deterministic regardless of insertion order.
+
+> **Coming from C:** No direct equivalent. You'd build a hash map manually with a loop. Python's comprehension syntax makes the declaration look like its mathematical definition: `{label: i for each (i, label) in enumerate(sorted(labels))}`.
+
+> **Coming from JS/TS:** Like `Object.fromEntries(sorted.map((label, i) => [label, i]))`. Python's comprehension is more readable because the key and value are written in the natural `key: value` order: `{label: i for ...}` reads as "label maps to i".

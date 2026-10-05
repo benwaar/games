@@ -3,4 +3,5 @@ soundfile
 numpy
 torch
 matplotlib
+scikit-learn
 pytest

@@ -89,3 +89,50 @@ Plotting. We use it for visual sanity checks — waveform plots, spectrogram hea
 ## pytest
 
 Test runner. Each pipeline module gets a matching test file. Run with `python -m pytest tests/ -v`.
+
+---
+
+## torch.utils.data — Dataset and DataLoader
+
+The PyTorch data pipeline. Two classes do the heavy lifting:
+
+**`Dataset`** — abstract base class. Subclass it and implement two methods:
+- `__len__()` → total number of items
+- `__getitem__(idx)` → load and return item at index `idx`
+
+PyTorch calls those two methods; everything else is your logic. Our `SignalDataset` reads from the manifest and returns `(tensor, integer_label)` pairs.
+
+**`DataLoader`** — wraps a `Dataset` and handles:
+- **Batching** — collects `batch_size` items into a single tensor `(B, 1, 128, 65)`
+- **Shuffling** — randomises order each epoch (train only — val/test use `shuffle=False`)
+- **Parallel loading** — `num_workers=N` pre-fetches batches in background subprocesses so the GPU (or CPU) is never waiting on disk I/O
+
+```python
+from torch.utils.data import Dataset, DataLoader
+
+loader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=2)
+for tensors, labels in loader:
+    # tensors: (32, 1, 128, 65), labels: (32,)
+    ...
+```
+
+**Docs:** https://pytorch.org/docs/stable/data.html
+
+---
+
+## scikit-learn (sklearn) — train/test split
+
+We use one function: `sklearn.model_selection.train_test_split`.
+
+```python
+from sklearn.model_selection import train_test_split
+
+train, rest = train_test_split(records, test_size=0.30, random_state=42, stratify=labels)
+val, test   = train_test_split(rest,    test_size=0.50, random_state=42, stratify=[r["label"] for r in rest])
+```
+
+The `stratify` argument is the key one — it ensures each split contains the same proportion of each class. Without it, a random split might under-represent a class in the test set, making metrics misleading.
+
+`random_state=42` makes the split reproducible — same split every run, on every machine.
+
+**Docs:** https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
