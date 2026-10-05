@@ -4,6 +4,7 @@ Brief notes on each step of the pipeline — what it does and why. Detailed expl
 
 → [Key Libraries](libraries.md) — what each dependency does and when you'd reach for it
 → [Python Concepts](python-concepts.md) — tuples, type hints, fixtures, and other patterns used in this codebase
+→ [Data Collection](data-collection.md) — why real recordings, why these sounds, how to record and add more
 
 ---
 
