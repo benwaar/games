@@ -104,14 +104,14 @@ A common mistake is overbuilding. For 3-class sound type classification, the spe
 **Gate:** Forward pass on dummy batch produces `(B, 3)` logits. No NaNs. Softmax sums to 1. Parameter count reasonable.
 
 #### M9: Training loop (~3 hrs)
-- [ ] `model/train.py` — complete training script:
+- [x] `model/train.py` — complete training script:
   - `CrossEntropyLoss` + `Adam` optimizer
   - Per-epoch: train loss, val loss, val accuracy
   - Learning rate scheduler (ReduceLROnPlateau)
   - Early stopping on val loss (patience=5)
   - Save best checkpoint + training history JSON
-- [ ] `model/config.py` — hyperparameters as a dataclass (batch size, lr, epochs, etc.)
-- [ ] CLI: `python -m model.train --epochs 50 --lr 0.001`
+- [x] `model/config.py` — hyperparameters as a dataclass (batch size, lr, epochs, etc.)
+- [x] CLI: `python -m model.train --epochs 50 --lr 0.001`
 
 **Gate:** Loss decreases. Val accuracy above 50% (random baseline = 33%). Training history saved.
 

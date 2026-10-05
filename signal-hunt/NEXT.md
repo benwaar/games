@@ -1,25 +1,23 @@
-# M9 Plan — Training Loop
+# M10 Plan — Evaluation & Analysis
 
-**Goal:** Build `model/train.py` — a complete training script that trains `SoundClassifier`
-on the Phase 2 dataset, logs loss/accuracy per epoch, checkpoints the best model,
-and stops early if validation loss stops improving.
+**Goal:** Load the best checkpoint from M9, run it on the held-out test set, and produce
+a full evaluation report — accuracy, per-class precision/recall/F1, confusion matrix plot,
+and loss curves — to understand what the model learned and where it fails.
 
 ## Prerequisites
 
-- M7 ✅ — `load_splits` and `DataLoader` working
-- M8 ✅ — `SoundClassifier` forward pass verified
+- M9 ✅ — `output/best_model.pt` and `output/history.json` exist
+  (run `python -m model.train --epochs 50` first if missing)
 - venv active: `source .venv/bin/activate`
-- `data/processed/` with 231 tensors (run `python -m pipeline.batch data/raw data/processed` if missing)
 
 ## Research to do first
 
-Before writing any code, read and document:
-- `CrossEntropyLoss` — what it computes, why it combines softmax + NLL in one step
-- `Adam` optimiser — adaptive learning rates, why it's the default starting point
-- `ReduceLROnPlateau` — what it does when val loss plateaus
-- Early stopping — patience, what "best model" means, why we save a checkpoint not just the final weights
+Before writing any code, document:
+- Confusion matrix — what it shows, how to read it
+- Precision, recall, F1 — what each measures and when each matters
+- Train vs val loss curves — what overfitting looks like visually
 
-Use `/research` at the start of the session to write these to the training explainer before building.
+Write these to a new `explainers/evaluation.md` before building.
 
 ---
 
@@ -27,73 +25,87 @@ Use `/research` at the start of the session to write these to the training expla
 
 ---
 
-### Step 1 — `model/config.py` — hyperparameters dataclass
+### Step 1 — load checkpoint and run test set
 
-- [ ] `TrainConfig` dataclass: `batch_size`, `lr`, `epochs`, `dropout`, `seed`, `patience`
-- [ ] Sensible defaults: batch_size=32, lr=1e-3, epochs=50, dropout=0.3, seed=42, patience=5
+- [ ] `model/evaluate.py` — `evaluate_checkpoint(checkpoint_path, processed_dir)`:
+  - Load checkpoint (model weights + label_map + config)
+  - Run `load_splits` with same seed to get the test split
+  - Collect all predictions and true labels from the test set
+  - Returns `(preds, labels, label_map)`
 
-**Test:** `TrainConfig()` instantiates with defaults. Override one field works.
+**Test:** returns arrays of correct length, all values in `[0, num_classes-1]`.
 
 **Docs:**
-- [ ] Note in training explainer why hyperparams live in a config object (reproducibility, CLI override)
+- [ ] `evaluation.md` — written before coding (research step)
+- [ ] `explainers/README.md` section — add evaluation step
 
-**Commit:** `feat(signal-hunt): TrainConfig hyperparameter dataclass`
+**Commit:** `feat(signal-hunt): evaluate_checkpoint — load and run test set`
 
 ---
 
-### Step 2 — training loop core
+### Step 2 — metrics
 
-- [ ] `model/train.py` — `train_one_epoch(model, loader, criterion, optimiser)` → `(train_loss, train_acc)`
-- [ ] `evaluate(model, loader, criterion)` → `(val_loss, val_acc)`
-- [ ] Both return float values, no side effects
+- [ ] `print_metrics(preds, labels, label_map)` — accuracy, per-class precision/recall/F1
+  using `sklearn.metrics.classification_report`
+- [ ] Save report to `output/eval_report.txt`
 
-**Test:** one epoch on the real dataset completes without error. Loss is a positive float. Accuracy in [0, 1].
+**Test:** report file written, contains class names, contains "accuracy".
 
 **Docs:**
-- [ ] Training explainer: loss function, backprop step (`loss.backward()`, `optimiser.step()`, `optimiser.zero_grad()`)
+- [ ] `evaluation.md` — explain what the metrics mean for our 3-class task
 
-**Commit:** `feat(signal-hunt): train_one_epoch and evaluate functions`
+**Commit:** `feat(signal-hunt): classification report`
 
 ---
 
-### Step 3 — full training script with checkpointing
+### Step 3 — plots
 
-- [ ] `train(config)` — outer loop over epochs:
-  - Train + evaluate each epoch
-  - Log: `epoch | train_loss | val_loss | val_acc`
-  - `ReduceLROnPlateau` on val loss
-  - Early stopping (patience=5)
-  - Save best checkpoint to `output/best_model.pt` (model weights + label_map + config)
-  - Save training history to `output/history.json`
-- [ ] CLI: `python -m model.train --epochs 50 --lr 0.001`
+- [ ] Confusion matrix heatmap → `explainers/images/confusion_matrix.png`
+- [ ] Train vs val loss curves → `explainers/images/loss_curves.png`
+- [ ] Both saved as images (not just shown), linked from `evaluation.md`
 
-**Test:** training run of 3 epochs completes, checkpoint and history files are written.
+**Test:** both image files exist after running.
 
 **Docs:**
-- [ ] Training explainer: learning rate scheduling, early stopping, checkpointing — why save best not last
+- [ ] `evaluation.md` — embed images, explain what to look for in each
 
-**Commit:** `feat(signal-hunt): full training loop with checkpointing and early stopping`
+**Commit:** `feat(signal-hunt): confusion matrix and loss curve plots`
 
 ---
 
-### Step 4 — close out M9
+### Step 4 — CLI
 
-- [ ] Mark M9 checkboxes `[x]` in `PLAN.md`
-- [ ] Update `NEXT.md` to point at M10
+- [ ] `python -m model.evaluate` — runs all of the above, prints report, saves plots
+- [ ] Accepts `--checkpoint output/best_model.pt` and `--processed-dir data/processed`
 
-**Commit:** `docs(signal-hunt): tick M9 checkboxes, point NEXT at M10`
+**Test:** CLI runs end-to-end, all output files present.
+
+**Docs:**
+- [ ] `README.md` — add evaluation command to usage section
+
+**Commit:** `feat(signal-hunt): evaluate CLI`
+
+---
+
+### Step 5 — close out M10
+
+- [ ] Mark M10 checkboxes `[x]` in `PLAN.md`
+- [ ] Update `NEXT.md` to point at M11
+
+**Commit:** `docs(signal-hunt): tick M10 checkboxes, point NEXT at M11`
 
 ---
 
 ## Files to create
 
 ```
-model/config.py         # TrainConfig dataclass
-model/train.py          # train_one_epoch, evaluate, train, CLI
-tests/test_train.py     # short training run, checkpoint written, history saved
-explainers/training-loop.md
+model/evaluate.py               # evaluate_checkpoint, print_metrics, CLI
+tests/test_evaluate.py          # checkpoint loads, metrics computed, files written
+explainers/evaluation.md        # confusion matrix, precision/recall/F1, loss curves
+explainers/images/              # confusion_matrix.png, loss_curves.png
 ```
 
 ## Gate (from PLAN.md)
 
-Loss decreases over epochs. Val accuracy above 50% (random baseline = 33%). Training history saved to `output/history.json`. Best checkpoint saved to `output/best_model.pt`.
+Evaluation report generated. Model meaningfully above random (>33%) on test data.
+Confusion matrix shows the model learned real differences between classes.
