@@ -162,7 +162,19 @@ See: [model/cnn.py](../model/cnn.py) — `SoundClassifier`
 
 ## 8. Training Loop (Phase 2 — M9)
 
-*Coming in M9.* Loss function, backpropagation, optimiser, learning rate scheduling, and early stopping.
+The cycle that makes the model learn: forward pass → loss → backprop → weight update.
+Repeated for every batch, every epoch, with scheduling and early stopping to prevent overfitting.
+
+- **CrossEntropyLoss** — combines log-softmax + NLL in one numerically stable step.
+  Starts near `log(3) ≈ 1.1` (random) and should decrease.
+- **Adam** — adaptive learning rate per parameter. Default starting point for most tasks.
+- **ReduceLROnPlateau** — halves the learning rate when val loss stops improving for N epochs.
+- **Early stopping** — ends training when validation loss hasn't improved for `patience` epochs.
+  Saves the best checkpoint (not the final weights) for evaluation and inference.
+
+→ [Training loop explained](training-loop.md) — loss, backprop, Adam, scheduling, early stopping, train vs eval mode
+
+See: [model/train.py](../model/train.py) — `train_one_epoch`, `evaluate`, `train`, CLI
 
 ---
 

@@ -174,3 +174,36 @@ class MyModel(nn.Module):
 PyTorch can find its parameters for optimisation.
 
 **Docs:** https://pytorch.org/docs/stable/nn.html
+
+---
+
+## torch.optim — optimisers and schedulers
+
+**`torch.optim.Adam`** — adaptive learning rate optimiser. Default starting point for
+most deep learning tasks. Tracks per-parameter gradient history to scale updates.
+
+```python
+optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
+```
+
+**`torch.optim.lr_scheduler.ReduceLROnPlateau`** — halves the learning rate when a
+monitored metric (val loss) stops improving.
+
+```python
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimiser, mode="min", factor=0.5, patience=3
+)
+scheduler.step(val_loss)   # call after each epoch
+```
+
+**`nn.CrossEntropyLoss`** — loss function for multi-class classification. Takes raw
+logits (not softmax) and integer labels. Combines log-softmax + NLL in one stable step.
+
+```python
+criterion = nn.CrossEntropyLoss()
+loss = criterion(logits, labels)   # logits: (B, C), labels: (B,) ints
+```
+
+**Docs:**
+- https://pytorch.org/docs/stable/optim.html
+- https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
