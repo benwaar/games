@@ -23,11 +23,12 @@ DURATION = 1.5
 @pytest.fixture
 def audio_dir(tmp_path: Path) -> Path:
     raw = tmp_path / "raw"
-    raw.mkdir()
     t = np.linspace(0, DURATION, int(SR * DURATION), endpoint=False)
     for name, freq in [("hum", 440), ("whistle", 880)]:
+        class_dir = raw / name
+        class_dir.mkdir(parents=True)
         signal = (0.5 * np.sin(2 * np.pi * freq * t)).astype(np.float32)
-        sf.write(raw / f"{name}.wav", signal, SR)
+        sf.write(class_dir / f"{name}.wav", signal, SR)
     return raw
 
 
@@ -72,7 +73,7 @@ class TestApplyAugmentation:
 class TestProcessFile:
     def test_produces_tensors(self, audio_dir, output_dir):
         output_dir.mkdir()
-        records = process_file(audio_dir / "hum.wav", output_dir)
+        records = process_file(audio_dir / "hum" / "hum.wav", output_dir)
         assert len(records) == 7  # one per augmentation
         for record in records:
             pt_path = output_dir / record["file"]
@@ -82,20 +83,26 @@ class TestProcessFile:
 
     def test_records_have_metadata(self, audio_dir, output_dir):
         output_dir.mkdir()
-        records = process_file(audio_dir / "hum.wav", output_dir)
+        records = process_file(audio_dir / "hum" / "hum.wav", output_dir)
         for record in records:
             assert record["label"] == "hum"
             assert record["source"] == "hum.wav"
             assert "augmentation" in record
             assert record["shape"] == [1, 128, 65]
 
+    def test_explicit_label_overrides_stem(self, audio_dir, output_dir):
+        output_dir.mkdir()
+        records = process_file(audio_dir / "hum" / "hum.wav", output_dir, label="clap")
+        for record in records:
+            assert record["label"] == "clap"
+
     def test_deterministic_with_same_seed(self, audio_dir, output_dir):
         out1 = output_dir / "run1"
         out2 = output_dir / "run2"
         out1.mkdir(parents=True)
         out2.mkdir(parents=True)
-        r1 = process_file(audio_dir / "hum.wav", out1, seed=42)
-        r2 = process_file(audio_dir / "hum.wav", out2, seed=42)
+        r1 = process_file(audio_dir / "hum" / "hum.wav", out1, seed=42)
+        r2 = process_file(audio_dir / "hum" / "hum.wav", out2, seed=42)
         for a, b in zip(r1, r2):
             t1 = torch.load(out1 / a["file"], weights_only=True)
             t2 = torch.load(out2 / b["file"], weights_only=True)
@@ -106,6 +113,11 @@ class TestProcessFolder:
     def test_processes_all_files(self, audio_dir, output_dir):
         manifest = process_folder(audio_dir, output_dir)
         assert len(manifest) == 14  # 2 files × 7 augmentations
+
+    def test_labels_from_subfolder_name(self, audio_dir, output_dir):
+        manifest = process_folder(audio_dir, output_dir)
+        labels = {r["label"] for r in manifest}
+        assert labels == {"hum", "whistle"}
 
     def test_writes_manifest(self, audio_dir, output_dir):
         process_folder(audio_dir, output_dir)
@@ -119,6 +131,15 @@ class TestProcessFolder:
         empty.mkdir()
         with pytest.raises(FileNotFoundError):
             process_folder(empty, output_dir)
+
+    def test_flat_layout_uses_stem_as_label(self, tmp_path, output_dir):
+        flat = tmp_path / "flat"
+        flat.mkdir()
+        t = np.linspace(0, DURATION, int(SR * DURATION), endpoint=False)
+        signal = (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+        sf.write(flat / "hum.wav", signal, SR)
+        manifest = process_folder(flat, output_dir)
+        assert all(r["label"] == "hum" for r in manifest)
 
     def test_dataloader_can_iterate(self, audio_dir, output_dir):
         manifest = process_folder(audio_dir, output_dir)

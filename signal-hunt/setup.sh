@@ -52,11 +52,17 @@ python3 -c "import librosa; import soundfile; import numpy; import torch; import
 echo "OK: all Python imports verified"
 
 # -- directories --
-mkdir -p data/raw data/processed output tests pipeline model explainers
+mkdir -p data/raw/hum data/raw/whistle data/raw/clap data/processed output tests pipeline model explainers
+
+# -- processed tensors --
+echo "Generating processed tensors from data/raw..."
+python3 -m pipeline.batch data/raw data/processed
+echo "OK: processed tensors in data/processed/"
 
 echo ""
 echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
 echo "  source .venv/bin/activate"
-echo "  python hello_audio.py    # M1: verify everything works"
+echo "  python -m pytest              # verify all tests pass"
+echo "  python -m model.train         # Phase 2: train the classifier (once M7–M9 are built)"
