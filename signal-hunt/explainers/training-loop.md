@@ -199,3 +199,61 @@ Warning signs:
 - Train loss decreasing but val loss increasing → overfitting. Dropout and early stopping help.
 - Both losses stuck near 1.1 after 10 epochs → model not learning. Check learning rate, data.
 - Loss goes to NaN → learning rate too high, or a bug in the pipeline.
+
+---
+
+## What our training run showed
+
+Run: `python -m model.train --epochs 50` on 161 training / 35 val / 35 test samples.
+
+```
+Epoch  1 | train_loss=1.071 | val_loss=1.089 | val_acc=0.371  ← near random (log(3)=1.099)
+Epoch 11 | train_loss=0.735 | val_loss=0.736 | val_acc=0.743  ← model learning fast
+Epoch 21 | train_loss=0.544 | val_loss=0.519 | val_acc=0.886
+Epoch 32 | train_loss=0.428 | val_loss=0.423 | val_acc=1.000  ← perfect on val (35 samples)
+Epoch 35 | train_loss=0.404 | val_loss=0.375 | val_acc=0.971
+Epoch 41 | train_loss=0.349 | val_loss=0.302 | val_acc=0.971  ← BEST CHECKPOINT saved
+Epoch 46 | Early stop (5 epochs no improvement)
+
+Best checkpoint:  epoch 41, val_loss=0.302, val_acc=0.971
+Final test set:   loss=0.324, acc=1.000  (35/35 correct — clap 12/12, hum 11/11, whistle 12/12)
+```
+
+### What this proves
+
+**The model learned real patterns, not memorisation.**
+
+If it had memorised the training data, it would score near 100% train accuracy but fail
+on the held-out test set. Instead it scored 100% on 35 samples it had never seen — including
+samples generated from recordings it had never trained on.
+
+The three sound types are genuinely separable from their Mel-spectrograms. A 25,699-parameter
+CNN trained for 46 epochs on 161 samples is sufficient.
+
+### The val accuracy noise
+
+Val accuracy bounces significantly between epochs — 74% at epoch 23, then 94%, then 100%.
+This is not the model degrading and recovering. It's arithmetic: 35 samples means
+one wrong prediction = −3% accuracy. The loss trend is the honest signal; accuracy
+on this small a set is noisy.
+
+The test set result (100%, 35/35) confirms the model is stable — it's not just
+hitting a lucky epoch on val.
+
+### LR scheduling kicked in as designed
+
+The learning rate halved twice:
+- Epoch 29: 1e-3 → 5e-4 (val loss had plateaued around 0.52–0.58 for 3 epochs)
+- Epoch 45: 5e-4 → 2.5e-4 (near convergence)
+
+Each reduction let the optimiser take finer steps near the minimum, which is why
+the best val_loss (0.302) was achieved late in training (epoch 41) rather than early.
+
+### Mild overfitting at early stop
+
+At epoch 46: train_loss=0.365, val_loss=0.452 — a gap of ~0.09. The model fits
+training data slightly better than validation, which is expected. The gap is small
+because dropout (p=0.3) is preventing the model from memorising.
+
+For Phase 3 (more classes, more recordings), watch this gap. If train_loss continues
+falling while val_loss rises sharply, increase dropout or add more recordings.
