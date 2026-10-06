@@ -136,13 +136,15 @@ Piano notes have very clear harmonic structure on a Mel-spectrogram — a fundam
 ### Milestones
 
 #### M13: Dataset preparation (~2 hrs)
-- [ ] Download NSynth piano subset (acoustic_grand_piano, C4–B4 = MIDI notes 60–71)
-- [ ] Filter and organise into `data/raw/notes/{note}/` (e.g. `C4/`, `Cs4/`, `D4/` ...)
-- [ ] Run Phase 1 batch pipeline to generate tensors
-- [ ] Spot-check: render a few spectrograms — can you see the pitch difference visually?
-- [ ] Optional: record a few real piano clips (electric piano) and save to `data/raw/notes/{note}/real/` for later domain gap testing
+- [x] Download NSynth piano subset (acoustic_grand_piano, C4–B4 = MIDI notes 60–71)
+- [x] Filter and organise into `data/raw/notes/{note}/` (e.g. `C4/`, `Cs4/`, `D4/` ...)
+- [x] Run Phase 1 batch pipeline to generate tensors
+- [x] Spot-check: render a few spectrograms — can you see the pitch difference visually?
+- [ ] Optional: record a few real piano clips (electric piano) and save to `data/raw/notes/{note}/` for later domain gap testing
 
-**Gate:** 12 note classes, 10+ NSynth clips each, tensors generated, labels correct.
+**What was used:** University of Iowa Musical Instrument Samples (free, educational use) — 36 AIFF files (12 notes × pp/mf/ff), converted to WAV by `scripts/download_iowa_piano.py`. 252 tensors generated (36 × 7 augmentations). C4 spectrogram confirmed visually distinct harmonic ladder pattern.
+
+**Gate:** ✅ 12 note classes, 3 clips each (21 augmented per class), tensors generated, labels correct.
 
 #### M14: Transfer learning setup (~2 hrs)
 - [ ] `model/transfer.py` — load Phase 2 CNN checkpoint

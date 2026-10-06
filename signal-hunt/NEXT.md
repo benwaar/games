@@ -1,45 +1,92 @@
-# Phase 3 — Piano Note Classification
+# M14 Plan — Transfer Learning Setup
 
-## Why piano (not voice)
+**Goal:** Load the Phase 2 `SoundClassifier` checkpoint, freeze the convolutional feature extractor,
+replace the 3-class head with a 12-class head, and confirm the model trains correctly on note data.
 
-Originally planned to record 240+ voice clips (12 notes × 2 sound types × 10 each). In practice this was too much manual data collection — humans can't reliably hit the same pitch twice, so labelling becomes the bottleneck, not the model.
+## Prerequisites
 
-**Switched to piano:**
-- **NSynth** (Google/Magenta) — free dataset of 300K+ instrument notes including clean acoustic grand piano at every pitch with exact MIDI labels. No recording needed, no labelling uncertainty.
-- An electric piano is available for recording real-world test clips to close the domain gap at test time.
-- The learning objectives (transfer learning, fine-grained classification, class imbalance) are identical.
+- M13 ✅ — 252 tensors in `data/processed/notes/`, 12 classes
+- Phase 2 checkpoint: `output/best_model.pt` (if missing, run `python -m model.train --epochs 50`)
+- venv active: `source .venv/bin/activate`
 
-## Longer-term goal
+## What transfer learning means here
 
-Phase 3 is the foundation for a piano teacher application:
+The Phase 2 CNN learned to distinguish hums, whistles, and claps by their spectral shape.
+The early conv layers learned general frequency-pattern detectors — edges, bands, transients.
+Those patterns are also useful for distinguishing piano notes (different harmonic positions).
 
-```
-Phase 3: "what single note is this?"
-Phase 4+: "what chord is this?" (multi-label)
-End goal: player plays a chord → detect which notes were played
-          → compare against expected → "you hit Ab, should be A"
-```
+We reuse that learning:
+1. Load Phase 2 weights into the CNN
+2. Freeze the conv blocks (don't update during training)
+3. Replace the final Linear(32→3) with Linear(32→12)
+4. Train only the new head — fast, needs less data
 
-## Start here: M13 — Dataset preparation
+---
 
-1. Download NSynth train split (~300K notes, ~22GB) or use the small subset via TensorFlow Datasets
-2. Filter to: `instrument_family = keyboard`, `instrument_source = acoustic`, MIDI notes 60–71 (C4–B4)
-3. Organise into `data/raw/notes/{note}/` (e.g. `C4/`, `Cs4/`, `D4/` ...)
-4. Run `python -m pipeline.batch data/raw/notes data/processed/notes`
-5. Spot-check: render spectrograms — can you see the pitch differences visually?
+## Loop: Plan → Implement → Test → Document → Commit → Tick → Next
 
-**One thing to check before downloading:** NSynth notes are 4 seconds. The pipeline uses 1.5-second clips. Either truncate to 1.5s (captures attack + sustain, which is where pitch is clearest), or extend the pipeline.
+---
 
-## NSynth quick start
+### Step 1 — `model/transfer.py` — load and adapt
 
-```python
-import tensorflow_datasets as tfds
-ds = tfds.load('nsynth/full-pitches', split='train')
-# filter: instrument_family_str == 'keyboard', pitch in range(60, 72)
-```
+- [ ] `TransferClassifier` — loads Phase 2 checkpoint, freezes conv_blocks, replaces head
+- [ ] `freeze_conv_blocks(model)` — sets `requires_grad=False` on all conv_blocks parameters
+- [ ] Forward pass: `(B, 1, 128, 65)` → `(B, 12)` logits
 
-Or direct download: https://magenta.tensorflow.org/datasets/nsynth
+**Test:** frozen layers have zero gradient after a backward pass. New head has gradients.
 
-## Gate
+**Docs:**
+- [ ] New explainer: `explainers/transfer-learning.md` — what transfer learning is,
+  why it works, frozen vs unfrozen, C/JS/TS callouts
+- [ ] `explainers/libraries.md` — `requires_grad`, `param.grad`
 
-12 note classes (C4–B4), 10+ clips each, tensors generated, labels verified. Spectrogram spot-check shows visible pitch differences between notes.
+**Commit:** `feat(signal-hunt): TransferClassifier — freeze conv, replace head for 12 notes`
+
+---
+
+### Step 2 — note dataset class
+
+- [ ] `NoteDataset` (or reuse `SignalDataset` with `load_splits` pointed at `data/processed/notes/`)
+- [ ] Verify `load_splits("data/processed/notes")` returns correct label map: 12 classes
+
+**Test:** DataLoader yields `(B, 1, 128, 65)` + `(B,)` labels in range `[0, 11]`. Label map is alphabetical.
+
+**Docs:**
+- [ ] Note in `dataset-dataloader.md`: same Dataset works for any manifest — no code change needed
+
+**Commit:** `feat(signal-hunt): note dataset — load_splits pointed at notes folder`
+
+---
+
+### Step 3 — compare frozen vs full finetune
+
+- [ ] Train `TransferClassifier` (frozen conv) for 20 epochs, log val accuracy
+- [ ] Train same architecture from scratch for 20 epochs, log val accuracy
+- [ ] Train with all layers unfrozen (full finetune) for 20 epochs, log val accuracy
+- [ ] Plot: which converges faster? Which reaches higher accuracy?
+
+**Test:** frozen-head run completes without NaN loss. Val accuracy above random (8.3%) after 5 epochs.
+
+**Docs:**
+- [ ] `transfer-learning.md` — add findings: frozen vs scratch vs full finetune on this data
+
+**Commit:** `feat(signal-hunt): transfer learning experiment — frozen vs scratch vs full finetune`
+
+---
+
+### Step 4 — close out M14
+
+- [ ] Tick M14 checkboxes in `PLAN.md`
+- [ ] Update `NEXT.md` to point at M15
+
+**Commit:** `docs(signal-hunt): tick M14 checkboxes, point NEXT at M15`
+
+---
+
+## Stop conditions
+
+| Situation | Action |
+|-----------|--------|
+| Frozen transfer doesn't beat random after 10 epochs | Phase 2 features may not generalise to piano — unfreeze all layers and retrain from scratch |
+| Val loss goes to NaN | Learning rate too high for frozen training — reduce to 1e-4 |
+| Label map has fewer than 12 classes | Check `data/processed/notes/manifest.json` — some notes may have failed to process |
