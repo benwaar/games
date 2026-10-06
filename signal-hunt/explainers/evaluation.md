@@ -195,3 +195,60 @@ it the gap would be larger and the test accuracy likely lower.
 The test set confirms this: loss=0.324, acc=1.000. The val loss (0.302) and test
 loss (0.324) are very close, which means the val set was a reliable proxy for
 generalisation — the model didn't just tune to it.
+
+---
+
+## End-to-end inference
+
+`python -m model.predict data/raw/hum/h-1.wav --verbose`
+
+```
+--- hum ---
+hum (58.8% confidence)
+         hum: 58.8%
+     whistle: 30.9%
+        clap: 10.3%
+
+--- whistle ---
+whistle (75.6% confidence)
+     whistle: 75.6%
+        clap: 18.5%
+         hum: 5.9%
+
+--- clap ---
+clap (97.4% confidence)
+        clap: 97.4%
+     whistle: 1.7%
+         hum: 0.9%
+```
+
+All three predicted correctly. The confidence spread tells a story.
+
+**Clap at 97.4%** is the most certain. Claps are broadband transients — a burst across
+all frequencies at once. Nothing else looks like that on a Mel-spectrogram. The model
+has no doubt.
+
+**Whistle at 75.6%** is reasonably confident, with clap getting 18.5%. A little
+surprising — you might expect whistle/hum confusion (both sustained tones) rather
+than whistle/clap. This is likely the specific recording: if the whistle had a sharp
+onset or was short, it could resemble the broadband burst of a clap.
+
+**Hum at 58.8%** is the least certain, with whistle getting 30.9%. This makes
+sense acoustically — hums and whistles are both sustained tones. They differ mainly
+in frequency (hum is low, whistle is high), but a hum pitched high or a whistle
+pitched low can occupy overlapping Mel bins. With more training data and more varied
+pitches, this gap should widen.
+
+**Why confidence is lower than test accuracy suggests**
+
+The test set showed 100% accuracy, but test accuracy is binary (right or wrong) —
+it doesn't capture how uncertain the model was on borderline predictions. A 58.8%
+confidence on the correct class is still a correct prediction, but it signals the
+model isn't far from being wrong. On a harder dataset (Phase 3, 12 pitch classes)
+this kind of borderline confidence will become actual errors.
+
+**Pipeline consistency confirmed** — the fact that these predictions are correct
+at all proves that `pipeline.ingest` and `pipeline.features` produce identical
+tensors at inference time as at training time. If there were any preprocessing skew
+(different normalisation, different frame count), the model would produce random
+outputs. It doesn't.

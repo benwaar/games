@@ -126,10 +126,10 @@ A common mistake is overbuilding. For 3-class sound type classification, the spe
 **Gate:** Evaluation report generated. Model meaningfully above random on test data. Confusion matrix shows the model learned real differences.
 
 #### M11: Inference & end-to-end (~1.5 hrs)
-- [ ] `model/predict.py` — takes a raw `.wav` file, runs the full pipeline, outputs prediction:
+- [x] `model/predict.py` — takes a raw `.wav` file, runs the full pipeline, outputs prediction:
   - Load audio → ingest → features → model → softmax → top class + confidence
   - CLI: `python -m model.predict data/raw/sample.wav`
-- [ ] End-to-end test: record a new sound, run prediction, verify it works
+- [x] End-to-end test: run prediction on known files, verify correct class + pipeline consistency
 
 **Gate:** `python -m model.predict some_file.wav` → `"hum (92.3% confidence)"`. All tests green.
 

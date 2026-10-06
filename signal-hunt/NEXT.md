@@ -1,13 +1,13 @@
-# M11 Plan — Inference Script
+# M12 Plan — Documentation & Consolidation
 
-**Goal:** Build `model/predict.py` — a script that takes a raw `.wav` file,
-runs it through the full pipeline (ingest → features → model), and outputs
-a prediction with confidence score.
+**Goal:** Replace all Phase 2 milestone checkboxes in PLAN.md with a clean
+summary of what was built. Update all explainers so the project is fully
+documented from a cold read.
 
 ## Prerequisites
 
-- M10 ✅ — `output/best_model.pt` exists and is evaluated
-- venv active: `source .venv/bin/activate`
+- M7–M11 all complete ✅
+- 108 tests passing
 
 ---
 
@@ -15,69 +15,70 @@ a prediction with confidence score.
 
 ---
 
-### Step 1 — `predict` function
+### Step 1 — PLAN.md Phase 2 consolidation
 
-- [ ] `model/predict.py` — `predict(wav_path, checkpoint_path)`:
-  - Load checkpoint (model + label_map + config)
-  - Run `ingest` → `extract_features` on the wav file
-  - Forward pass → softmax → top class + confidence
-  - Returns `{"class": "hum", "confidence": 0.923, "all_scores": {...}}`
+- [ ] Replace M7–M12 checkboxes with a clean "What was built" summary section
+  (like Phase 1 ✅ at the top of the file)
+- [ ] Include: what exists, how to run it, what it depends on, key decisions made
 
-**Test:** `predict("data/raw/hum/h-1.wav", "output/best_model.pt")` returns
-a dict with `"class"` and `"confidence"` keys, confidence in `[0, 1]`.
+**Test:** could someone read just the Phase 2 summary and understand what the
+model is, how to use it, and what it achieved?
 
-**Docs:**
-- [ ] Update `evaluation.md` — add a note that inference uses the same
-  pipeline as training (same ingest + features) so there's no train/test skew
+**Docs:** this step IS the docs.
 
-**Commit:** `feat(signal-hunt): predict function — wav → class + confidence`
+**Commit:** `docs(signal-hunt): consolidate Phase 2 in PLAN.md`
 
 ---
 
-### Step 2 — CLI
+### Step 2 — explainers/README.md sweep
 
-- [ ] `python -m model.predict data/raw/hum/h-1.wav` → `"hum (92.3% confidence)"`
-- [ ] `--checkpoint` flag to specify a different model
-- [ ] Prints all class scores if `--verbose`
+- [ ] Check every section header links to a real file
+- [ ] Check "See:" links point to files that exist
+- [ ] Add any missing sections for Phase 2 concepts not yet covered
+- [ ] Remove any "Coming in MX" stubs that are now built
 
-**Test:** CLI runs end-to-end on a known file, prints expected class.
+**Docs:** this step IS the docs.
 
-**Docs:**
-- [ ] `README.md` — add inference command to usage section
-
-**Commit:** `feat(signal-hunt): predict CLI`
+**Commit:** `docs(signal-hunt): tidy explainers README after Phase 2`
 
 ---
 
-### Step 3 — end-to-end test with a new recording
+### Step 3 — python-concepts.md check
 
-- [ ] Record or use an existing clip not in the training set
-- [ ] Run `python -m model.predict <new_file.wav>` and verify it predicts correctly
-- [ ] Document the result in `evaluation.md` (what file, what prediction, what confidence)
+- [ ] Review what new patterns Phase 2 introduced that aren't yet documented:
+  - `dataclass` with `field(default_factory=...)` — in config.py
+  - `module.train()` / `module.eval()` — PyTorch model modes
+  - `torch.no_grad()` context manager
+  - `scope="module"` in pytest fixtures
 
-**Docs:**
-- [ ] `evaluation.md` — end-to-end inference section with real example
+**Docs:** add any missing concepts.
 
-**Commit:** `docs(signal-hunt): end-to-end inference result`
-
----
-
-### Step 4 — close out M11
-
-- [ ] Mark M11 checkboxes `[x]` in `PLAN.md`
-- [ ] Update `NEXT.md` to point at M12 (documentation & consolidation)
-
-**Commit:** `docs(signal-hunt): tick M11 checkboxes, point NEXT at M12`
+**Commit:** `docs(signal-hunt): python-concepts additions from Phase 2`
 
 ---
 
-## Files to create
+### Step 4 — final check: teaching test
 
-```
-model/predict.py        # predict(), CLI
-tests/test_predict.py   # predict returns correct shape/types, CLI runs
-```
+- [ ] Read explainers/README.md cold. Does it tell the full story from
+  raw audio to inference without needing to read the git history?
+- [ ] Fix any gaps found.
+
+**Commit:** `docs(signal-hunt): Phase 2 teaching test fixes`
+
+---
+
+### Step 5 — close out M12 + Phase 2
+
+- [ ] Mark M12 checkboxes `[x]` in `PLAN.md`
+- [ ] Update `NEXT.md` to point at Phase 3 (M13 — note dataset collection)
+- [ ] Update memory: Phase 2 complete, next is M13
+
+**Commit:** `docs(signal-hunt): tick M12, Phase 2 complete`
+
+---
 
 ## Gate (from PLAN.md)
 
-`python -m model.predict some_file.wav` → `"hum (92.3% confidence)"`. All tests green.
+Docs pass the teaching test. Someone with C/JS/TS background can follow
+the full path from raw audio to inference without reading git history.
+All Phase 2 checkboxes replaced with clean summary.
