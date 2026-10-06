@@ -158,33 +158,56 @@ A lightweight RL agent that personalises behaviour based on user performance ove
 
 ---
 
-## Skill Dependency Map
+## Project Map
 
 ```
-Utala: KAOS 9
-  └── RL fundamentals → Phase 6 (adaptive systems)
-  └── Model distillation → Phase 5 (compression techniques)
+Utala: KAOS 9 ─────────────────────────────── [utala/kaos9/]
+  └── RL fundamentals → echo (adaptive system)
+  └── Model distillation → cast (compression)
 
-Signal Hunt Ph 1–2
+Signal Hunt Ph 1–4 ─────────────────────────── [signal-hunt/]
   └── Data pipelines → any ML project with unstructured input
-  └── CNN classification → image/audio/sensor classification
-  └── Training loop → universal ML foundation
-  └── Inference pipeline → Phase 5 (optimise this pipeline)
+  └── CNN classifier + training loop → universal DL foundation
+  └── Inference pipeline → cast (optimise this pipeline)
+  └── Transfer learning → any fine-tuning task
+  └── Sequence modelling → time-series, logs, user journeys
 
-Signal Hunt Ph 3
-  └── Transfer learning → any domain where fine-tuning beats training from scratch
-  └── Fine-grained classification → product/intent/condition grading
+Acoustic Odyssey: cast ─────────────────────── [acoustic-odyssey/cast/]
+  └── ONNX/TFLite/INT8 → on-device inference: real-time apps, mobile, IoT
+  └── Latency benchmarking → production readiness for any ML model
 
-Signal Hunt Ph 4
-  └── Sequence modelling → clickstreams, logs, journeys, time-series
-  └── CNN-RNN hybrid → foundation for speech and activity recognition
+Acoustic Odyssey: echo ─────────────────────── [acoustic-odyssey/echo/]
+  └── MDP + Q-learning → adaptive difficulty, recommendation, coaching
+  └── Sits on top of any Signal Hunt classifier as a personalisation layer
 
-Phase 5 (edge)
-  └── Quantisation + export → production deployment of everything above
+Artefact: dig ──────────────────────────────── [artefact/dig/]
+  └── Binary art detection → ROM archaeology, game preservation
+  └── CV + autoencoder + sliding window → generalises to any "find structure in noise" problem
 
-Phase 6 (adaptive)
-  └── RL personalisation → sits on top of any classifier (Phase 2–4) as a decision layer
+Artefact: bloom ────────────────────────────── [artefact/bloom/]
+  └── Super-resolution + perceptual loss → image restoration, remastering
+  └── GAN → any task where visual quality matters more than pixel accuracy
+
+TPP (separate repo) ────────────────────────── 🔷
+  └── RAG, skills, MCP, evals, agents → LLM engineering foundation
 ```
+
+---
+
+## Outcomes by domain
+
+What you can build after all projects complete — described broadly.
+
+| Outcome | Projects that enable it |
+|---------|------------------------|
+| Real-time on-device classifier (audio, image, sensor) | Signal Hunt + cast |
+| Adaptive learning or difficulty system | Utala + echo |
+| Game asset extraction and restoration tool | artefact dig + bloom |
+| LLM-powered tool with deterministic evals | TPP |
+| Transfer any classifier to a new domain | Signal Hunt Ph 3 |
+| Sequence pattern detection (logs, streams, journeys) | Signal Hunt Ph 4 |
+| Compress and ship any trained model to production | cast |
+| Find hidden structure in raw binary data | artefact dig |
 
 ---
 
