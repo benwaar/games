@@ -89,3 +89,121 @@ Plotting. We use it for visual sanity checks — waveform plots, spectrogram hea
 ## pytest
 
 Test runner. Each pipeline module gets a matching test file. Run with `python -m pytest tests/ -v`.
+
+---
+
+## torch.utils.data — Dataset and DataLoader
+
+The PyTorch data pipeline. Two classes do the heavy lifting:
+
+**`Dataset`** — abstract base class. Subclass it and implement two methods:
+- `__len__()` → total number of items
+- `__getitem__(idx)` → load and return item at index `idx`
+
+PyTorch calls those two methods; everything else is your logic. Our `SignalDataset` reads from the manifest and returns `(tensor, integer_label)` pairs.
+
+**`DataLoader`** — wraps a `Dataset` and handles:
+- **Batching** — collects `batch_size` items into a single tensor `(B, 1, 128, 65)`
+- **Shuffling** — randomises order each epoch (train only — val/test use `shuffle=False`)
+- **Parallel loading** — `num_workers=N` pre-fetches batches in background subprocesses so the GPU (or CPU) is never waiting on disk I/O
+
+```python
+from torch.utils.data import Dataset, DataLoader
+
+loader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=2)
+for tensors, labels in loader:
+    # tensors: (32, 1, 128, 65), labels: (32,)
+    ...
+```
+
+**Docs:** https://pytorch.org/docs/stable/data.html
+
+---
+
+## scikit-learn (sklearn) — train/test split
+
+We use one function: `sklearn.model_selection.train_test_split`.
+
+```python
+from sklearn.model_selection import train_test_split
+
+train, rest = train_test_split(records, test_size=0.30, random_state=42, stratify=labels)
+val, test   = train_test_split(rest,    test_size=0.50, random_state=42, stratify=[r["label"] for r in rest])
+```
+
+The `stratify` argument is the key one — it ensures each split contains the same proportion of each class. Without it, a random split might under-represent a class in the test set, making metrics misleading.
+
+`random_state=42` makes the split reproducible — same split every run, on every machine.
+
+**Docs:** https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+
+---
+
+## torch.nn — building neural networks
+
+`torch.nn` is PyTorch's layer library. Every layer is an `nn.Module` — a callable that
+holds learnable parameters and can be stacked into a model.
+
+**Layers used in `model/cnn.py`:**
+
+| Layer | What it does |
+|-------|-------------|
+| `nn.Conv2d(in, out, kernel_size, padding)` | Learnable kernel that scans the input for local patterns |
+| `nn.BatchNorm2d(num_features)` | Normalises activations per channel across the batch |
+| `nn.ReLU()` | Non-linearity: `max(0, x)`. Makes stacking layers non-trivial |
+| `nn.MaxPool2d(kernel_size, stride)` | Downsamples by keeping the max in each window |
+| `nn.AdaptiveAvgPool2d(output_size)` | Global Average Pooling — averages each channel to a target spatial size |
+| `nn.Linear(in, out)` | Fully-connected layer: `y = xW + b` |
+| `nn.Dropout(p)` | Randomly zeros activations during training (inactive at eval time) |
+| `nn.Sequential(*layers)` | Chains layers so `forward` calls them in order |
+
+**Model definition pattern:**
+
+```python
+class MyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2)
+
+    def forward(self, x):
+        return self.pool(torch.relu(self.conv(x)))
+```
+
+`super().__init__()` must be called — it registers the layer as an `nn.Module` so
+PyTorch can find its parameters for optimisation.
+
+**Docs:** https://pytorch.org/docs/stable/nn.html
+
+---
+
+## torch.optim — optimisers and schedulers
+
+**`torch.optim.Adam`** — adaptive learning rate optimiser. Default starting point for
+most deep learning tasks. Tracks per-parameter gradient history to scale updates.
+
+```python
+optimiser = torch.optim.Adam(model.parameters(), lr=1e-3)
+```
+
+**`torch.optim.lr_scheduler.ReduceLROnPlateau`** — halves the learning rate when a
+monitored metric (val loss) stops improving.
+
+```python
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimiser, mode="min", factor=0.5, patience=3
+)
+scheduler.step(val_loss)   # call after each epoch
+```
+
+**`nn.CrossEntropyLoss`** — loss function for multi-class classification. Takes raw
+logits (not softmax) and integer labels. Combines log-softmax + NLL in one stable step.
+
+```python
+criterion = nn.CrossEntropyLoss()
+loss = criterion(logits, labels)   # logits: (B, C), labels: (B,) ints
+```
+
+**Docs:**
+- https://pytorch.org/docs/stable/optim.html
+- https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html

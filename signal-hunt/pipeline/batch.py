@@ -57,17 +57,18 @@ def process_file(
     duration: float = DEFAULT_DURATION,
     target_frames: int = DEFAULT_TARGET_FRAMES,
     seed: int = 42,
+    label: str | None = None,
 ) -> list[dict]:
     augmentations = augmentations or default_augmentations()
     rng = np.random.default_rng(seed)
     signal, sr = ingest(path, target_sr=target_sr, duration=duration)
-    label = path.stem
+    label = label if label is not None else path.stem
     records = []
 
     for aug in augmentations:
         augmented = apply_augmentation(signal, sr, aug, rng)
         tensor = extract_features(augmented, sr, target_frames=target_frames)
-        variant_name = f"{label}_{aug['name']}"
+        variant_name = f"{path.stem}_{aug['name']}"
         out_path = output_dir / f"{variant_name}.pt"
         torch.save(tensor, out_path)
         records.append({
@@ -91,12 +92,24 @@ def process_folder(
     seed: int = 42,
 ) -> list[dict]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    audio_files = sorted(input_dir.glob("*.wav"))
-    if not audio_files:
+
+    # Build (path, label) pairs — subfolders take priority over flat layout
+    subdirs = [d for d in sorted(input_dir.iterdir()) if d.is_dir()]
+    if subdirs:
+        pairs = [
+            (wav, subdir.name)
+            for subdir in subdirs
+            for wav in sorted(subdir.glob("*.wav"))
+        ]
+    else:
+        flat = sorted(input_dir.glob("*.wav"))
+        pairs = [(wav, wav.stem) for wav in flat]
+
+    if not pairs:
         raise FileNotFoundError(f"No .wav files found in {input_dir}")
 
     manifest = []
-    for path in audio_files:
+    for path, label in pairs:
         records = process_file(
             path, output_dir,
             augmentations=augmentations,
@@ -104,6 +117,7 @@ def process_folder(
             duration=duration,
             target_frames=target_frames,
             seed=seed,
+            label=label,
         )
         manifest.extend(records)
 

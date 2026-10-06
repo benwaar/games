@@ -4,6 +4,9 @@ Brief notes on each step of the pipeline — what it does and why. Detailed expl
 
 → [Key Libraries](libraries.md) — what each dependency does and when you'd reach for it
 → [Python Concepts](python-concepts.md) — tuples, type hints, fixtures, and other patterns used in this codebase
+→ [Data Collection](data-collection.md) — why real recordings, why these sounds, how to record and add more
+→ [Train / Val / Test Split](train-val-test-split.md) — why three sets, why random isn't enough, the no-peeking rule
+→ [Evaluation](evaluation.md) — precision, recall, F1, confusion matrix, loss curves, and what our run proved
 
 ---
 
@@ -14,7 +17,6 @@ The entry point of the pipeline — takes audio in any format, sample rate, or c
 Raw audio comes in many formats, sample rates, and channel layouts. The ingestion step normalises all of that:
 
 - **Resample to 22050 Hz** — a standard rate that captures frequencies up to ~11 kHz (Nyquist). Human speech and most musical content sit well below this. Higher rates waste compute; lower rates lose detail.
-  - https://share.google/ZVNmS9fvoroRms70g 
 - **Mono conversion** — stereo channels carry spatial info we don't need. Averaging to mono halves the data and keeps the model focused on *what* sounds are present, not *where*.
 - **Silence trimming** — leading/trailing silence varies by recording. Trimming it means the model sees signal, not dead air.
 - **Fixed-length output** — pad short clips with zeros, truncate long ones. Consistent tensor shapes simplify batching and model architecture.
@@ -90,10 +92,11 @@ See: [pipeline/features.py](../pipeline/features.py) — `normalise()`, `extract
 
 The glue that turns a folder of `.wav` files into a training-ready tensor dataset. Runs every file through the full pipeline (ingest → augment → extract → save), producing 7 variants per source file and a JSON manifest linking each tensor to its source, label, and augmentation.
 
-- **One command:** `python -m pipeline.batch data/raw data/processed` — walks the input folder, produces `.pt` files and a `manifest.json`
-- **7 augmentations per file** — clean + 2 noise levels + pitch up/down + slow/fast. 3 source files become 21 training samples.
+- **One command:** `python -m pipeline.batch data/raw data/processed` — walks `data/raw/{class}/` subfolders, produces `.pt` files and a `manifest.json`
+- **Labels from folders** — the folder name is the class label (`data/raw/hum/` → label `"hum"`). File names don't matter — only the folder they're in.
+- **7 augmentations per file** — clean + 2 noise levels + pitch up/down + slow/fast. 33 source recordings become 231 training samples.
 - **Deterministic** — same seed produces identical tensors. Reproducible across machines.
-- **Manifest** — JSON file mapping each tensor to its source, label, and augmentation. Makes it easy to build a `Dataset` class or filter by augmentation type.
+- **Manifest** — JSON file mapping each tensor to its source, label, and augmentation. The `Dataset` class (Phase 2) uses this to load tensors without scanning the filesystem.
 - **DataLoader-ready** — tensors are uniform `(1, 128, 65)`, so they stack directly into batches.
 
 > **In practice:** This is the ETL step of any ML project. Raw data in various formats → standardised, augmented, labelled tensors ready for training. The manifest pattern (a metadata sidecar that describes the dataset) is how teams track data provenance — which version of the pipeline produced which training set, with what parameters. Without it, you're guessing what your model trained on.
@@ -121,12 +124,99 @@ See: [pipeline/demo.py](../pipeline/demo.py)
 
 ---
 
-## 6. CNN Feature Extraction
+## 6. Dataset & DataLoader (Phase 2 — M7)
 
-*Coming in M8.* Convolutional layers scan the spectrogram for local frequency patterns — the shapes that distinguish a hum from a clap.
+The bridge between the Phase 1 pipeline and the Phase 2 model. `Dataset` knows how to load one item (tensor + integer label) from the manifest. `DataLoader` wraps it and handles batching, shuffling, and parallel loading.
+
+Key ideas:
+- **`Dataset` contract** — implement `__len__` (total count) and `__getitem__` (load item at index). That's all PyTorch needs.
+- **Label encoding** — `"hum"` → `1`, sorted alphabetically so the mapping is deterministic across machines.
+- **Stratified split** — train/val/test split that preserves class proportions. With 77 samples per class, a random split might under-represent one class in test. Stratified prevents that.
+- **Separation of concerns** — the model never touches disk. It only sees `(tensor, label)` pairs. Swap the dataset without touching the model.
+
+→ [Dataset & DataLoader explained](dataset-dataloader.md) — the protocol, label encoding, stratified splits, and how it connects to the training loop
+
+See: [model/dataset.py](../model/dataset.py) — `SignalDataset`, `make_label_map`, `load_splits`
 
 ---
 
-## 7. RNN Temporal Learning
+## 7. CNN Architecture (Phase 2 — M8)
 
-*Coming in M9.* Recurrent layers learn how features change over time — the sequence that makes a whistle different from a sustained hum.
+Three stacked conv blocks scan the spectrogram for frequency patterns, then Global Average
+Pooling collapses the spatial dimensions into a fixed-length vector, and a small linear
+head outputs 3 class logits.
+
+- **Conv2d → BatchNorm2d → ReLU → MaxPool2d** — one block. Three blocks in sequence
+  progressively extract higher-level features (edges → shapes → patterns).
+- **Global Average Pooling** — collapses `(B, 64, H, W)` → `(B, 64)` by averaging each
+  channel. Fewer parameters than Flatten; invariant to exact spatial position.
+- **Linear → Dropout → Linear** — classification head. Dropout (p=0.3) prevents
+  memorisation on our small dataset.
+- **~25,700 parameters** — deliberately small. Right-sized for 3 classes and ~150
+  training samples.
+
+→ [CNN architecture explained](cnn-architecture.md) — Conv2d, BatchNorm, GAP, Dropout, with C/JS/TS callouts and parameter count breakdown
+
+See: [model/cnn.py](../model/cnn.py) — `SoundClassifier`
+
+---
+
+## 8. Training Loop (Phase 2 — M9)
+
+The cycle that makes the model learn: forward pass → loss → backprop → weight update.
+Repeated for every batch, every epoch, with scheduling and early stopping to prevent overfitting.
+
+- **CrossEntropyLoss** — combines log-softmax + NLL in one numerically stable step.
+  Starts near `log(3) ≈ 1.1` (random) and should decrease.
+- **Adam** — adaptive learning rate per parameter. Default starting point for most tasks.
+- **ReduceLROnPlateau** — halves the learning rate when val loss stops improving for N epochs.
+- **Early stopping** — ends training when validation loss hasn't improved for `patience` epochs.
+  Saves the best checkpoint (not the final weights) for evaluation and inference.
+
+→ [Training loop explained](training-loop.md) — loss, backprop, Adam, scheduling, early stopping, train vs eval mode
+
+See: [model/train.py](../model/train.py) — `train_one_epoch`, `evaluate`, `train`, CLI
+
+---
+
+---
+
+## 9. Evaluation (Phase 2 — M10)
+
+After training, the best checkpoint is loaded and run against the held-out test set.
+Precision, recall, and F1 per class reveal not just overall accuracy but *which* classes
+are hard and *which* confusions are being made.
+
+- **Classification report** — per-class precision, recall, F1. Generated by `python -m model.evaluate`.
+- **Confusion matrix** — which classes the model confuses with which. Our run: clean diagonal, no errors.
+- **Loss curves** — train vs val loss over epochs. Shows when learning happened, where LR reductions kicked in, and how large the overfitting gap is.
+- **Phase 2 result** — 100% test accuracy (35/35). All three classes correct. Clap most confident (97.4%), hum least (58.8% — closest spectrally to whistle).
+
+→ [Evaluation explained](evaluation.md) — precision/recall/F1, confusion matrix, loss curve analysis, inference confidence
+
+See: [model/evaluate.py](../model/evaluate.py) — `run_evaluation`, CLI
+
+---
+
+## 10. Inference (Phase 2 — M11)
+
+The end-to-end payoff: take a raw `.wav` file you've never trained on, run it through
+the same pipeline as training, and get a class prediction with confidence.
+
+```bash
+bash demo.sh                        # → whistle (61.2% confidence)
+bash demo.sh path/to/my_sound.wav   # → clap (97.4% confidence)
+python -m model.predict --scan      # predict all .wav files in data/raw/
+```
+
+The pipeline consistency test: if `ingest` or `extract_features` behaved differently
+at inference than at training time, the model would produce random outputs. It doesn't —
+proving the preprocessing is deterministic end to end.
+
+See: [model/predict.py](../model/predict.py) — `predict()`, `scan()`, CLI
+
+---
+
+## 11. RNN Temporal Learning (Phase 4)
+
+*Coming in Phase 4.* Recurrent layers learn how features change over time — the sequence that makes "hum then clap" different from "clap then hum".
