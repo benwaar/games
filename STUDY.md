@@ -324,6 +324,13 @@ The common thread: *how do you store, transmit, and recover information reliably
 
 ---
 
+### Artefact: dig + bloom — binary art scanner and pixel upscaler
+
+See [artefact/](artefact/) — dig finds hidden sprites in binary memory, bloom scales them to HD.
+Together: scan → extract → restore. A full digital archaeology pipeline.
+
+---
+
 ### Tape Rescue — degraded signal reconstruction
 
 **The idea:** ZX Spectrum / C64 games were stored on cassette tape as audio tones. Real tapes degrade — dropouts, noise, bit errors. Can a model reconstruct corrupted tape audio and recover the original data?
