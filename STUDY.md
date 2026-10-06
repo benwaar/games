@@ -306,10 +306,64 @@ After all projects complete:
 | Transfer learning + LoRA | ✅ Covered (Ph 3 + TPP) |
 | LLM engineering (RAG, MCP, evals, agents) | 🔷 Covered (TPP) |
 | Edge deployment + quantisation | ✅ Covered (AO Ph 5) |
-| Classic ML (regression, boosting, trees) | ⬜ Gap |
+| Classic ML (regression, boosting, trees) | ⬜ Shallow gap |
 | Computer vision beyond spectrograms | 🔶 NPR (first CNN) |
-| Tabular data ML | ⬜ Gap |
+| Tabular data ML | ⬜ Shallow gap |
 | NLP / text (beyond LLM use) | ⬜ Gap |
 | MLOps (serving, monitoring, A/B) | ⬜ Gap |
 
-**Biggest remaining gap:** Classic ML on tabular data. Gradient boosting (XGBoost/LightGBM) is the dominant approach for financial, operational, and CRM datasets — the type most likely to appear in the day job. Rarely covered in deep learning curricula but high practical value.
+**Note on classic ML:** Shallower than it looks. The algorithms (decision trees, gradient boosting) are simpler than backprop. The sklearn API is fit() / predict() — easier than a PyTorch training loop. The hard part of tabular ML is feature engineering and domain understanding, both of which come from working with data — already covered. Closing this gap is a 2-day project, not a study track.
+
+---
+
+## Project Ideas — Filling Gaps Through Interests
+
+Three themes from your work: **tape/signal encoding**, **loss and reconstruction**, **compact protocol design**. These map directly onto several gaps.
+
+The common thread: *how do you store, transmit, and recover information reliably under constraints?*
+
+---
+
+### Tape Rescue — degraded signal reconstruction
+
+**The idea:** ZX Spectrum / C64 games were stored on cassette tape as audio tones. Real tapes degrade — dropouts, noise, bit errors. Can a model reconstruct corrupted tape audio and recover the original data?
+
+**Gaps it fills:**
+- **Autoencoder / denoising autoencoder** ← fills the ⬜ Autoencoder gap — encode degraded signal to latent space, decode clean signal
+- **Signal reconstruction / missing data** — same family as QR recovery, JPEG artefact removal, medical image inpainting
+- **Builds directly on Signal Hunt** — same audio pipeline, same spectrogram features, different task
+
+**Why it fits your style:** The ZX Spectrum tape format (TZX/TAP) is fully documented — like TPP, it has a spec. Generate ground-truth clean audio, deliberately degrade it, deterministic eval: does the decoded data match the original bytes? Same pattern as TPP evals.
+
+---
+
+### QR Rescue — masked image recovery
+
+**The idea:** QR code with chunks deliberately obscured (torn corner, sticker, dirt). Train a model to predict the missing modules and reconstruct a scannable code.
+
+**Gaps it fills:**
+- **Masked autoencoder (MAE)** ← fills ⬜ Self-supervised learning — predict missing patches from visible ones. This is the same technique behind BERT (text masking) and modern vision models (MAE, He et al. 2022)
+- **Computer vision on real images** — grid detection, perspective correction, spatial reasoning (extends 🔶 CV work)
+
+**Why it fits your style:** QR codes already have Reed-Solomon redundancy built in. The project asks: what if the damage exceeds what error correction can handle? Can ML fill the rest? Evaluation is deterministic — either the code scans or it doesn't.
+
+---
+
+### Tabular Rescue — missing sensor data imputation
+
+**The idea:** Time-series of sensor readings with deliberate gaps. Predict the missing values.
+
+**Gaps it fills:**
+- **Classic ML on tabular data** ← closes the shallow ⬜ gap quickly — gradient boosting handles this well
+- **Time-series** — connects to Signal Hunt Phase 4 (sequence modelling)
+- **Missing data imputation** — the tape dropout problem in table form
+
+**Why it fits your style:** Same reconstruction problem, different substrate. You create the gaps so you know the ground truth — clean deterministic eval. Compare gradient boosting vs LSTM on the same task — see where each approach wins.
+
+---
+
+### The pattern
+
+
+
+Same problem. Autoencoder, MAE, BERT masking, and Reed-Solomon are all solving it. One mental model, many substrates.
