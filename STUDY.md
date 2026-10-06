@@ -205,163 +205,111 @@ Phase 6 (adaptive)
 
 ---
 
-## ML/DL Skills Map
+## ML/AI Skills Map
 
-Assuming all six phases complete. ✅ = covered, ⬜ = gap.
-
----
-
-### Foundations
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| NumPy array operations | ✅ | Signal Hunt Ph 1 |
-| PyTorch tensors | ✅ | Signal Hunt Ph 1–2 |
-| Data normalisation (z-score) | ✅ | Signal Hunt Ph 1 |
-| Train/val/test split | ✅ | Signal Hunt Ph 2 |
-| Stratified sampling | ✅ | Signal Hunt Ph 2 |
-| Data augmentation | ✅ | Signal Hunt Ph 1 |
-| Class imbalance handling | ✅ | Signal Hunt Ph 3 |
-| Cross-validation | ⬜ | — |
-| Hyperparameter search (grid/random/Bayesian) | ⬜ | — |
-| Feature stores / data versioning | ⬜ | — |
+**Legend:** ✅ this learning track (games repo) · 🔷 separate project · ⬜ gap
 
 ---
 
-### Classic ML (pre-deep learning)
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Linear / logistic regression | ⬜ | — |
-| Decision trees / random forests | ⬜ | — |
-| Gradient boosting (XGBoost, LightGBM) | ⬜ | — |
-| SVM | ⬜ | — |
-| k-means clustering | ⬜ | — |
-| PCA / dimensionality reduction | ⬜ | — |
-| Naive Bayes | ⬜ | — |
-
-> **Note:** Classic ML is the missing foundation. Gradient boosting in particular is
-> the dominant approach for tabular data in production — most financial, operational,
-> and CRM datasets are tabular, not images or audio.
-
----
-
-### Neural Network Fundamentals
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Forward pass / loss / backprop | ✅ | Signal Hunt Ph 2 |
-| Activation functions (ReLU, softmax) | ✅ | Signal Hunt Ph 2 |
-| Adam optimiser | ✅ | Signal Hunt Ph 2 |
-| SGD / RMSprop | ⬜ | — |
-| Learning rate scheduling | ✅ | Signal Hunt Ph 2 |
-| Dropout | ✅ | Signal Hunt Ph 2 |
-| Batch normalisation | ✅ | Signal Hunt Ph 2 |
-| Weight initialisation | ⬜ | — |
-| Early stopping + checkpointing | ✅ | Signal Hunt Ph 2 |
-| Gradient clipping | ✅ (planned) | Signal Hunt Ph 4 |
-
----
-
-### Architectures
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Feedforward / MLP | ✅ (linear head) | Signal Hunt Ph 2 |
-| CNN (Conv2d, pooling, GAP) | ✅ | Signal Hunt Ph 2 |
-| RNN / GRU / LSTM | ✅ (planned) | Signal Hunt Ph 4 |
-| Bidirectional RNN | ✅ (planned) | Signal Hunt Ph 4 |
-| Attention mechanism | ✅ (planned) | Signal Hunt Ph 4 |
-| Transformer | ⬜ | — |
-| Autoencoder / VAE | ⬜ | — |
-| GAN | ⬜ | — |
-| Diffusion models | ⬜ | — |
-| Graph neural networks | ⬜ | — |
-
----
-
-### Transfer Learning & Advanced Training
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Transfer learning (freeze + retrain head) | ✅ (planned) | Signal Hunt Ph 3 |
-| Fine-tuning (full network) | ✅ (planned) | Signal Hunt Ph 3 |
-| Curriculum learning | ✅ (planned) | Signal Hunt Ph 3 |
-| Self-supervised learning | ⬜ | — |
-| Few-shot / zero-shot learning | ⬜ | — |
-| Multi-task learning | ⬜ | — |
-
----
-
-### Evaluation
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Accuracy, precision, recall, F1 | ✅ | Signal Hunt Ph 2 |
-| Confusion matrix | ✅ | Signal Hunt Ph 2 |
-| Loss curves / overfitting analysis | ✅ | Signal Hunt Ph 2 |
-| ROC / AUC | ⬜ | — |
-| Regression metrics (MSE, RMSE, MAE) | ⬜ | — |
-| Model calibration | ⬜ | — |
-| Interpretability (SHAP, LIME, attention viz) | ⬜ (attention partial) | Signal Hunt Ph 4 |
-
----
-
-### Domains
-
-| Domain | Status | Where |
-|--------|--------|-------|
-| Audio classification | ✅ | Signal Hunt Ph 1–2 |
-| Time-frequency features (Mel, STFT) | ✅ | Signal Hunt Ph 1 |
-| Sequence / temporal classification | ✅ (planned) | Signal Hunt Ph 4 |
-| Tabular data | ⬜ | — |
-| Computer vision (images beyond spectrograms) | ⬜ | — |
-| Object detection / segmentation | ⬜ | — |
-| NLP / text classification | ⬜ | — |
-| Embeddings / word vectors | ⬜ | — |
-| Large language models / transformers | ⬜ | — |
-| Speech recognition (ASR) | ⬜ | — |
-| Reinforcement learning | ✅ | Utala |
-| Multi-modal (combine modalities) | ⬜ | — |
-
----
-
-### Production / MLOps
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Inference pipeline | ✅ | Signal Hunt Ph 2 |
-| Model export (ONNX / TFLite) | ✅ (planned) | Acoustic Odyssey Ph 5 |
-| Quantisation (INT8) | ✅ (planned) | Acoustic Odyssey Ph 5 |
-| Model distillation | ✅ | Utala |
-| Edge deployment | ✅ (planned) | Acoustic Odyssey Ph 5 |
-| Model serving / REST API | ⬜ | — |
-| Model monitoring / drift detection | ⬜ | — |
-| Feature stores | ⬜ | — |
-| A/B testing models | ⬜ | — |
-| Federated learning | ⬜ | — |
-
----
-
-### Reinforcement Learning
-
-| Skill | Status | Where |
-|-------|--------|-------|
-| Temporal difference learning | ✅ | Utala |
-| Deep RL (policy / value networks) | ✅ | Utala |
-| MDP (Markov Decision Process) | ✅ (planned) | Acoustic Odyssey Ph 6 |
-| Exploration vs exploitation | ✅ (planned) | Acoustic Odyssey Ph 6 |
-| Reward shaping | ✅ | Utala |
-| Multi-agent RL | ⬜ | — |
-| Model-based RL | ⬜ | — |
-| Offline RL | ⬜ | — |
+```
+AI / ML
+│
+├── Classic ML ─────────────────────────────────── ⬜ gap (all)
+│   ├── Linear / logistic regression
+│   ├── Decision trees, random forests
+│   ├── Gradient boosting (XGBoost, LightGBM) ← biggest practical gap
+│   ├── SVM
+│   ├── k-means clustering
+│   └── PCA / dimensionality reduction
+│
+├── Deep Learning
+│   │
+│   ├── Foundations
+│   │   ├── NumPy, PyTorch tensors ──────────────── ✅ Signal Hunt Ph 1
+│   │   ├── Forward pass / loss / backprop ─────── ✅ Signal Hunt Ph 2
+│   │   ├── Optimisers (Adam) ───────────────────── ✅ Signal Hunt Ph 2
+│   │   ├── LR scheduling, early stopping ────────── ✅ Signal Hunt Ph 2
+│   │   ├── Dropout, BatchNorm ──────────────────── ✅ Signal Hunt Ph 2
+│   │   └── Weight initialisation ───────────────── ⬜
+│   │
+│   ├── Architectures
+│   │   ├── CNN (Conv2d, pooling, GAP) ──────────── ✅ Signal Hunt Ph 2
+│   │   ├── RNN / GRU / LSTM ────────────────────── ✅ Signal Hunt Ph 4
+│   │   ├── Attention ───────────────────────────── ✅ Signal Hunt Ph 4
+│   │   ├── Transformer ─────────────────────────── 🔷 TPP (via LoRA/RAG)
+│   │   ├── Autoencoder / VAE ───────────────────── ⬜
+│   │   ├── GAN ─────────────────────────────────── ⬜
+│   │   ├── Diffusion ───────────────────────────── ⬜
+│   │   └── Graph neural networks ───────────────── ⬜
+│   │
+│   ├── Training techniques
+│   │   ├── Data augmentation ───────────────────── ✅ Signal Hunt Ph 1
+│   │   ├── Class imbalance handling ─────────────── ✅ Signal Hunt Ph 3
+│   │   ├── Transfer learning (freeze + head) ────── ✅ Signal Hunt Ph 3
+│   │   ├── Full fine-tuning ────────────────────── ✅ Signal Hunt Ph 3
+│   │   ├── LoRA (parameter-efficient fine-tuning) ─ 🔷 Art project
+│   │   ├── Curriculum learning ─────────────────── ✅ Signal Hunt Ph 3
+│   │   ├── Model distillation ──────────────────── ✅ Utala
+│   │   ├── Self-supervised learning ─────────────── ⬜
+│   │   └── Few-shot / zero-shot ─────────────────── ⬜
+│   │
+│   └── Evaluation
+│       ├── Precision, recall, F1, confusion matrix ✅ Signal Hunt Ph 2
+│       ├── Loss curves / overfitting analysis ────── ✅ Signal Hunt Ph 2
+│       ├── ROC / AUC ───────────────────────────── ⬜
+│       ├── Regression metrics (MSE, RMSE) ────────── ⬜
+│       └── Interpretability (SHAP, LIME) ─────────── ⬜
+│
+├── Domains
+│   ├── Audio / signal processing ───────────────── ✅ Signal Hunt Ph 1–4
+│   ├── Sequence / temporal ─────────────────────── ✅ Signal Hunt Ph 4
+│   ├── Reinforcement learning ──────────────────── ✅ Utala, AO Ph 6
+│   ├── Tabular data ────────────────────────────── ⬜
+│   ├── Computer vision (images) ────────────────── ⬜
+│   ├── NLP / text ──────────────────────────────── 🔷 TPP
+│   ├── Embeddings / vector search ──────────────── 🔷 TPP (RAG)
+│   ├── LLMs (inference, fine-tuning) ───────────── 🔷 TPP, art project
+│   ├── Speech recognition (ASR) ────────────────── ⬜
+│   └── Multi-modal ─────────────────────────────── ⬜
+│
+├── LLM Engineering (separate track — TPP)
+│   ├── Prompt engineering & skills ─────────────── 🔷 TPP
+│   ├── Retrieval-augmented generation (RAG) ─────── 🔷 TPP
+│   ├── Tool use / MCP ──────────────────────────── 🔷 TPP
+│   ├── Deterministic evals ─────────────────────── 🔷 TPP
+│   ├── Agent orchestration (iterate-until-green) ─── 🔷 TPP
+│   └── Two-stage critic (correctness → quality) ──── 🔷 TPP
+│
+└── Production / MLOps
+    ├── Inference pipeline ──────────────────────── ✅ Signal Hunt Ph 2
+    ├── Model export (ONNX / TFLite) ───────────── ✅ AO Ph 5
+    ├── Quantisation (INT8) ─────────────────────── ✅ AO Ph 5
+    ├── Edge deployment ─────────────────────────── ✅ AO Ph 5
+    ├── Model serving / REST API ────────────────── ⬜
+    ├── Model monitoring / drift detection ──────── ⬜
+    ├── Cross-validation, hyperparameter search ─── ⬜
+    └── A/B testing models ──────────────────────── ⬜
+```
 
 ---
 
 ### Summary
 
-After all six phases:
-- **Strong:** Audio/signal processing, CNNs, training discipline, inference pipelines, RL fundamentals, model distillation, edge deployment
-- **Partial:** Sequence modelling, attention, transfer learning, quantisation
-- **Gaps:** Classic ML (tabular, gradient boosting), NLP/transformers, computer vision beyond spectrograms, model monitoring, MLOps infrastructure, advanced RL variants
-- **Biggest practical gap:** Classic ML on tabular data — most real-world business datasets are tables, not audio. Gradient boosting (XGBoost/LightGBM) solves the majority of them and is rarely taught in deep learning courses.
+After all projects complete:
+
+| Area | Status |
+|------|--------|
+| Audio / signal ML (end to end) | ✅ Strong |
+| CNN training discipline | ✅ Strong |
+| RL fundamentals + distillation | ✅ Strong |
+| RNNs, attention, sequence modelling | ✅ Covered (Ph 4) |
+| Transfer learning + LoRA | ✅ Covered (Ph 3 + TPP) |
+| LLM engineering (RAG, MCP, evals, agents) | 🔷 Covered (TPP) |
+| Edge deployment + quantisation | ✅ Covered (AO Ph 5) |
+| Classic ML (regression, boosting, trees) | ⬜ Gap |
+| Computer vision beyond spectrograms | ⬜ Gap |
+| Tabular data ML | ⬜ Gap |
+| NLP / text (beyond LLM use) | ⬜ Gap |
+| MLOps (serving, monitoring, A/B) | ⬜ Gap |
+
+**Biggest remaining gap:** Classic ML on tabular data. Gradient boosting (XGBoost/LightGBM) is the dominant approach for financial, operational, and CRM datasets — the type most likely to appear in the day job. Rarely covered in deep learning curricula but high practical value.
