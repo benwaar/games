@@ -1,9 +1,8 @@
 #!/bin/bash
-# Signal Hunt demo — shows the full pipeline end to end.
-# Run after setup.sh and model.train.
+# Signal Hunt demo — identifies an unknown sound using the trained model.
 #
 # Usage:
-#   bash demo.sh                      # uses a built-in example from data/raw/
+#   bash demo.sh                      # uses data/raw/unknown.wav (committed demo file)
 #   bash demo.sh path/to/my_sound.wav # use your own recording
 
 set -e
@@ -11,6 +10,8 @@ set -e
 source .venv/bin/activate
 
 CHECKPOINT="output/best_model.pt"
+DEFAULT_FILE="data/raw/unknown.wav"
+TARGET="${1:-$DEFAULT_FILE}"
 
 echo "=== Signal Hunt Demo ==="
 echo ""
@@ -22,33 +23,18 @@ if [ ! -f "$CHECKPOINT" ]; then
   exit 1
 fi
 
-# -- single file mode --
-if [ -n "$1" ]; then
-  echo "Predicting: $1"
-  echo ""
-  python -m model.predict "$1" --verbose
-  exit 0
+# -- check target file exists --
+if [ ! -f "$TARGET" ]; then
+  echo "File not found: $TARGET"
+  exit 1
 fi
 
-# -- built-in demo: use one file from each class --
-echo "Predicting one file from each class (from data/raw/):"
+echo "File:   $TARGET"
 echo ""
-
-for CLASS in hum whistle clap; do
-  FILE=$(ls data/raw/${CLASS}/*.wav 2>/dev/null | head -1)
-  if [ -n "$FILE" ]; then
-    RESULT=$(python -m model.predict "$FILE")
-    printf "  %-40s → %s\n" "$(basename $FILE) ($CLASS)" "$RESULT"
-  fi
-done
-
+python -m model.predict "$TARGET" --verbose
 echo ""
-echo "--- Scan mode ---"
-echo "Drop any .wav into data/raw/ (not in a subfolder) and run:"
+echo "To identify your own recording:"
+echo "  bash demo.sh path/to/my_sound.wav"
 echo ""
+echo "Or drop any .wav into data/raw/ and run:"
 echo "  python -m model.predict --scan"
-echo ""
-echo "--- Train from scratch ---"
-echo ""
-echo "  python -m model.train --epochs 50"
-echo "  python -m model.evaluate"
