@@ -6,6 +6,7 @@ Brief notes on each step of the pipeline — what it does and why. Detailed expl
 → [Python Concepts](python-concepts.md) — tuples, type hints, fixtures, and other patterns used in this codebase
 → [Data Collection](data-collection.md) — why real recordings, why these sounds, how to record and add more
 → [Train / Val / Test Split](train-val-test-split.md) — why three sets, why random isn't enough, the no-peeking rule
+→ [Evaluation](evaluation.md) — precision, recall, F1, confusion matrix, loss curves, and what our run proved
 
 ---
 
