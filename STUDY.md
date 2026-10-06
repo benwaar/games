@@ -342,28 +342,35 @@ The common thread: *how do you store, transmit, and recover information reliably
 **The idea:** QR code with chunks deliberately obscured (torn corner, sticker, dirt). Train a model to predict the missing modules and reconstruct a scannable code.
 
 **Gaps it fills:**
-- **Masked autoencoder (MAE)** ← fills ⬜ Self-supervised learning — predict missing patches from visible ones. This is the same technique behind BERT (text masking) and modern vision models (MAE, He et al. 2022)
-- **Computer vision on real images** — grid detection, perspective correction, spatial reasoning (extends 🔶 CV work)
+- **Masked autoencoder (MAE)** ← fills ⬜ Self-supervised learning — predict missing patches from visible ones. Same technique as BERT (text masking) and MAE (vision, He et al. 2022)
+- **Computer vision on real images** — grid detection, perspective correction, spatial reasoning
 
-**Why it fits your style:** QR codes already have Reed-Solomon redundancy built in. The project asks: what if the damage exceeds what error correction can handle? Can ML fill the rest? Evaluation is deterministic — either the code scans or it doesn't.
+**Why it fits your style:** QR codes already have Reed-Solomon redundancy. The project asks: what if the damage exceeds what error correction handles? Evaluation is deterministic — the code scans or it doesn't.
 
 ---
 
-### Tabular Rescue — missing sensor data imputation
+### Pixel Art Upscaler — retro sprites to HD
 
-**The idea:** Time-series of sensor readings with deliberate gaps. Predict the missing values.
+**The idea:** Take 8×8 or 16×16 pixel art sprites (ZX Spectrum, C64, NES) and train a model to upscale them to HD while preserving the crisp pixel aesthetic — not blurring, not interpolating, but learning the style.
 
 **Gaps it fills:**
-- **Classic ML on tabular data** ← closes the shallow ⬜ gap quickly — gradient boosting handles this well
-- **Time-series** — connects to Signal Hunt Phase 4 (sequence modelling)
-- **Missing data imputation** — the tape dropout problem in table form
+- **Computer vision on real images** ← fills ⬜ CV gap — real 2D image input, spatial feature learning
+- **Super-resolution / generative models** — a CNN encoder-decoder (U-Net style) or GAN. The discriminator learns "does this look like pixel art at scale?" — touches ⬜ GAN territory
+- **Perceptual loss** — standard MSE blurs; perceptual loss (feature-space distance) preserves sharpness. New evaluation technique.
 
-**Why it fits your style:** Same reconstruction problem, different substrate. You create the gaps so you know the ground truth — clean deterministic eval. Compare gradient boosting vs LSTM on the same task — see where each approach wins.
+**Why it fits your style:** Pixel art is already a compression problem — 16 colours, fixed palette, every pixel deliberate. The upscaler is learning to decompress with style. Directly usable for Aerythen assets. Has a clear visual pass/fail — you can see immediately if the output looks right, and you can compare against NEAREST/BILINEAR/LANCZOS as baselines.
+
+**Bonus:** existing datasets are free — CGA/EGA game rips, sprite sheets from public domain ROMs, Libresprite assets. No recording needed.
 
 ---
 
 ### The pattern
 
+```
+Tape Rescue    → corrupted audio waveform    → reconstruct bytes       (autoencoder)
+QR Rescue      → occluded image grid         → reconstruct modules     (masked AE)
+Pixel Upscaler → low-res pixel art           → high-res stylised image (super-resolution / GAN)
+Tabular Rescue → missing sensor rows         → reconstruct values      (gradient boosting)
+```
 
-
-Same problem. Autoencoder, MAE, BERT masking, and Reed-Solomon are all solving it. One mental model, many substrates.
+Same reconstruction idea. Different substrate, different architecture, different gap filled.
