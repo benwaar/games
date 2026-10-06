@@ -14,6 +14,7 @@ __pycache__/
 signal-hunt/output/
 signal-hunt/data/processed/
 signal-hunt/data/raw/ambient/
+signal-hunt/data/raw/notes/
 
 # IDE
 .vscode/
