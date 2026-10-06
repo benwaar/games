@@ -161,6 +161,37 @@ Clean diagonal. No off-diagonal errors — every clap, hum, and whistle correctl
 
 ![Loss curves](images/loss_curves.png)
 
-Both losses decrease together through epoch ~35, then val loss flattens while train
-continues slightly downward — the mild overfitting gap visible at early stop.
-The LR reductions (epochs 29 and 45) are visible as the slight bends in both curves.
+**What we were looking for:**
+
+The ideal shape is both lines decreasing together, then val loss flattening while
+train loss continues very slowly — a small, stable gap. That's a model that has
+learned the training data well and generalises to new data.
+
+The bad shape to watch for is a V-split: val loss starts rising while train loss
+keeps falling steeply. That's overfitting — the model is memorising training examples
+rather than learning patterns. The wider the gap, the worse the overfit.
+
+**What we actually see:**
+
+- **Epochs 1–10:** Both losses fall steeply together from ~1.09 (random) to ~0.80.
+  The model is learning fast — the three sound types are very different spectrally.
+- **Epochs 10–30:** Continued joint decrease, slowing down. Val loss slightly noisier
+  than train (expected — 35 val samples vs 161 train).
+- **Epoch 29:** First LR reduction (1e-3 → 5e-4). Visible as a slight change in
+  descent rate. The scheduler detected a plateau and halved the step size to let
+  the optimiser converge more finely.
+- **Epochs 30–41:** Val loss reaches its best (0.302 at epoch 41). Train loss
+  continues falling more steeply — the gap at this point is ~0.05, which is small.
+- **Epoch 45:** Second LR reduction (5e-4 → 2.5e-4). Near the end of useful training.
+- **Epoch 46:** Early stop. Val loss hasn't improved for 5 epochs.
+
+**Why the gap is OK:**
+
+The train/val gap at early stop (~0.09) is mild. A gap of this size on a dataset
+of 161 training samples is expected — there isn't enough data for the model to
+fully generalise without any gap at all. Dropout is keeping it in check; without
+it the gap would be larger and the test accuracy likely lower.
+
+The test set confirms this: loss=0.324, acc=1.000. The val loss (0.302) and test
+loss (0.324) are very close, which means the val set was a reliable proxy for
+generalisation — the model didn't just tune to it.
