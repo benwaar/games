@@ -207,7 +207,7 @@ Phase 6 (adaptive)
 
 ## ML/AI Skills Map
 
-**Legend:** ✅ this learning track (games repo) · 🔷 separate project · ⬜ gap
+**Legend:** ✅ this learning track (games repo) · 🔷 separate project · 🔶 previous role · ⬜ gap
 
 ---
 
@@ -265,7 +265,7 @@ AI / ML
 │   ├── Sequence / temporal ─────────────────────── ✅ Signal Hunt Ph 4
 │   ├── Reinforcement learning ──────────────────── ✅ Utala, AO Ph 6
 │   ├── Tabular data ────────────────────────────── ⬜
-│   ├── Computer vision (images) ────────────────── ⬜
+│   ├── Computer vision (images) ────────────────── 🔶 NPR (first CNN)
 │   ├── NLP / text ──────────────────────────────── 🔷 TPP
 │   ├── Embeddings / vector search ──────────────── 🔷 TPP (RAG)
 │   ├── LLMs (inference, fine-tuning) ───────────── 🔷 TPP, art project
@@ -307,7 +307,7 @@ After all projects complete:
 | LLM engineering (RAG, MCP, evals, agents) | 🔷 Covered (TPP) |
 | Edge deployment + quantisation | ✅ Covered (AO Ph 5) |
 | Classic ML (regression, boosting, trees) | ⬜ Gap |
-| Computer vision beyond spectrograms | ⬜ Gap |
+| Computer vision beyond spectrograms | 🔶 NPR (first CNN) |
 | Tabular data ML | ⬜ Gap |
 | NLP / text (beyond LLM use) | ⬜ Gap |
 | MLOps (serving, monitoring, A/B) | ⬜ Gap |
