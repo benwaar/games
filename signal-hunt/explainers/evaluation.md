@@ -146,3 +146,21 @@ sufficient to learn that separation. No false alarms, no misses.
 recorded in a noisy room that augmentation pushed to sound like static — could change
 this. The result is promising, not definitive. Phase 3 will use more data and more
 classes, which will give a more robust signal.
+
+---
+
+## Plots from our run
+
+**Confusion matrix** — test set, 35 samples:
+
+![Confusion matrix](images/confusion_matrix.png)
+
+Clean diagonal. No off-diagonal errors — every clap, hum, and whistle correctly identified.
+
+**Loss curves** — 46 epochs, early stop:
+
+![Loss curves](images/loss_curves.png)
+
+Both losses decrease together through epoch ~35, then val loss flattens while train
+continues slightly downward — the mild overfitting gap visible at early stop.
+The LR reductions (epochs 29 and 45) are visible as the slight bends in both curves.

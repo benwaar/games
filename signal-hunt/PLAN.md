@@ -116,12 +116,12 @@ A common mistake is overbuilding. For 3-class sound type classification, the spe
 **Gate:** Loss decreases. Val accuracy above 50% (random baseline = 33%). Training history saved.
 
 #### M10: Evaluation & analysis (~2 hrs)
-- [ ] `model/evaluate.py` — load best checkpoint, run on held-out test set:
+- [x] `model/evaluate.py` — load best checkpoint, run on held-out test set:
   - Accuracy, precision, recall, F1 per class
   - Confusion matrix plot (saved to `explainers/images/`)
   - Train vs val loss curves plot
   - 3 correct + 3 incorrect predictions shown with spectrograms
-- [ ] Analysis: which class is hardest? Which augmentations help/hurt?
+- [x] Analysis: which class is hardest? Which augmentations help/hurt?
 
 **Gate:** Evaluation report generated. Model meaningfully above random on test data. Confusion matrix shows the model learned real differences.
 
