@@ -121,16 +121,16 @@ AI / ML
 
 ## Business Alignment
 
-What these skills enable — described by problem type, not product name.
+What these skills enable. Brief nudges — not exhaustive.
 
-| Problem type | Projects that enable it |
-|-------------|------------------------|
-| Classify real-world signals (audio, sensor, image) in real time | signal-hunt + acoustic-odyssey/cast |
-| Deploy a model to run on-device with no cloud dependency | acoustic-odyssey/cast |
-| Adapt an experience to individual user behaviour over time | utala + acoustic-odyssey/echo |
-| Find structure or patterns in raw/unlabelled data | artefact/dig |
-| Restore or enhance degraded/low-quality media | artefact/bloom |
-| Build LLM-powered tools with deterministic quality gates | TPP |
-| Extend a working model to new classes without retraining from scratch | signal-hunt Ph 3 |
-| Detect sequences and order-dependent patterns in streams | signal-hunt Ph 4 |
-| Compress a research model into a production-grade artefact | acoustic-odyssey/cast + utala |
+| Problem type | Projects | Examples |
+|-------------|----------|---------|
+| Classify real-world signals (audio, documents, transaction patterns, images) | signal-hunt + cast | Call centre audio → intent/sentiment; scanned documents → type/validity; transaction history rendered as a pattern → fraud or churn signal; cheque signature validation; accessibility testing — classify interaction patterns as normal or indicating difficulty |
+| Deploy a model on-device with no cloud dependency | acoustic-odyssey/cast | Mobile banking feature with no latency; ATM-side fraud detection; branch kiosk; any real-time product where cloud round-trips are too slow or too expensive |
+| Adapt an experience to individual user behaviour | utala + echo | Dynamic risk questionnaire (adjusts based on previous answers); personalised onboarding flow; adaptive learning platform; accessibility adjustments that tune to how a specific user actually interacts |
+| Find hidden structure in raw or unlabelled data | artefact/dig | Scan legacy binary systems for undocumented features; find anomaly patterns in log files without labelled examples; discover clusters in transaction data before you know what you're looking for |
+| Restore or enhance degraded or low-quality media | artefact/bloom | Clean up scanned legacy documents; enhance old CCTV or archive footage; restore game or brand assets for remaster; any pipeline where the source is old and the output needs to be presentable |
+| LLM-powered tools with deterministic quality gates | TPP | Internal knowledge assistant grounded in company documents; compliance checking tool with spec-driven evals; spec-to-code agent that iterates until tests pass |
+| Extend a working model to new classes without retraining from scratch | signal-hunt Ph 3 | Add a new fraud type to an existing fraud classifier; add a new document category without rebuilding; add a new language to an existing intent model |
+| Detect sequences and order-dependent patterns | signal-hunt Ph 4 | Fraud sequence detection ("card tested, then large withdrawal"); user journey analysis (which click paths precede churn); process mining in operations — find the step order that leads to failure |
+| Compress a research model into a production artefact | cast + utala | Any ML prototype that needs to ship — shrink it, quantise it, benchmark it, deploy it without rebuilding from scratch |
