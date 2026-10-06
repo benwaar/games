@@ -1,31 +1,45 @@
-# Phase 3 — Note & Pitch Classification
+# Phase 3 — Piano Note Classification
 
-Phase 2 complete ✅. Next: extend the classifier to recognise **which note** is being
-hummed or whistled (C4, D4, E4, ... up to one octave = 12 classes).
+## Why piano (not voice)
 
-## Before starting
+Originally planned to record 240+ voice clips (12 notes × 2 sound types × 10 each). In practice this was too much manual data collection — humans can't reliably hit the same pitch twice, so labelling becomes the bottleneck, not the model.
 
-Read the Phase 3 plan in [PLAN.md](PLAN.md) — M13 through M17.
+**Switched to piano:**
+- **NSynth** (Google/Magenta) — free dataset of 300K+ instrument notes including clean acoustic grand piano at every pitch with exact MIDI labels. No recording needed, no labelling uncertainty.
+- An electric piano is available for recording real-world test clips to close the domain gap at test time.
+- The learning objectives (transfer learning, fine-grained classification, class imbalance) are identical.
 
-Phase 3 introduces:
-- Transfer learning (freeze Phase 2 CNN, replace classification head)
-- Larger label space (12 classes vs 3)
-- Class imbalance (some notes easier to produce consistently)
-- Curriculum learning (start with C/E/G, add semitones gradually)
+## Longer-term goal
 
-## Data requirement (do this before coding)
+Phase 3 is the foundation for a piano teacher application:
 
-Need ~10 recordings per note per sound type. Start with one octave of hummed notes
-(C4–B4 = 12 classes). Use a tuner app or piano as a reference pitch.
-
-Folder structure:
 ```
-data/raw/notes/
-  C4_hum/   ← 10 recordings of C4 hummed
-  D4_hum/
-  ...
-  C4_whistle/
-  ...
+Phase 3: "what single note is this?"
+Phase 4+: "what chord is this?" (multi-label)
+End goal: player plays a chord → detect which notes were played
+          → compare against expected → "you hit Ab, should be A"
 ```
 
-Run `/study` to start M13.
+## Start here: M13 — Dataset preparation
+
+1. Download NSynth train split (~300K notes, ~22GB) or use the small subset via TensorFlow Datasets
+2. Filter to: `instrument_family = keyboard`, `instrument_source = acoustic`, MIDI notes 60–71 (C4–B4)
+3. Organise into `data/raw/notes/{note}/` (e.g. `C4/`, `Cs4/`, `D4/` ...)
+4. Run `python -m pipeline.batch data/raw/notes data/processed/notes`
+5. Spot-check: render spectrograms — can you see the pitch differences visually?
+
+**One thing to check before downloading:** NSynth notes are 4 seconds. The pipeline uses 1.5-second clips. Either truncate to 1.5s (captures attack + sustain, which is where pitch is clearest), or extend the pipeline.
+
+## NSynth quick start
+
+```python
+import tensorflow_datasets as tfds
+ds = tfds.load('nsynth/full-pitches', split='train')
+# filter: instrument_family_str == 'keyboard', pitch in range(60, 72)
+```
+
+Or direct download: https://magenta.tensorflow.org/datasets/nsynth
+
+## Gate
+
+12 note classes (C4–B4), 10+ clips each, tensors generated, labels verified. Spectrogram spot-check shows visible pitch differences between notes.

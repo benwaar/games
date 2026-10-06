@@ -93,93 +93,106 @@ A complete classification pipeline from raw audio to inference:
 
 ---
 
-## Phase 3: Note & Pitch Classification
+## Phase 3: Piano Note Classification
 
-Extend the Phase 2 CNN to classify **which note** is being hummed or whistled. This jumps from 3 broad classes to ~12–24 fine-grained pitch classes (chromatic notes, 1–2 octaves).
+Extend the Phase 2 CNN to classify **which piano note** is being played — C4 through B4, one chromatic octave (12 classes). This is the same transfer learning and fine-grained classification goal as originally planned for humming/whistling, with a better data source.
 
-**Business goal:** Learn transfer learning, handling larger label spaces, dealing with class imbalance, and the difference between coarse and fine-grained classification.
-**Business value:** In business ML, you often start with broad categories then need finer resolution — customer segments → individual behaviours, document types → specific intents. Same skill.
+**Business goal:** Learn transfer learning, handling larger label spaces, and the difference between coarse and fine-grained classification.
+**Business value:** Start broad, then refine — the pattern for any ML system that needs to grow from a working baseline into something more specific.
 
-### The problem
+### Why we switched from voice to piano
 
-Sound type classification was easy because hums, whistles, and claps look completely different as spectrograms. Notes are harder — a hummed C4 and a hummed D4 have the same overall shape but different fundamental frequencies. The model needs to learn subtle pitch differences within the same sound type.
+The original Phase 3 plan required recording 240+ voice clips (10 per note × 12 notes × 2 sound types). In practice:
+- Humans can't reliably hum the same pitch twice — labelling becomes the bottleneck
+- 240 clips for one octave, needing a reference pitch source for every one
+- The model learns your voice as much as the pitch
 
-### Why this is a good next step
+Piano solves all of this:
+- **NSynth** (Google/Magenta) is a free public dataset of 300K+ instrument notes, including clean acoustic grand piano recordings at every pitch with exact MIDI labels
+- Every note is perfectly pitched — no labelling uncertainty
+- Scales to any octave range without recording anything
+- An electric piano is also available for recording real-world test clips — closing the domain gap at test time
 
-- Reuses the CNN from Phase 2 (transfer learning — freeze early layers, retrain the head)
-- Forces you to deal with a larger label space (12–24 classes vs 3)
-- Introduces class imbalance (some notes are easier to produce consistently)
-- Teaches curriculum learning: train on easy notes first, add harder ones
+The learning objectives (transfer learning, fine-grained classification, class imbalance) are identical. The domain is more tractable.
+
+### The longer-term goal
+
+Phase 3 builds the foundation for a piano teacher application:
+- Phase 3: "what single note is this?" (pitch classification)
+- Phase 4+: "what chord is this?" (multi-label)
+- End goal: player plays a chord → model detects which notes were played → compare against expected → "you hit Ab, the note should be A"
+
+This is a genuinely useful real-time feedback tool. Piano students learning chords is an unsolved problem at scale.
+
+### Why piano spectrograms work
+
+Piano notes have very clear harmonic structure on a Mel-spectrogram — a fundamental frequency with overtones at integer multiples. A C4 (261 Hz) looks different from a D4 (294 Hz): the fundamental peak is in a different Mel bin, and the harmonic ladder shifts with it. The CNN from Phase 2 already knows how to find frequency-band patterns. Retraining the head to recognise 12 pitch positions instead of 3 sound types is a natural extension.
 
 ### Prerequisites
 
-- Phase 2 model working and evaluated
-- New dataset: recordings of specific notes (C4, D4, E4, ... at minimum one octave)
-- A reference pitch source (tuner app, piano) to label recordings accurately
+- Phase 2 model complete ✅
+- NSynth dataset (piano subset) downloaded — see M13
 
 ### Milestones
 
-#### M13: Note dataset collection (~2 hrs)
-- [ ] Define label scheme: which notes, which octave range (C4–B4 = 12 classes is a good start)
-- [ ] Record or source ~10 clips per note per sound type (hum + whistle = 240 clips minimum)
-- [ ] Organise into `data/raw/notes/{note}_{type}/` folder structure
+#### M13: Dataset preparation (~2 hrs)
+- [ ] Download NSynth piano subset (acoustic_grand_piano, C4–B4 = MIDI notes 60–71)
+- [ ] Filter and organise into `data/raw/notes/{note}/` (e.g. `C4/`, `Cs4/`, `D4/` ...)
 - [ ] Run Phase 1 batch pipeline to generate tensors
-- [ ] Verify pitch labels with a frequency analysis spot-check
+- [ ] Spot-check: render a few spectrograms — can you see the pitch difference visually?
+- [ ] Optional: record a few real piano clips (electric piano) and save to `data/raw/notes/{note}/real/` for later domain gap testing
 
-**Gate:** At least 8 notes with 10+ recordings each. Tensors generated. Manifest includes note labels.
+**Gate:** 12 note classes, 10+ NSynth clips each, tensors generated, labels correct.
 
 #### M14: Transfer learning setup (~2 hrs)
 - [ ] `model/transfer.py` — load Phase 2 CNN checkpoint
-- [ ] Freeze early conv layers (feature extractor), replace classification head for N note classes
-- [ ] New dataset class that handles note labels (extend or compose with Phase 2 dataset)
-- [ ] Experiment: frozen-early vs full-finetune, log both
+- [ ] Freeze early conv layers (feature extractor), replace classification head for 12 note classes
+- [ ] New dataset class that handles note labels
+- [ ] Experiment: frozen-early vs full-finetune — log both, compare convergence speed
 
-**Gate:** Transfer model loads Phase 2 weights. Forward pass produces `(B, num_notes)`. Frozen layers don't update during backprop.
+**Gate:** Transfer model loads Phase 2 weights. Forward pass produces `(B, 12)`. Frozen layers don't update during backprop.
 
 #### M15: Training on notes (~3 hrs)
-- [ ] Train with class-weighted CrossEntropyLoss (handles imbalanced note counts)
-- [ ] Curriculum strategy: start with well-separated notes (C4, E4, G4 — a major triad), add semitones gradually
+- [ ] Train with class-weighted CrossEntropyLoss
+- [ ] Curriculum strategy: start with well-separated notes (C4, E4, G4 — a major triad), add semitones
 - [ ] Compare: transfer learning vs training from scratch (expect transfer to converge faster)
-- [ ] Log per-note accuracy — expect nearby notes (C4 vs C#4) to confuse more than distant ones
+- [ ] Log per-note accuracy — expect C4 vs C#4 to confuse more than C4 vs F#4
 
 **Gate:** Model above 50% accuracy on 12-class task (random = 8.3%). Nearby-note confusion visible in matrix.
 
-#### M16: Pitch analysis & evaluation (~2 hrs)
-- [ ] Confusion matrix: are confusions musically sensible? (C4↔C#4 more than C4↔F#4)
-- [ ] Frequency analysis: does the CNN's first-layer filters show pitch-sensitive patterns?
-- [ ] Error analysis: which notes are hardest? Is it a data problem or a model problem?
-- [ ] Compare hum-note vs whistle-note accuracy (whistles have cleaner harmonics — expect better)
+#### M16: Evaluation & domain gap test (~2 hrs)
+- [ ] Confusion matrix: are confusions musically sensible?
+- [ ] If real piano clips recorded in M13: test on those — does NSynth training generalise?
+- [ ] Error analysis: which notes are hardest? Data problem or model problem?
 
-**Gate:** Evaluation report with per-note metrics. Confusion patterns make musical sense. Clear understanding of model limitations.
+**Gate:** Evaluation report with per-note metrics. Confusion patterns make musical sense.
 
 #### M17: Inference & documentation (~2 hrs)
-- [ ] Update `model/predict.py` to support `--mode type` and `--mode note`
+- [ ] Update `model/predict.py` to support `--mode note`
 - [ ] Explainer: transfer learning (what it is, why it works, when to use it)
-- [ ] Explainer: class imbalance and curriculum learning
-- [ ] Update all docs (explainers README, python-concepts, libraries, project README)
-- [ ] Phase 3 summary in PLAN.md
+- [ ] Explainer: NSynth as training data — why public datasets, what domain gap means
+- [ ] Update docs, Phase 3 summary in PLAN.md
 
-**Gate:** `python -m model.predict song.wav --mode note` → `"C4 (78% confidence)"`. Docs pass teaching test.
+**Gate:** `python -m model.predict piano_clip.wav --mode note` → `"C4 (91% confidence)"`. Docs pass teaching test.
 
 ### What's tricky
 
-1. **Labelling accuracy.** If your "C4" recording is actually a B3, the model learns garbage. Need a reference pitch source and ideally a frequency-check script.
-2. **Semitone confusion.** Adjacent notes (C4 vs C#4) differ by ~6% in frequency. The Mel spectrogram's frequency resolution may blur this. May need to increase `n_mels` or use a different feature (CQT, which has log-frequency bins aligned to musical notes).
-3. **Recording consistency.** Humans can't hum a perfect C4 every time. Pitch drift within a recording adds noise. May need to accept "close enough" labels or use pitch detection (e.g. CREPE) to auto-label.
-4. **Class count.** 12 classes with small data is hard. Start with a subset (C, E, G = 3 notes) to validate the approach, then expand.
+1. **NSynth → real piano domain gap.** NSynth notes are clean, isolated, and perfectly pitched. Real piano has resonance, pedal sustain, and room acoustics. Test on real recordings; expect a drop in accuracy; augment with reverb and noise if it's too large.
+2. **Semitone resolution.** C4 and C#4 differ by ~6% in frequency (261 Hz vs 277 Hz). The Mel spectrogram's frequency resolution at default settings may blur this. If accuracy stalls on adjacent notes, increase `n_mels` or switch to CQT (log-frequency bins aligned to musical pitch).
+3. **NSynth clip length.** NSynth notes are 4 seconds. Our pipeline uses 1.5-second clips. Either truncate (use the attack/sustain), or re-tune the pipeline for longer clips.
 
 ### When to stop
 
 | After | Stop if | Meaning |
 |---|---|---|
-| M13 | Can't reliably produce/label 8+ distinct notes | Task is too hard with current recording setup |
-| M14 | Transfer learning shows no benefit over random init | Phase 2 features aren't note-relevant — rethink features |
-| M15 | Accuracy stuck near random after tuning | Mel spectrograms may lack pitch resolution — try CQT |
-| M16 | Confusions are random (not musically sensible) | Model isn't learning pitch — fundamental feature problem |
+| M13 | NSynth doesn't download or MIDI pitch labels are wrong | Check the dataset format — likely a parsing issue |
+| M14 | Transfer learning shows no benefit over random init | Phase 2 features aren't pitch-relevant — may need to retrain from scratch on piano data |
+| M15 | Accuracy stuck near random (8.3%) after tuning | Mel spectrograms may lack pitch resolution — try CQT or increase n_mels |
+| M16 | Real piano test accuracy < 30% | Domain gap too large — add reverb/noise augmentation and retrain |
 
 ### Effort
 
-~11 hours across 2–3 sessions.
+~10 hours across 2–3 sessions.
 
 ---
 
