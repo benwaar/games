@@ -75,11 +75,17 @@ and saves a confusion matrix and loss curves to `explainers/images/`.
 ### Predict
 
 ```bash
+# Single file
 python -m model.predict path/to/recording.wav
 python -m model.predict path/to/recording.wav --verbose   # show all class scores
+
+# Drop any .wav into data/raw/ and scan
+python -m model.predict --scan
 ```
 
-Runs a raw `.wav` file through the full pipeline and outputs the predicted class with confidence.
+Drop a recording directly into `data/raw/` (not in a subfolder) and run `--scan`
+to identify it. Files inside `data/raw/hum/`, `data/raw/whistle/`, `data/raw/clap/`
+are ignored — only flat files are treated as unknowns.
 
 ### Project structure
 

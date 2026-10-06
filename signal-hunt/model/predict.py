@@ -46,18 +46,52 @@ def predict(
     }
 
 
+def scan(
+    raw_dir: Path = Path("data/raw"),
+    checkpoint_path: Path = Path("output/best_model.pt"),
+) -> list[dict]:
+    """
+    Find all .wav files in raw_dir that are NOT inside a class subfolder
+    (i.e. not in data/raw/hum/, data/raw/whistle/, data/raw/clap/) and
+    predict each one.
+
+    Drop any .wav into data/raw/ and run: python -m model.predict --scan
+    """
+    raw_dir = Path(raw_dir)
+    unknown_files = sorted(raw_dir.glob("*.wav"))  # flat files only, not subfolders
+
+    if not unknown_files:
+        print(f"No .wav files found directly in {raw_dir}/")
+        print("Drop a recording there (not in a subfolder) and re-run.")
+        return []
+
+    results = []
+    for wav in unknown_files:
+        result = predict(wav, checkpoint_path)
+        result["file"] = wav.name
+        results.append(result)
+        print(f"{wav.name:<30} → {result['class']} ({result['confidence']:.1%})")
+
+    return results
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Predict sound type from a .wav file")
-    parser.add_argument("wav", type=Path, help="Path to .wav file")
+    parser.add_argument("wav", type=Path, nargs="?", help="Path to a .wav file (omit to scan data/raw/)")
+    parser.add_argument("--scan", action="store_true", help="Predict all .wav files in data/raw/ (not in subfolders)")
+    parser.add_argument("--raw-dir", type=Path, default=Path("data/raw"), help="Directory to scan (default: data/raw)")
     parser.add_argument("--checkpoint", type=Path, default=Path("output/best_model.pt"))
     parser.add_argument("--verbose", action="store_true", help="Show all class scores")
     args = parser.parse_args()
 
-    result = predict(args.wav, args.checkpoint)
-    print(f"{result['class']} ({result['confidence']:.1%} confidence)")
-    if args.verbose:
-        for cls, score in sorted(result["scores"].items(), key=lambda x: -x[1]):
-            print(f"  {cls:>10}: {score:.1%}")
+    if args.scan or args.wav is None:
+        scan(args.raw_dir, args.checkpoint)
+    else:
+        result = predict(args.wav, args.checkpoint)
+        print(f"{result['class']} ({result['confidence']:.1%} confidence)")
+        if args.verbose:
+            for cls, score in sorted(result["scores"].items(), key=lambda x: -x[1]):
+                print(f"  {cls:>10}: {score:.1%}")
 
 
 if __name__ == "__main__":
