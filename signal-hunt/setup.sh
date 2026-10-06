@@ -54,10 +54,15 @@ echo "OK: all Python imports verified"
 # -- directories --
 mkdir -p data/raw/hum data/raw/whistle data/raw/clap data/processed output tests pipeline model explainers
 
-# -- processed tensors --
+# -- processed tensors (Phase 2) --
 echo "Generating processed tensors from data/raw..."
 python3 -m pipeline.batch data/raw data/processed
 echo "OK: processed tensors in data/processed/"
+
+# -- Iowa piano samples (Phase 3) --
+echo "Downloading Iowa piano samples (C4-B4, 36 files)..."
+python3 scripts/download_iowa_piano.py
+echo "OK: Iowa piano samples in data/raw/notes/"
 
 echo ""
 echo "=== Setup complete ==="
