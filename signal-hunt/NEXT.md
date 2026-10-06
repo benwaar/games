@@ -1,84 +1,31 @@
-# M12 Plan — Documentation & Consolidation
+# Phase 3 — Note & Pitch Classification
 
-**Goal:** Replace all Phase 2 milestone checkboxes in PLAN.md with a clean
-summary of what was built. Update all explainers so the project is fully
-documented from a cold read.
+Phase 2 complete ✅. Next: extend the classifier to recognise **which note** is being
+hummed or whistled (C4, D4, E4, ... up to one octave = 12 classes).
 
-## Prerequisites
+## Before starting
 
-- M7–M11 all complete ✅
-- 108 tests passing
+Read the Phase 3 plan in [PLAN.md](PLAN.md) — M13 through M17.
 
----
+Phase 3 introduces:
+- Transfer learning (freeze Phase 2 CNN, replace classification head)
+- Larger label space (12 classes vs 3)
+- Class imbalance (some notes easier to produce consistently)
+- Curriculum learning (start with C/E/G, add semitones gradually)
 
-## Loop: Plan → Implement → Test → Document → Commit → Tick → Next
+## Data requirement (do this before coding)
 
----
+Need ~10 recordings per note per sound type. Start with one octave of hummed notes
+(C4–B4 = 12 classes). Use a tuner app or piano as a reference pitch.
 
-### Step 1 — PLAN.md Phase 2 consolidation
+Folder structure:
+```
+data/raw/notes/
+  C4_hum/   ← 10 recordings of C4 hummed
+  D4_hum/
+  ...
+  C4_whistle/
+  ...
+```
 
-- [ ] Replace M7–M12 checkboxes with a clean "What was built" summary section
-  (like Phase 1 ✅ at the top of the file)
-- [ ] Include: what exists, how to run it, what it depends on, key decisions made
-
-**Test:** could someone read just the Phase 2 summary and understand what the
-model is, how to use it, and what it achieved?
-
-**Docs:** this step IS the docs.
-
-**Commit:** `docs(signal-hunt): consolidate Phase 2 in PLAN.md`
-
----
-
-### Step 2 — explainers/README.md sweep
-
-- [ ] Check every section header links to a real file
-- [ ] Check "See:" links point to files that exist
-- [ ] Add any missing sections for Phase 2 concepts not yet covered
-- [ ] Remove any "Coming in MX" stubs that are now built
-
-**Docs:** this step IS the docs.
-
-**Commit:** `docs(signal-hunt): tidy explainers README after Phase 2`
-
----
-
-### Step 3 — python-concepts.md check
-
-- [ ] Review what new patterns Phase 2 introduced that aren't yet documented:
-  - `dataclass` with `field(default_factory=...)` — in config.py
-  - `module.train()` / `module.eval()` — PyTorch model modes
-  - `torch.no_grad()` context manager
-  - `scope="module"` in pytest fixtures
-
-**Docs:** add any missing concepts.
-
-**Commit:** `docs(signal-hunt): python-concepts additions from Phase 2`
-
----
-
-### Step 4 — final check: teaching test
-
-- [ ] Read explainers/README.md cold. Does it tell the full story from
-  raw audio to inference without needing to read the git history?
-- [ ] Fix any gaps found.
-
-**Commit:** `docs(signal-hunt): Phase 2 teaching test fixes`
-
----
-
-### Step 5 — close out M12 + Phase 2
-
-- [ ] Mark M12 checkboxes `[x]` in `PLAN.md`
-- [ ] Update `NEXT.md` to point at Phase 3 (M13 — note dataset collection)
-- [ ] Update memory: Phase 2 complete, next is M13
-
-**Commit:** `docs(signal-hunt): tick M12, Phase 2 complete`
-
----
-
-## Gate (from PLAN.md)
-
-Docs pass the teaching test. Someone with C/JS/TS background can follow
-the full path from raw audio to inference without reading git history.
-All Phase 2 checkboxes replaced with clean summary.
+Run `/study` to start M13.

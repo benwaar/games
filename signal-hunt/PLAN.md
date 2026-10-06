@@ -54,113 +54,42 @@ A four-module pipeline that takes a folder of `.wav` files and produces augmente
 
 ---
 
-## Phase 2: Sound Type Classification (3-class CNN)
+## Phase 2: Sound Type Classification (3-class CNN) ✅
 
-Train a CNN to classify spectrograms as **hum**, **whistle**, or **clap**. This is the simplest classification task — three classes with very different spectral signatures.
+Train a CNN to classify spectrograms as **hum**, **whistle**, or **clap**.
 
 **Business goal:** Learn the full model lifecycle: dataset construction, architecture design, training loop, evaluation, and inference.
 **Business value:** Build custom classifiers tailored to specific business logic rather than relying on expensive third-party APIs.
 
-### The problem
+### What was built
 
-Each sound type has a distinct spectral fingerprint: hums are low-frequency sustained tones, whistles are high-frequency narrow bands, claps are broadband transients. A CNN should learn these spatial patterns from Mel spectrograms without needing temporal modelling — the shapes alone are enough for this task.
+A complete classification pipeline from raw audio to inference:
 
-### Why CNN only (no RNN yet)
+| Module | What it does |
+|--------|-------------|
+| `model/dataset.py` | `SignalDataset` loads `(tensor, label)` pairs from the manifest. `load_splits` returns stratified 70/15/15 train/val/test splits with fixed seed. `make_label_map` encodes class names → integers (sorted alphabetically for determinism). |
+| `model/cnn.py` | `SoundClassifier` — 3 Conv2d blocks (Conv → BatchNorm → ReLU → MaxPool) → Global Average Pooling → Linear(64→32) → Dropout(0.3) → Linear(32→3). 25,699 parameters. Input `(B, 1, 128, 65)` → output `(B, 3)` logits. |
+| `model/config.py` | `TrainConfig` dataclass — all hyperparameters in one place (batch size, lr, epochs, dropout, patience, seed). |
+| `model/train.py` | Full training loop — CrossEntropyLoss + Adam + ReduceLROnPlateau + early stopping. Saves best checkpoint (`output/best_model.pt`) and history (`output/history.json`). CLI: `python -m model.train --epochs 50`. |
+| `model/evaluate.py` | Loads checkpoint, runs test set, prints classification report, saves confusion matrix and loss curves to `explainers/images/`. CLI: `python -m model.evaluate`. |
+| `model/predict.py` | `predict(wav_path)` — raw `.wav` → class + confidence. Scan mode: `python -m model.predict --scan` identifies all `.wav` files dropped into `data/raw/`. |
+| `demo.sh` | `bash demo.sh` — identifies `data/raw/unknown.wav`. `bash demo.sh file.wav` — any file. |
 
-A common mistake is overbuilding. For 3-class sound type classification, the spectral shape alone is highly discriminative — you don't need to model how the sound changes over time. Starting with a pure CNN:
-- Simpler to debug (fewer moving parts)
-- Faster to train (no sequence unrolling)
-- Establishes a strong baseline to compare against when RNN is added in Phase 4
-- Teaches CNN fundamentals without the distraction of RNN complexity
+**Training result:**
+- 33 source recordings (11 per class) → 231 augmented tensors (7 per recording)
+- 161 train / 35 val / 35 test (stratified 70/15/15)
+- Best checkpoint: epoch 41, val_loss=0.302, val_acc=97.1%
+- **Test set: 100% accuracy (35/35) — clap 12/12, hum 11/11, whistle 12/12**
+- 115 tests passing
 
-### What to build
+**Decisions made:**
+- Global Average Pooling over Flatten — fewer parameters, less overfitting on small dataset
+- 25K params deliberately small — right-sized for 3 classes and ~150 training samples
+- Labels from folder names (`data/raw/hum/`) not filenames — scales to any number of recordings
+- Tensor filenames use source stem (not label) — avoids collisions with multiple files per class
+- Checkpoint saves label_map + config alongside weights — inference needs no separate config file
 
-1. **Dataset + DataLoader** — load tensors, map to labels, train/val/test split
-2. **CNN classifier** — 2D conv blocks → global average pooling → linear head
-3. **Training loop** — loss, backprop, validation, checkpointing
-4. **Evaluation** — accuracy, confusion matrix, overfitting analysis
-5. **Inference script** — raw audio → prediction
-
-### Milestones
-
-#### M7: Dataset & DataLoader (~2 hrs)
-- [x] `model/dataset.py` — PyTorch `Dataset` that loads `.pt` tensors from Phase 1
-- [x] Labels from folder structure (`data/raw/hum/`, `data/raw/whistle/`, `data/raw/clap/`) or manifest
-- [x] Stratified train/val/test split (70/15/15) with fixed seed
-- [x] Label encoding: string → integer mapping, stored in dataset metadata
-
-**Gate:** `DataLoader` iterates `(tensor, label)` batches. Shapes `(B, 1, 128, 65)` and `(B,)`. Split is reproducible.
-
-**Data requirement:** Need at least 10 recordings per class (× 7 augmentations = 70 tensors per class, 210 total). If we don't have enough, M7 includes recording or sourcing more clips.
-
-#### M8: CNN architecture (~2 hrs)
-- [x] `model/cnn.py` — the classifier:
-  - 3 Conv2d blocks: Conv → BatchNorm → ReLU → MaxPool
-  - Global Average Pooling (not flatten — reduces parameters, prevents overfitting)
-  - Linear → Dropout → Linear → 3-class output
-- [x] Input: `(batch, 1, 128, 65)` → Output: `(batch, 3)`
-- [x] Parameter count logged (target: <500K for this task)
-
-**Gate:** Forward pass on dummy batch produces `(B, 3)` logits. No NaNs. Softmax sums to 1. Parameter count reasonable.
-
-#### M9: Training loop (~3 hrs)
-- [x] `model/train.py` — complete training script:
-  - `CrossEntropyLoss` + `Adam` optimizer
-  - Per-epoch: train loss, val loss, val accuracy
-  - Learning rate scheduler (ReduceLROnPlateau)
-  - Early stopping on val loss (patience=5)
-  - Save best checkpoint + training history JSON
-- [x] `model/config.py` — hyperparameters as a dataclass (batch size, lr, epochs, etc.)
-- [x] CLI: `python -m model.train --epochs 50 --lr 0.001`
-
-**Gate:** Loss decreases. Val accuracy above 50% (random baseline = 33%). Training history saved.
-
-#### M10: Evaluation & analysis (~2 hrs)
-- [x] `model/evaluate.py` — load best checkpoint, run on held-out test set:
-  - Accuracy, precision, recall, F1 per class
-  - Confusion matrix plot (saved to `explainers/images/`)
-  - Train vs val loss curves plot
-  - 3 correct + 3 incorrect predictions shown with spectrograms
-- [x] Analysis: which class is hardest? Which augmentations help/hurt?
-
-**Gate:** Evaluation report generated. Model meaningfully above random on test data. Confusion matrix shows the model learned real differences.
-
-#### M11: Inference & end-to-end (~1.5 hrs)
-- [x] `model/predict.py` — takes a raw `.wav` file, runs the full pipeline, outputs prediction:
-  - Load audio → ingest → features → model → softmax → top class + confidence
-  - CLI: `python -m model.predict data/raw/sample.wav`
-- [x] End-to-end test: run prediction on known files, verify correct class + pipeline consistency
-
-**Gate:** `python -m model.predict some_file.wav` → `"hum (92.3% confidence)"`. All tests green.
-
-#### M12: Documentation & consolidation (~1.5 hrs)
-- [ ] Explainer: CNN architecture (how conv layers extract spatial features from spectrograms)
-- [ ] Explainer: training loops (loss, backprop, optimisers, learning rate schedules)
-- [ ] Update explainers README, python-concepts, libraries
-- [ ] Update project README with model commands
-- [ ] Phase 2 summary in PLAN.md (replace checkboxes with what-was-built)
-
-**Gate:** Docs pass the teaching test. Someone with C/JS/TS background can follow the full path.
-
-### What's tricky
-
-1. **Dataset size.** 3 classes × 10 recordings × 7 augmentations = 210 samples. Tight, but workable for a 3-class CNN. Watch for overfitting hard.
-2. **Class balance.** If one sound type has more samples, the model will be biased toward it. Stratified splits and class-weighted loss help.
-3. **Overfitting.** Small dataset + CNN = memorisation risk. Defences: dropout, augmentation, early stopping, global average pooling (fewer params than flatten).
-4. **Evaluation honesty.** With 210 samples, test set is ~30 items. Metrics will be noisy. Don't over-interpret small differences.
-
-### When to stop
-
-| After | Stop if | Meaning |
-|---|---|---|
-| M7 | <5 recordings per class | Need more data before training is meaningful |
-| M8 | Forward pass produces NaNs or all-zeros | Architecture bug — fix before training |
-| M9 | Loss doesn't decrease after 20 epochs | Hyperparameter or architecture issue — simplify |
-| M10 | No better than random (33%) | Features, labels, or architecture need rethinking |
-
-### Effort
-
-~12 hours across 2–3 sessions.
+**Docs written:** [cnn-architecture.md](explainers/cnn-architecture.md), [training-loop.md](explainers/training-loop.md), [evaluation.md](explainers/evaluation.md), [train-val-test-split.md](explainers/train-val-test-split.md), [dataset-dataloader.md](explainers/dataset-dataloader.md)
 
 ---
 

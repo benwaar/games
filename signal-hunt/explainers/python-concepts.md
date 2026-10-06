@@ -265,3 +265,112 @@ label_map = {label: i for i, label in enumerate(sorted(labels))}
 > **Coming from C:** No direct equivalent. You'd build a hash map manually with a loop. Python's comprehension syntax makes the declaration look like its mathematical definition: `{label: i for each (i, label) in enumerate(sorted(labels))}`.
 
 > **Coming from JS/TS:** Like `Object.fromEntries(sorted.map((label, i) => [label, i]))`. Python's comprehension is more readable because the key and value are written in the natural `key: value` order: `{label: i for ...}` reads as "label maps to i".
+
+---
+
+## dataclass with `field(default_factory=...)`
+
+A `dataclass` is like a struct with auto-generated `__init__`, `__repr__`, and `__eq__`.
+Used in `model/config.py` for hyperparameters:
+
+```python
+from dataclasses import dataclass, field
+from pathlib import Path
+
+@dataclass
+class TrainConfig:
+    batch_size: int = 32
+    lr: float = 1e-3
+    processed_dir: Path = field(default_factory=lambda: Path("data/processed"))
+```
+
+**Why `field(default_factory=...)`?** Mutable defaults (lists, dicts, objects) can't be
+plain default values in a dataclass — Python would share one instance across all objects.
+`default_factory` creates a fresh one for each instance. `Path("data/processed")` is
+technically immutable but still requires `field` to avoid a dataclass restriction on
+mutable types that could cause this bug.
+
+> **Coming from C:** Like a struct with a default initialiser per field. The `@dataclass`
+> decorator writes the `__init__` for you — equivalent to hand-writing a constructor that
+> assigns each field.
+
+> **Coming from TS:** Like an interface with default values: `interface TrainConfig { batchSize: number = 32 }`.
+> Python's `@dataclass` generates the constructor automatically; TypeScript requires you to write it.
+
+---
+
+## `model.train()` / `model.eval()` — PyTorch mode switching
+
+PyTorch models have two modes that affect behaviour at runtime:
+
+```python
+model.train()   # dropout active, BatchNorm uses batch statistics
+model.eval()    # dropout off, BatchNorm uses running statistics
+```
+
+Always switch before the appropriate loop:
+
+```python
+# Training loop
+model.train()
+for x, y in train_loader:
+    ...
+
+# Validation / test loop
+model.eval()
+with torch.no_grad():
+    for x, y in val_loader:
+        ...
+```
+
+Forgetting `model.eval()` before validation means dropout randomly zeroes activations —
+you'd get different loss values every call on the same data. Forgetting `model.train()`
+before the next training epoch means dropout is off — the model trains without regularisation.
+
+> **Coming from C/JS/TS:** This is a global mode flag that changes the behaviour of
+> specific operations. Like a `debugMode` flag that switches between debug and production
+> code paths — except it's built into every layer that has train-vs-inference differences.
+
+---
+
+## `torch.no_grad()` — disabling gradient tracking
+
+```python
+with torch.no_grad():
+    logits = model(x)
+```
+
+During training, PyTorch records every operation on tensors so it can compute gradients
+during `loss.backward()`. During evaluation, you don't need gradients — and computing
+them wastes memory and time.
+
+`torch.no_grad()` turns off gradient tracking for the block. No computation graph is built,
+no `.grad` fields are populated, and memory usage drops.
+
+> **Coming from C:** Like disabling an instrumentation mode that records every operation
+> for later replay. `no_grad` says "just compute the output, don't record how you got there."
+
+> **Coming from JS/TS:** Like running without source maps — the output is the same but
+> you're not tracking the path that produced it.
+
+---
+
+## `scope="module"` in pytest fixtures
+
+```python
+@pytest.fixture(scope="module")
+def trained_output(tmp_path_factory):
+    # Runs once for all tests in this file, not once per test
+    train(config)
+    return output_dir
+```
+
+By default, pytest fixtures run before every test. `scope="module"` runs the fixture once
+for the entire test file and shares the result. Used in `test_evaluate.py` because training
+takes seconds — running it 11 times (once per test) would be slow.
+
+Note: `scope="module"` fixtures must use `tmp_path_factory` (not `tmp_path`) to create
+temporary directories, because `tmp_path` is function-scoped.
+
+> **Coming from C/JS/TS:** Like `beforeAll` in Jest vs `beforeEach`. `scope="module"` =
+> `beforeAll`; default scope = `beforeEach`.
