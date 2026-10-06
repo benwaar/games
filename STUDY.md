@@ -1,25 +1,45 @@
-# Study Map
+# AI/ML Capability Development
 
-Skills across all projects. ✅ covered · 🔷 separate project · 🔶 previous role · ⬜ gap
+A personal R&D programme building practical AI and machine learning capabilities — from data pipelines and model training through to production deployment and adaptive systems. Each project is a working system, not a tutorial exercise.
+
+The focus is applied: every skill maps to a class of real problem. The business alignment section below shows where each capability lands.
+
+---
+
+## Business Alignment
+
+| Capability | What it enables | Examples |
+|------------|----------------|---------|
+| Classify real-world signals | Identify patterns in audio, documents, transaction data, or images automatically — no rules, learned from examples | Call centre audio → intent or sentiment; scanned documents → type and validity; transaction history → fraud or churn signal; cheque signature validation; accessibility testing — detect when a user is struggling |
+| On-device inference | Run a trained model locally with no cloud round-trip — real time, zero latency, no ongoing API cost | Mobile banking feature; ATM-side fraud detection; branch kiosk; any product where cloud latency is too slow or too expensive |
+| Adaptive systems | A system that learns from individual user behaviour and adjusts — not static rules, but a model that responds | Dynamic risk questionnaire; personalised onboarding; adaptive learning platform; accessibility adjustments that tune to how a specific user actually interacts |
+| Structure detection in unlabelled data | Find patterns or anomalies in raw data without needing pre-labelled examples | Legacy system archaeology; anomaly detection in logs; discover clusters in transaction data before knowing what you're looking for |
+| Media restoration and enhancement | Improve degraded, low-resolution, or damaged source material automatically | Scanned legacy documents cleaned up; old CCTV or archive footage enhanced; brand assets restored for remaster |
+| LLM tools with quality gates | Build AI-powered internal tools that are verifiably correct — not just fluent | Internal knowledge assistant grounded in company documents; compliance checking tool; spec-driven code generation with automated test gates |
+| Model extension without retraining | Add new categories to a working classifier without rebuilding it | New fraud type added to existing fraud model; new document category; new language added to existing intent model |
+| Sequence and journey pattern detection | Detect order-dependent patterns — what happened, and in what order | Fraud sequence detection; user journey analysis (which paths precede churn); process mining to find the step order that leads to failure |
+| Production deployment | Take a research model and ship it — compressed, fast, benchmarked, reliable | Any ML prototype that needs to become a product |
 
 ---
 
 ## Projects
 
-| Project | Folder | Status |
-|---------|--------|--------|
-| Utala: KAOS 9 | [utala/kaos9/](utala/kaos9/) | ✅ Complete |
-| Signal Hunt Ph 1–2 | [signal-hunt/](signal-hunt/) | ✅ Complete |
-| Signal Hunt Ph 3–4 | [signal-hunt/](signal-hunt/) | Planned |
-| Acoustic Odyssey: cast | [acoustic-odyssey/cast/](acoustic-odyssey/cast/) | Planned |
-| Acoustic Odyssey: echo | [acoustic-odyssey/echo/](acoustic-odyssey/echo/) | Planned |
-| Artefact: dig | [artefact/dig/](artefact/dig/) | Planned |
-| Artefact: bloom | [artefact/bloom/](artefact/bloom/) | Planned |
-| TPP | separate repo | 🔷 Complete |
+| Project | What it is | Status |
+|---------|-----------|--------|
+| [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | ✅ Complete |
+| [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, training loop, inference, 100% test accuracy | ✅ Ph 1–2 complete |
+| [Signal Hunt Ph 3–4](signal-hunt/) | Pitch classification (transfer learning) + sequence recognition (RNN) | Planned |
+| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, TFLite, INT8 quantisation, sub-100ms on-device inference | Planned |
+| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | Planned |
+| [Artefact: dig](artefact/dig/) | Binary art scanner — find hidden sprites in ROM/memory using CV and autoencoders | Planned |
+| [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
+| TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
 
-## Skills Tree
+## Skills Coverage
+
+Technical reference. ✅ complete · planned (project named) · 🔷 separate project · 🔶 previous role · ⬜ gap
 
 ```
 AI / ML
@@ -28,8 +48,7 @@ AI / ML
 │   ├── Linear / logistic regression
 │   ├── Decision trees, random forests
 │   ├── Gradient boosting (XGBoost, LightGBM)
-│   ├── SVM, k-means, PCA
-│   └── ← tabular data baseline in artefact/dig M2 covers this partially
+│   └── SVM, k-means, PCA
 │
 ├── Deep Learning
 │   │
@@ -46,91 +65,49 @@ AI / ML
 │   │   ├── Attention ───────────────────────────── signal-hunt Ph 4
 │   │   ├── U-Net / encoder-decoder ─────────────── artefact/bloom
 │   │   ├── Transformer ─────────────────────────── 🔷 TPP
-│   │   ├── Autoencoder ─────────────────────────── artefact/dig M5
-│   │   ├── GAN ─────────────────────────────────── artefact/bloom M5 (stretch)
+│   │   ├── Autoencoder ─────────────────────────── artefact/dig
+│   │   ├── GAN ─────────────────────────────────── artefact/bloom (stretch)
 │   │   ├── Diffusion ───────────────────────────── ⬜
 │   │   └── Graph neural networks ───────────────── ⬜
 │   │
 │   ├── Training techniques
 │   │   ├── Data augmentation ───────────────────── ✅ signal-hunt Ph 1
-│   │   ├── Class imbalance ─────────────────────── signal-hunt Ph 3
-│   │   ├── Transfer learning ───────────────────── signal-hunt Ph 3
-│   │   ├── LoRA ────────────────────────────────── 🔷 art project
+│   │   ├── Transfer learning + LoRA ────────────── signal-hunt Ph 3 + 🔷 TPP
 │   │   ├── Curriculum learning ─────────────────── signal-hunt Ph 3
 │   │   ├── Model distillation ──────────────────── ✅ utala
-│   │   └── Self-supervised ─────────────────────── artefact/dig M5
+│   │   └── Self-supervised ─────────────────────── artefact/dig
 │   │
 │   └── Evaluation
 │       ├── Precision, recall, F1, confusion matrix ✅ signal-hunt Ph 2
-│       ├── Loss curves / overfitting ──────────────── ✅ signal-hunt Ph 2
-│       ├── ROC / AUC ───────────────────────────── artefact/dig M2
-│       ├── PSNR / SSIM / perceptual loss ────────── artefact/bloom M2–M4
-│       ├── Regression metrics (MSE, RMSE) ────────── artefact/bloom M3
+│       ├── Loss curves / overfitting analysis ────── ✅ signal-hunt Ph 2
+│       ├── ROC / AUC ───────────────────────────── artefact/dig
+│       ├── PSNR / SSIM / perceptual loss ────────── artefact/bloom
 │       └── Interpretability (SHAP, LIME) ─────────── ⬜
 │
 ├── Domains
-│   ├── Audio / signal processing ───────────────── ✅ signal-hunt Ph 1–4
+│   ├── Audio / signal processing ───────────────── ✅ signal-hunt
 │   ├── Sequence / temporal ─────────────────────── signal-hunt Ph 4
-│   ├── Computer vision (images) ────────────────── 🔶 NPR + artefact/dig+bloom
-│   ├── Binary data / ROM scanning ──────────────── artefact/dig
-│   ├── Image super-resolution ──────────────────── artefact/bloom
-│   ├── Tabular data ────────────────────────────── ⬜ (artefact/dig baseline partial)
-│   ├── NLP / text ──────────────────────────────── 🔷 TPP
-│   ├── Embeddings / vector search ──────────────── 🔷 TPP
-│   ├── LLM engineering ─────────────────────────── 🔷 TPP
-│   └── Speech recognition (ASR) ────────────────── ⬜
+│   ├── Computer vision ─────────────────────────── 🔶 NPR + artefact
+│   ├── Binary / ROM data ───────────────────────── artefact/dig
+│   ├── Image restoration ───────────────────────── artefact/bloom
+│   ├── NLP / LLM engineering ───────────────────── 🔷 TPP
+│   ├── Tabular data ────────────────────────────── ⬜
+│   └── ASR / speech recognition ────────────────── ⬜
 │
 ├── Reinforcement Learning
-│   ├── TD learning, deep RL ────────────────────── ✅ utala
-│   ├── Reward shaping ──────────────────────────── ✅ utala
+│   ├── TD learning, deep RL, distillation ─────── ✅ utala
 │   ├── MDP + Q-learning ────────────────────────── acoustic-odyssey/echo
 │   ├── Exploration vs exploitation ─────────────── acoustic-odyssey/echo
-│   └── Multi-agent / model-based / offline ─────── ⬜
+│   └── Multi-agent / offline RL ────────────────── ⬜
 │
-├── LLM Engineering (TPP track) ─────────────────── 🔷 all covered
-│   ├── Prompting, skills, RAG
-│   ├── Tool use / MCP
-│   ├── Deterministic evals
-│   └── Agent orchestration
+├── LLM Engineering ─────────────────────────────── 🔷 all covered (TPP)
+│   └── RAG, MCP, skills, evals, agent orchestration
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
-    ├── Model export (ONNX / TFLite) ───────────── acoustic-odyssey/cast
-    ├── Quantisation (INT8) ─────────────────────── acoustic-odyssey/cast
-    ├── Edge deployment ─────────────────────────── acoustic-odyssey/cast
+    ├── ONNX / TFLite / INT8 / edge ────────────── acoustic-odyssey/cast
     ├── Latency benchmarking ────────────────────── acoustic-odyssey/cast
     ├── Model serving / REST API ────────────────── ⬜
     ├── Model monitoring / drift ────────────────── ⬜
     └── A/B testing models ──────────────────────── ⬜
 ```
-
----
-
-## Gap Summary
-
-| Area | Status |
-|------|--------|
-| Classic ML / tabular | ⬜ Shallow — 2-day project when needed |
-| Diffusion models | ⬜ Not planned |
-| Graph neural networks | ⬜ Not planned |
-| NLP / text (from scratch) | ⬜ Covered at LLM level via TPP |
-| MLOps (serving, monitoring) | ⬜ Not planned |
-| ASR | ⬜ Not planned |
-
----
-
-## Business Alignment
-
-What these skills enable. Brief nudges — not exhaustive.
-
-| Problem type | Projects | Examples |
-|-------------|----------|---------|
-| Classify real-world signals (audio, documents, transaction patterns, images) | signal-hunt + cast | Call centre audio → intent/sentiment; scanned documents → type/validity; transaction history rendered as a pattern → fraud or churn signal; cheque signature validation; accessibility testing — classify interaction patterns as normal or indicating difficulty |
-| Deploy a model on-device with no cloud dependency | acoustic-odyssey/cast | Mobile banking feature with no latency; ATM-side fraud detection; branch kiosk; any real-time product where cloud round-trips are too slow or too expensive |
-| Adapt an experience to individual user behaviour | utala + echo | Dynamic risk questionnaire (adjusts based on previous answers); personalised onboarding flow; adaptive learning platform; accessibility adjustments that tune to how a specific user actually interacts |
-| Find hidden structure in raw or unlabelled data | artefact/dig | Scan legacy binary systems for undocumented features; find anomaly patterns in log files without labelled examples; discover clusters in transaction data before you know what you're looking for |
-| Restore or enhance degraded or low-quality media | artefact/bloom | Clean up scanned legacy documents; enhance old CCTV or archive footage; restore game or brand assets for remaster; any pipeline where the source is old and the output needs to be presentable |
-| LLM-powered tools with deterministic quality gates | TPP | Internal knowledge assistant grounded in company documents; compliance checking tool with spec-driven evals; spec-to-code agent that iterates until tests pass |
-| Extend a working model to new classes without retraining from scratch | signal-hunt Ph 3 | Add a new fraud type to an existing fraud classifier; add a new document category without rebuilding; add a new language to an existing intent model |
-| Detect sequences and order-dependent patterns | signal-hunt Ph 4 | Fraud sequence detection ("card tested, then large withdrawal"); user journey analysis (which click paths precede churn); process mining in operations — find the step order that leads to failure |
-| Compress a research model into a production artefact | cast + utala | Any ML prototype that needs to ship — shrink it, quantise it, benchmark it, deploy it without rebuilding from scratch |
