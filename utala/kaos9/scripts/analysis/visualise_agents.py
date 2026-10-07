@@ -44,9 +44,10 @@ DQN_PATH = Path("results/dqn_v2d/dqn_v2_best.pth")
 def plot_strength_ladder():
     """Horizontal bar chart of corrected win rates vs Heuristic."""
     agents = [
-        ("Random",        47, "#aaaaaa"),
-        ("MC-Fast",       30, "#e07b54"),
-        ("TinyNN (shipped)", 38.5, "#f5a623"),
+        ("Random",        47,   "#aaaaaa"),
+        ("MC-Fast",       30,   "#e07b54"),
+        ("TinyNN-v1 (stale)", 38.5, "#f5a623"),
+        ("TinyNN-v2 (new)",   48,   "#f5a623"),
         ("DQN-v3 (best ckpt)", 56, "#4a90d9"),
         ("Heuristic",     None, "#2ecc71"),
     ]

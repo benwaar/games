@@ -29,13 +29,11 @@ AI research studying skill expression, risk management, and learning algorithms 
 
 **[Play online](https://benwaar.github.io/games/)** · [Rules (PDF)](utala-kaos-9-rules.pdf) · [Project folder](./utala/kaos9/)
 
-![Human gameplay screenshot](utala/kaos9/screenshot.png)
-
 ### Explore the Aerythen Universe
 
 Utala: KAOS 9 contains artificial intelligence source code for the [Aerythen](https://aerythen.com) universe — a Dark Aero Command Line Punk world created by [David Benoy](https://aerythen.com).
 
-The overarching project bridges art, software development, card games, and a developing series of companion novels.
+The overarching project bridges art, music, AI, software development and a developing series of companion novels.
 
 * 🎮 **Play the demo:** [Aerythen Interactive Demo](https://aerythen.com/demo)
 * 🎵 **Listen to the Soundtrack:** [Aerythen Soundtrack](https://song.link/jtmzgwknhjt8g)

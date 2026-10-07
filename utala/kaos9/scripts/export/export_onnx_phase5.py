@@ -40,10 +40,10 @@ def export_full_dqn():
     output_path = str(OUTPUT_DIR / "dqn_full.onnx")
     torch.onnx.export(
         model,
-        dummy,
+        (dummy,),
         output_path,
         export_params=True,
-        opset_version=18,
+        opset_version=12,
         do_constant_folding=True,
         input_names=["state_features"],
         output_names=["q_values"],
@@ -51,6 +51,7 @@ def export_full_dqn():
             "state_features": {0: "batch_size"},
             "q_values": {0: "batch_size"},
         },
+        dynamo=False,
     )
     print(f"  Exported to {output_path}")
 
@@ -87,10 +88,10 @@ def export_tiny_nn():
     output_path = str(OUTPUT_DIR / "tiny_nn.onnx")
     torch.onnx.export(
         model,
-        dummy,
+        (dummy,),
         output_path,
         export_params=True,
-        opset_version=18,
+        opset_version=12,
         do_constant_folding=True,
         input_names=["state_features"],
         output_names=["logits"],
@@ -98,6 +99,7 @@ def export_tiny_nn():
             "state_features": {0: "batch_size"},
             "logits": {0: "batch_size"},
         },
+        dynamo=False,
     )
     print(f"  Exported to {output_path}")
 
