@@ -104,7 +104,7 @@ When an agent plays only against itself, it can reach an equilibrium where it pl
 - Lower learning rate in late training (to consolidate rather than overwrite)
 - Checkpoint selection (the best model during training, not the final model)
 
-In Utala Phase 5, Stage 3 self-play caused oscillation — the loss climbed as the network tried to track a shifting opponent. The fix was keeping 50% Heuristic in Stage 3 to stabilise the training signal.
+In Utala Phase 5, Stage 3 self-play caused oscillation — the loss climbed as the network tried to track a shifting opponent. This happened in both v2 and v3 training runs. The best checkpoint (saved mid-training) is more reliable than the final weights.
 
 ---
 
@@ -112,7 +112,7 @@ In Utala Phase 5, Stage 3 self-play caused oscillation — the loss climbed as t
 
 ![Agent strength ladder](images/strength_ladder.png)
 
-All agents below 50% vs Heuristic. DQN is the strongest trained agent at 41.5%, but hasn't cleared the 50% threshold. Re-training against a corrected Heuristic (one that properly defends) is the next step.
+All agents vs the corrected Heuristic (2026-10-07). DQN-v3 best checkpoint clears the 50% gate at 56%. Stage 3 oscillation means the final model is 47.5% — the best checkpoint is the right model to redistil from.
 
 ---
 
@@ -120,7 +120,7 @@ All agents below 50% vs Heuristic. DQN is the strongest trained agent at 41.5%, 
 
 ![DQN placement preferences](images/placement_heatmap.png)
 
-First-placement preference over 500 games. The DQN places its opening piece on the **Right-middle square 93.6% of the time** — a near-deterministic opening strategy. This may reflect exploitation of a Heuristic that was trained against a broken opponent. Post-retrain comparison will show whether this changes.
+First-placement preference over 500 games. After retraining against the corrected Heuristic, the DQN shifted its opening from **Right-middle (R, 93.6%)** to **Top-center (T, 92.8%)** — a different near-deterministic strategy when it can no longer exploit a passive opponent. Still locks on to one square, but the choice changed.
 
 ---
 
