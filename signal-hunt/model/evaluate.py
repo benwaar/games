@@ -65,18 +65,19 @@ def plot_confusion_matrix(
     class_names = [k for k, _ in sorted(label_map.items(), key=lambda x: x[1])]
     cm = confusion_matrix(labels, preds)
 
-    fig, ax = plt.subplots(figsize=(5, 4))
+    n = len(class_names)
+    fig, ax = plt.subplots(figsize=(max(5, n * 0.75), max(4, n * 0.65)))
     im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
     plt.colorbar(im, ax=ax)
     ax.set(
-        xticks=range(len(class_names)),
-        yticks=range(len(class_names)),
-        xticklabels=class_names,
-        yticklabels=class_names,
+        xticks=range(n),
+        yticks=range(n),
         xlabel="Predicted",
         ylabel="True",
         title="Confusion Matrix — Test Set",
     )
+    ax.set_xticklabels(class_names, rotation=45, ha="right")
+    ax.set_yticklabels(class_names)
     thresh = cm.max() / 2
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):

@@ -127,6 +127,9 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--processed-dir", type=Path, default=Path("data/processed"))
+    parser.add_argument("--num-classes", type=int, default=3)
+    parser.add_argument("--output-dir", type=Path, default=Path("output"))
     args = parser.parse_args()
 
     config = TrainConfig(
@@ -135,6 +138,9 @@ def main() -> None:
         batch_size=args.batch_size,
         patience=args.patience,
         seed=args.seed,
+        processed_dir=args.processed_dir,
+        num_classes=args.num_classes,
+        output_dir=args.output_dir,
     )
     train(config)
 
