@@ -31,7 +31,7 @@ AI research studying skill expression, risk management, and learning algorithms 
 
 ### Explore the Aerythen Universe
 
-Utala: KAOS 9 contains artificial intelligence code for the card game in the [Aerythen](https://aerythen.com) universe — a Dark Aero Command Line Punk world created by [David Benoy](https://aerythen.com).
+Utala: KAOS 9 contains artificial intelligence code for the card game in the [Aerythen](https://aerythen.com) universe — a Command Line Punk world created by [David Benoy](https://aerythen.com).
 
 The overarching project bridges art, music, AI and a developing series of companion novels and games.
 
