@@ -45,16 +45,27 @@ New weights exported to `export/tiny_nn_f32.json` — ready for Flutter.
 
 ---
 
-### Step 3 — Ship updated ONNX to Flutter
+### ✅ Step 3 — Ship updated models to Flutter — DONE
 
-Replace `export/tiny_nn_f32.json` in the Flutter app. This is a drop-in replacement — same 80→32→95 architecture, same JSON format. The weights are updated; no Dart code changes needed.
+Updated 2026-10-07. Both inference paths updated in `src/b/ui/assets/models/`:
 
-Steps:
-1. Copy `export/tiny_nn_f32.json` into the Flutter asset bundle
-2. Confirm the forward pass produces correct output shape (95 logits)
-3. Test against Random and Heuristic in the app
+| File | What | Notes |
+|------|------|-------|
+| `tiny_nn_f32.json` | TinyNN v2 weights (JSON) | Dart pure-inference path |
+| `tiny_nn.onnx` | TinyNN v2 weights (ONNX) | ONNX runtime path |
+| `dqn_full.onnx` | DQN v3 full weights (ONNX) | Hard difficulty path |
+
+Export script: `scripts/export/export_onnx_phase5.py` — updated to use `dynamo=False` (legacy single-file ONNX, opset 12). Run from utala project root.
 
 ---
+
+## Phase 5 Complete ✅
+
+| Step | Status | Result |
+|------|--------|--------|
+| 5.1 Retrain DQN | ✅ | 56% peak vs corrected Heuristic |
+| 5.2 Redistil TinyNN | ✅ | 48% vs Heuristic (was 38.5%) |
+| 5.3 Ship to Flutter | ✅ | Both JSON + ONNX updated in src/b/ui |
 
 ## Stage 3 oscillation — open question
 
