@@ -86,17 +86,46 @@ Checkpoints saved to:
 
 ---
 
-## What to expect
+## What actually happened
 
-| Mode | Convergence | Final accuracy |
-|------|-------------|----------------|
-| Frozen (head only) | Fast — typically < 20 epochs | Good — backbone features transfer well |
-| Fine-tune (all layers) | Slower — needs more epochs | Often better — backbone adapts to piano |
+We ran both modes for 60 epochs on the Iowa piano dataset (252 tensors, 12 classes).
 
-With 252 samples across 12 classes (21 per class), expect:
-- Random baseline: **8.3%** (1/12)
-- Frozen head: likely **50–80%** — piano notes have clear frequency separation
-- Fine-tune: potentially higher, especially for adjacent semitones (C4 vs C#4)
+| Mode | Val accuracy | vs random (8.3%) |
+|------|-------------|-----------------|
+| Frozen (head only) | **36.8%** | 4.4× |
+| Fine-tune (all layers) | **76.3%** | 9.2× |
+
+### Frozen: slow climb, never converged
+
+Loss was still falling at epoch 60 — the run hit the epoch limit, not a ceiling. The head improved steadily but slowly (15.8% at epoch 1 → 36.8% at epoch 43/59) and never got a learning rate reduction (the scheduler didn't trigger because loss kept improving, just barely).
+
+**Why it underperformed the prediction of 50–80%:**
+
+The Phase 2 backbone learned voice features: smooth tonal hums, short chirpy whistles, broadband clap bursts. Piano is different enough that those features don't map cleanly to pitch. A hum at 261 Hz and a whistle at 880 Hz activate the backbone differently from a piano C4 vs C5 — same pitches, completely different timbre. The head could only work with what the frozen backbone gave it, and what it gave it was calibrated for the wrong source domain.
+
+With more epochs, frozen would eventually converge — but probably around 40–50%, not 75%.
+
+### Fine-tune: fast divergence from frozen, decisive LR kick
+
+Fine-tune crossed frozen's best accuracy (36.8%) by epoch 16. By epoch 26 it was at 60.5%. The backbone adapted to piano's sharp attack and harmonic ladder within the first 15 epochs.
+
+The curve was noisy (val accuracy bouncing 50%–76% in the final phase) — expected with only ~38 validation samples. Loss is the more reliable signal: 2.4 → 0.9 over 60 epochs.
+
+The **learning rate halving at epoch 51** (5e-4 from 1e-3) was decisive. The model had plateaued around 71–74% for several epochs; the smaller steps let it settle into a better minimum. 76.3% arrived at epoch 52, one epoch after the LR drop.
+
+### What the gap tells you
+
+Both modes started from the same Phase 2 weights. Both beat random (8.3%) easily — the backbone isn't useless, it does know something about frequency patterns. But the 2× accuracy gap between frozen and fine-tune shows the backbone needed to adapt its *representation* of frequency, not just reuse it as-is.
+
+This is the key insight about transfer learning: it's not binary. The question isn't "do the features transfer?" but "how much adaptation does the target domain need?" Here, partial transfer (frozen 36.8%) was real but limited. Full adaptation (fine-tune 76.3%) was much better with the same data.
+
+### The standard recipe in practice
+
+What we did here is actually the common pattern reversed for speed. The standard freeze-then-finetune recipe would be:
+1. Freeze backbone, train head until converged (~head stabilised)
+2. Unfreeze everything, fine-tune at a low lr
+
+We ran them as separate experiments to compare. In a production setting, you'd do them sequentially — warm up the head first, then unlock the backbone — to get fine-tune accuracy with more stable early training.
 
 ---
 

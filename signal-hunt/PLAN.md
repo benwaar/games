@@ -156,6 +156,15 @@ Piano notes have very clear harmonic structure on a Mel-spectrogram — a fundam
 
 **What was built:** `model/transfer.py` — `load_transfer_model` loads Phase 2 checkpoint, swaps `Linear(32→3)` → `Linear(32→12)`, optionally freezes `conv_blocks` + `gap`. `model/transfer_train.py` — training loop with `--compare` flag to run both frozen and fine-tune and print side-by-side results. Existing `SignalDataset` / `load_splits` work unchanged — pointed at `data/processed/notes/`. 14 tests in `tests/test_transfer.py` covering output shape, head replacement, freeze/unfreeze, backbone weight preservation, and gradient flow. Explainer: [explainers/transfer-learning.md](explainers/transfer-learning.md).
 
+**Training results (60 epochs, Iowa piano, 252 tensors, 12 classes):**
+
+| Mode | Best val_acc | Best val_loss | vs random (8.3%) |
+|------|-------------|--------------|-----------------|
+| Frozen (head only) | 36.8% | 1.996 | 4.4× |
+| Fine-tune (all layers) | **76.3%** | **0.907** | **9.2×** |
+
+Frozen loss was still falling at epoch 60 — hit the epoch limit, not a ceiling. Fine-tune crossed frozen's best (36.8%) by epoch 16. The LR scheduler halved lr to 5e-4 at epoch 51; 76.3% arrived one epoch later. Gap shows the Phase 2 backbone features (voice timbre) needed to adapt to piano — partial transfer was real (4.4× random) but full adaptation was 2× better.
+
 #### M15: Training on notes (~3 hrs)
 - [ ] Train with class-weighted CrossEntropyLoss
 - [ ] Curriculum strategy: start with well-separated notes (C4, E4, G4 — a major triad), add semitones
