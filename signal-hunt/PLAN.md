@@ -147,12 +147,14 @@ Piano notes have very clear harmonic structure on a Mel-spectrogram — a fundam
 **Gate:** ✅ 12 note classes, 3 clips each (21 augmented per class), tensors generated, labels correct.
 
 #### M14: Transfer learning setup (~2 hrs)
-- [ ] `model/transfer.py` — load Phase 2 CNN checkpoint
-- [ ] Freeze early conv layers (feature extractor), replace classification head for 12 note classes
-- [ ] New dataset class that handles note labels
-- [ ] Experiment: frozen-early vs full-finetune — log both, compare convergence speed
+- [x] `model/transfer.py` — load Phase 2 CNN checkpoint
+- [x] Freeze early conv layers (feature extractor), replace classification head for 12 note classes
+- [x] New dataset class that handles note labels
+- [x] Experiment: frozen-early vs full-finetune — log both, compare convergence speed
 
 **Gate:** Transfer model loads Phase 2 weights. Forward pass produces `(B, 12)`. Frozen layers don't update during backprop.
+
+**What was built:** `model/transfer.py` — `load_transfer_model` loads Phase 2 checkpoint, swaps `Linear(32→3)` → `Linear(32→12)`, optionally freezes `conv_blocks` + `gap`. `model/transfer_train.py` — training loop with `--compare` flag to run both frozen and fine-tune and print side-by-side results. Existing `SignalDataset` / `load_splits` work unchanged — pointed at `data/processed/notes/`. 14 tests in `tests/test_transfer.py` covering output shape, head replacement, freeze/unfreeze, backbone weight preservation, and gradient flow. Explainer: [explainers/transfer-learning.md](explainers/transfer-learning.md).
 
 #### M15: Training on notes (~3 hrs)
 - [ ] Train with class-weighted CrossEntropyLoss

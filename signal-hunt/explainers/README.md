@@ -217,6 +217,23 @@ See: [model/predict.py](../model/predict.py) — `predict()`, `scan()`, CLI
 
 ---
 
-## 11. RNN Temporal Learning (Phase 4)
+## 11. Transfer Learning (Phase 3 — M14)
+
+The Phase 2 CNN learned frequency-band patterns from hums, whistles, and claps.
+Phase 3 reuses those same features for a new task: classifying **12 piano notes**.
+Only the final classification layer is replaced (3 classes → 12) and retrained.
+
+- **Frozen backbone** — conv blocks frozen, only the head trains. Fast convergence check.
+- **Fine-tune** — everything trains end-to-end. Allows the backbone to adapt to piano timbre.
+- **`--compare` flag** — runs both modes and prints a side-by-side accuracy summary.
+
+→ [Transfer learning explained](transfer-learning.md) — what we froze and why, the head swap, frozen vs fine-tune comparison, business parallels
+
+See: [model/transfer.py](../model/transfer.py) — `load_transfer_model`, `frozen_param_count`  
+See: [model/transfer_train.py](../model/transfer_train.py) — training loop, `--compare`
+
+---
+
+## 12. RNN Temporal Learning (Phase 4)
 
 *Coming in Phase 4.* Recurrent layers learn how features change over time — the sequence that makes "hum then clap" different from "clap then hum".
