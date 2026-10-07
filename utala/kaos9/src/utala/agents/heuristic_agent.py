@@ -235,14 +235,9 @@ class HeuristicAgent(Agent):
                 if power_diff < 0:
                     return self._get_action_by_type(legal_actions, ActionType.PLAY_WEAPON)
 
-                # v1.8: Attack when tied - but consider joker
+                # v1.8: Attack when tied regardless of joker position
                 if power_diff == 0:
-                    # If we have joker, we act first - good position, attack
-                    if we_have_joker:
-                        return self._get_action_by_type(legal_actions, ActionType.PLAY_WEAPON)
-                    # If opponent has joker, they act first - still attack (contest square)
-                    else:
-                        return self._get_action_by_type(legal_actions, ActionType.PLAY_WEAPON)
+                    return self._get_action_by_type(legal_actions, ActionType.PLAY_WEAPON)
 
                 # When ahead, only attack if have spare weapons
                 if weapon_count >= 3:

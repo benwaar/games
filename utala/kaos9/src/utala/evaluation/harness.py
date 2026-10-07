@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 from ..agents.base import Agent
 from ..engine import GameEngine
-from ..state import GameConfig, Player
+from ..state import GameConfig, Phase, Player
 
 
 @dataclass
@@ -109,7 +109,7 @@ class Harness:
         while not engine.is_game_over():
             state = engine.get_state_copy()
 
-            if state.phase.value == "placement":
+            if state.phase == Phase.PLACEMENT:
                 # Placement phase: alternate turns
                 current_player = state.current_player
                 agent = agent_one if current_player == Player.ONE else agent_two
@@ -123,7 +123,7 @@ class Harness:
 
                 engine.apply_action(action_idx)
 
-            elif state.phase.value == "dogfights":
+            elif state.phase == Phase.DOGFIGHTS:
                 if state.awaiting_dogfight_choice:
                     # Variant A: winner chooses next dogfight square
                     chooser = state.dogfight_choice_player
