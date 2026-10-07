@@ -75,19 +75,30 @@ def scan(
     return results
 
 
+_CHECKPOINTS = {
+    "sound": Path("output/best_model.pt"),
+    "note": Path("output/transfer/finetune/best_model.pt"),
+}
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Predict sound type from a .wav file")
-    parser.add_argument("wav", type=Path, nargs="?", help="Path to a .wav file (omit to scan data/raw/)")
-    parser.add_argument("--scan", action="store_true", help="Predict all .wav files in data/raw/ (not in subfolders)")
+    parser = argparse.ArgumentParser(description="Predict sound type or piano note from a .wav file")
+    parser.add_argument("wav", type=Path, nargs="?", help="Path to a .wav file (omit to scan)")
+    parser.add_argument("--mode", choices=["sound", "note"], default="sound",
+                        help="Model to use: 'sound' (hum/whistle/clap) or 'note' (piano C4–B4)")
+    parser.add_argument("--scan", action="store_true", help="Predict all .wav files in --raw-dir")
     parser.add_argument("--raw-dir", type=Path, default=Path("data/raw"), help="Directory to scan (default: data/raw)")
-    parser.add_argument("--checkpoint", type=Path, default=Path("output/best_model.pt"))
+    parser.add_argument("--checkpoint", type=Path, default=None,
+                        help="Override checkpoint path (default: chosen by --mode)")
     parser.add_argument("--verbose", action="store_true", help="Show all class scores")
     args = parser.parse_args()
 
+    checkpoint = args.checkpoint or _CHECKPOINTS[args.mode]
+
     if args.scan or args.wav is None:
-        scan(args.raw_dir, args.checkpoint)
+        scan(args.raw_dir, checkpoint)
     else:
-        result = predict(args.wav, args.checkpoint)
+        result = predict(args.wav, checkpoint)
         print(f"{result['class']} ({result['confidence']:.1%} confidence)")
         if args.verbose:
             for cls, score in sorted(result["scores"].items(), key=lambda x: -x[1]):

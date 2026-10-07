@@ -18,7 +18,8 @@ from model.train import evaluate
 
 def load_checkpoint(checkpoint_path: Path) -> tuple[SoundClassifier, dict, dict]:
     """Load model weights, label_map and config from a checkpoint file."""
-    ckpt = torch.load(checkpoint_path, weights_only=False)
+    # weights_only=False: checkpoint dict contains non-tensor objects (label_map, config)
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     cfg = ckpt["config"]
     model = SoundClassifier(num_classes=cfg["num_classes"], dropout=cfg["dropout"])
     model.load_state_dict(ckpt["model_state"])
@@ -65,18 +66,19 @@ def plot_confusion_matrix(
     class_names = [k for k, _ in sorted(label_map.items(), key=lambda x: x[1])]
     cm = confusion_matrix(labels, preds)
 
-    fig, ax = plt.subplots(figsize=(5, 4))
+    n = len(class_names)
+    fig, ax = plt.subplots(figsize=(max(5, n * 0.75), max(4, n * 0.65)))
     im = ax.imshow(cm, interpolation="nearest", cmap="Blues")
     plt.colorbar(im, ax=ax)
     ax.set(
-        xticks=range(len(class_names)),
-        yticks=range(len(class_names)),
-        xticklabels=class_names,
-        yticklabels=class_names,
+        xticks=range(n),
+        yticks=range(n),
         xlabel="Predicted",
         ylabel="True",
         title="Confusion Matrix — Test Set",
     )
+    ax.set_xticklabels(class_names, rotation=45, ha="right")
+    ax.set_yticklabels(class_names)
     thresh = cm.max() / 2
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):

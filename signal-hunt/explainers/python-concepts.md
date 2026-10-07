@@ -374,3 +374,37 @@ temporary directories, because `tmp_path` is function-scoped.
 
 > **Coming from C/JS/TS:** Like `beforeAll` in Jest vs `beforeEach`. `scope="module"` =
 > `beforeAll`; default scope = `beforeEach`.
+
+---
+
+## List comprehension with filter — selecting a subset
+
+```python
+trainable = [p for p in model.parameters() if p.requires_grad]
+```
+
+This is a list comprehension with a filter clause. It iterates over `model.parameters()` and includes only items where `p.requires_grad` is true. The result is a new list — a snapshot, not a live view.
+
+Used in `model/transfer_train.py` to pass only unfrozen parameters to the optimiser. If you passed the full `model.parameters()` generator, the optimiser would try to compute updates for frozen params — which have no gradient — and raise an error.
+
+> **Coming from C:** Like iterating a struct array and copying entries that match a predicate into a new array. Python's comprehension syntax writes the filter inline rather than as a loop body.
+
+> **Coming from JS/TS:** Exactly `model.parameters().filter(p => p.requiresGrad)` — same intent, same structure. Python's `if` clause at the end of a comprehension is the equivalent of `.filter()` in a method chain.
+
+---
+
+## `param.requires_grad` — attribute access on objects
+
+Python properties and attributes are accessed with `.`. `param.requires_grad` reads a boolean on a PyTorch `Parameter` object — no getter method needed, just direct attribute access.
+
+```python
+for param in model.conv_blocks.parameters():
+    param.requires_grad = False   # freeze: turn it off
+    param.requires_grad = True    # unfreeze: turn it back on
+```
+
+This is the same mechanism as reading any other attribute: `tensor.shape`, `path.name`, `record["label"]`. PyTorch uses it because the gradient flag needs to be both readable and writeable — a method would work but an attribute is simpler.
+
+> **Coming from C:** Like writing to a struct field: `param->requires_grad = false`. No function call needed.
+
+> **Coming from JS/TS:** Like setting a property on an object: `param.requiresGrad = false`. Python uses snake_case where JS/TS uses camelCase, but the pattern is identical.

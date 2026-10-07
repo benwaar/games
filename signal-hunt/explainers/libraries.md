@@ -207,3 +207,47 @@ loss = criterion(logits, labels)   # logits: (B, C), labels: (B,) ints
 **Docs:**
 - https://pytorch.org/docs/stable/optim.html
 - https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
+
+---
+
+## torch — checkpoints and parameter control
+
+**`torch.save` / `torch.load`** — save and restore any Python object (model weights, config, label maps) to disk.
+
+```python
+# Save
+torch.save({"model_state": model.state_dict(), "label_map": label_map}, "output/best_model.pt")
+
+# Load
+checkpoint = torch.load("output/best_model.pt", map_location="cpu", weights_only=False)
+model.load_state_dict(checkpoint["model_state"])
+```
+
+`model.state_dict()` returns a dict of all parameter tensors keyed by layer name. `load_state_dict` restores them into an existing model instance — the architecture must match what was saved. We save `label_map` and `config` alongside the weights so inference needs no external config file.
+
+**`param.requires_grad`** — controls whether PyTorch tracks gradients for a parameter. Set to `False` to freeze it: no gradient is computed during `backward()`, and the optimiser has nothing to update.
+
+```python
+# Freeze the entire conv backbone
+for param in model.conv_blocks.parameters():
+    param.requires_grad = False
+
+# Only pass trainable params to the optimiser — frozen ones must be excluded
+trainable = [p for p in model.parameters() if p.requires_grad]
+optimiser = torch.optim.Adam(trainable, lr=1e-3)
+```
+
+If you pass frozen params to the optimiser by accident (via `model.parameters()`), the optimiser computes an update for them and PyTorch raises an error because there's no gradient to work with.
+
+**`model.parameters()`** — generator over all parameter tensors in the model, recursively. `named_parameters()` yields `(name, param)` pairs useful for debugging which layers are frozen.
+
+```python
+for name, param in model.named_parameters():
+    print(name, param.requires_grad)
+# conv_blocks.0.weight False
+# classifier.3.weight True
+```
+
+**Docs:**
+- https://pytorch.org/docs/stable/generated/torch.save.html
+- https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.parameters
