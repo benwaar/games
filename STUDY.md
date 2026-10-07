@@ -33,6 +33,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | Planned |
 | [Artefact: dig](artefact/dig/) | Binary art scanner — find hidden sprites in ROM/memory using CV and autoencoders | Planned |
 | [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
+| [Artefact: dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites → generate new pixel art in the same ROM style | Planned |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
@@ -68,7 +69,7 @@ AI / ML
 │   │   ├── Transformer ─────────────────────────── 🔷 TPP
 │   │   ├── Autoencoder ─────────────────────────── artefact/dig
 │   │   ├── GAN ─────────────────────────────────── artefact/bloom (stretch)
-│   │   ├── Diffusion ───────────────────────────── ⬜
+│   │   ├── Diffusion ───────────────────────────── artefact/dream
 │   │   └── Graph neural networks ───────────────── ⬜
 │   │
 │   ├── Training techniques
