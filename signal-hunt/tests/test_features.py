@@ -119,10 +119,10 @@ class TestPadOrTruncateFrames:
         assert result.shape == (128, 50)
         np.testing.assert_array_equal(result, spec)
 
-    def test_padding_uses_min_value(self):
+    def test_padding_uses_zeros(self):
         spec = np.full((4, 3), 5.0, dtype=np.float32)
         result = pad_or_truncate_frames(spec, 6)
-        assert np.all(result[:, 3:] == 5.0)
+        assert np.all(result[:, 3:] == 0.0)
 
 
 class TestToTensor:

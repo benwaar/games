@@ -43,9 +43,8 @@ def pad_or_truncate_frames(spectrogram: np.ndarray, target_frames: int) -> np.nd
     _, current_frames = spectrogram.shape
     if current_frames >= target_frames:
         return spectrogram[:, :target_frames]
-    padding = np.full(
+    padding = np.zeros(
         (spectrogram.shape[0], target_frames - current_frames),
-        spectrogram.min(),
         dtype=spectrogram.dtype,
     )
     return np.concatenate([spectrogram, padding], axis=1)

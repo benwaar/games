@@ -1,7 +1,6 @@
 """Tests for model.train — train_one_epoch, evaluate, full training run."""
 
 import json
-from pathlib import Path
 
 import pytest
 import torch
@@ -68,20 +67,20 @@ class TestEvaluate:
         assert loss1 == loss2 and acc1 == acc2
 
     def test_model_stays_in_eval_mode(self, model, criterion):
-        model.eval()
+        model.train()
         evaluate(model, _make_loader(), criterion)
         assert not model.training
 
 
 class TestFullTrainingRun:
-    def test_checkpoint_written(self, tmp_path):
-        config = TrainConfig(epochs=2, processed_dir=Path("data/processed"),
+    def test_checkpoint_written(self, tmp_path, synthetic_processed_dir):
+        config = TrainConfig(epochs=2, processed_dir=synthetic_processed_dir,
                              output_dir=tmp_path, seed=42)
         train(config)
         assert (tmp_path / "best_model.pt").exists()
 
-    def test_history_written(self, tmp_path):
-        config = TrainConfig(epochs=2, processed_dir=Path("data/processed"),
+    def test_history_written(self, tmp_path, synthetic_processed_dir):
+        config = TrainConfig(epochs=2, processed_dir=synthetic_processed_dir,
                              output_dir=tmp_path, seed=42)
         train(config)
         history = json.loads((tmp_path / "history.json").read_text())
@@ -90,19 +89,17 @@ class TestFullTrainingRun:
         assert "val_loss" in history[0]
         assert "val_acc" in history[0]
 
-    def test_checkpoint_contains_label_map(self, tmp_path):
-        config = TrainConfig(epochs=1, processed_dir=Path("data/processed"),
+    def test_checkpoint_contains_label_map(self, tmp_path, synthetic_processed_dir):
+        config = TrainConfig(epochs=1, processed_dir=synthetic_processed_dir,
                              output_dir=tmp_path, seed=42)
         train(config)
         ckpt = torch.load(tmp_path / "best_model.pt", weights_only=False)
         assert "label_map" in ckpt
         assert set(ckpt["label_map"].keys()) == {"clap", "hum", "whistle"}
 
-    def test_early_stopping(self, tmp_path):
-        # patience=1 means stop after 1 epoch with no improvement
+    def test_early_stopping(self, tmp_path, synthetic_processed_dir):
         config = TrainConfig(epochs=20, patience=1,
-                             processed_dir=Path("data/processed"),
+                             processed_dir=synthetic_processed_dir,
                              output_dir=tmp_path, seed=42)
         result = train(config)
-        # Should stop well before 20 epochs
         assert len(result["history"]) < 20

@@ -18,8 +18,6 @@ Output saved to output/transfer/{frozen,finetune}/:
 """
 
 import argparse
-import json
-import time
 from pathlib import Path
 
 import torch
@@ -29,7 +27,7 @@ from torch.utils.data import DataLoader
 from model.config import TransferConfig
 from model.dataset import load_splits
 from model.transfer import frozen_param_count, load_transfer_model, trainable_param_count
-from model.train import evaluate, train_one_epoch
+from model.train import run_training_loop
 
 
 def run_transfer(config: TransferConfig, label: str) -> dict:
@@ -57,47 +55,18 @@ def run_transfer(config: TransferConfig, label: str) -> dict:
     trainable_n = trainable_param_count(model)
     print(f"\n[{label}] {trainable_n:,} trainable / {frozen:,} frozen params | "
           f"{len(train_ds)} train / {len(val_ds)} val | {config.num_classes} classes")
-    print(f"{'Epoch':>5} | {'train_loss':>10} | {'val_loss':>8} | {'val_acc':>7} | {'lr':>8}")
 
-    history = []
-    best_val_loss = float("inf")
-    epochs_no_improve = 0
-    checkpoint_path = config.output_dir / "best_model.pt"
-
-    for epoch in range(1, config.epochs + 1):
-        t0 = time.time()
-        train_loss, _ = train_one_epoch(model, train_loader, criterion, optimiser)
-        val_loss, val_acc = evaluate(model, val_loader, criterion)
-        scheduler.step(val_loss)
-        lr = optimiser.param_groups[0]["lr"]
-
-        row = {"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss,
-               "val_acc": val_acc, "lr": lr, "elapsed": time.time() - t0}
-        history.append(row)
-        print(f"{epoch:>5} | {train_loss:>10.4f} | {val_loss:>8.4f} | {val_acc:>7.3f} | {lr:>8.2e}")
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            epochs_no_improve = 0
-            torch.save({
-                "model_state": model.state_dict(),
-                "label_map": train_ds.label_map,
-                "config": {k: str(v) if isinstance(v, Path) else v
-                           for k, v in config.__dict__.items()},
-                "epoch": epoch,
-                "val_loss": val_loss,
-                "val_acc": val_acc,
-            }, checkpoint_path)
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= config.patience:
-                print(f"Early stop at epoch {epoch} (no improvement for {config.patience} epochs)")
-                break
-
-    (config.output_dir / "history.json").write_text(json.dumps(history, indent=2))
-    print(f"\n[{label}] Best val_loss={best_val_loss:.4f} → {checkpoint_path}")
-    return {"label": label, "history": history, "best_val_loss": best_val_loss,
-            "checkpoint": str(checkpoint_path)}
+    config_dict = {k: str(v) if isinstance(v, Path) else v for k, v in config.__dict__.items()}
+    result = run_training_loop(
+        model, train_loader, val_loader, criterion, optimiser, scheduler,
+        label_map=train_ds.label_map,
+        checkpoint_path=config.output_dir / "best_model.pt",
+        epochs=config.epochs,
+        patience=config.patience,
+        config_dict=config_dict,
+    )
+    result["label"] = label
+    return result
 
 
 def compare(checkpoint_path: Path = Path("output/best_model.pt")) -> None:

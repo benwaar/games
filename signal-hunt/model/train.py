@@ -58,6 +58,66 @@ def evaluate(
     return total_loss / total, correct / total
 
 
+def run_training_loop(
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    criterion: nn.Module,
+    optimiser: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    label_map: dict,
+    checkpoint_path: Path,
+    epochs: int,
+    patience: int,
+    config_dict: dict,
+) -> dict:
+    """
+    Epoch loop shared by train() and run_transfer(). Returns history dict.
+
+    Callers are responsible for building the model, loaders, optimiser, and
+    scheduler — this function only runs the loop.
+    """
+    history = []
+    best_val_loss = float("inf")
+    epochs_no_improve = 0
+
+    print(f"{'Epoch':>5} | {'train_loss':>10} | {'val_loss':>8} | {'val_acc':>7} | {'lr':>8}")
+
+    for epoch in range(1, epochs + 1):
+        t0 = time.time()
+        train_loss, _ = train_one_epoch(model, train_loader, criterion, optimiser)
+        val_loss, val_acc = evaluate(model, val_loader, criterion)
+        scheduler.step(val_loss)
+        lr = optimiser.param_groups[0]["lr"]
+
+        row = {"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss,
+               "val_acc": val_acc, "lr": lr, "elapsed": time.time() - t0}
+        history.append(row)
+        print(f"{epoch:>5} | {train_loss:>10.4f} | {val_loss:>8.4f} | {val_acc:>7.3f} | {lr:>8.2e}")
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            epochs_no_improve = 0
+            torch.save({
+                "model_state": model.state_dict(),
+                "label_map": label_map,
+                "config": config_dict,
+                "epoch": epoch,
+                "val_loss": val_loss,
+                "val_acc": val_acc,
+            }, checkpoint_path)
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= patience:
+                print(f"Early stop at epoch {epoch} (no improvement for {patience} epochs)")
+                break
+
+    history_path = checkpoint_path.parent / "history.json"
+    history_path.write_text(json.dumps(history, indent=2))
+    print(f"\nBest val_loss={best_val_loss:.4f} → {checkpoint_path}")
+    return {"history": history, "best_val_loss": best_val_loss, "checkpoint": str(checkpoint_path)}
+
+
 def train(config: TrainConfig) -> dict:
     """Full training run. Returns history dict."""
     torch.manual_seed(config.seed)
@@ -76,48 +136,17 @@ def train(config: TrainConfig) -> dict:
         patience=config.lr_scheduler_patience,
     )
 
-    history = []
-    best_val_loss = float("inf")
-    epochs_no_improve = 0
-    checkpoint_path = config.output_dir / "best_model.pt"
-
     print(f"Training {model.num_parameters():,} params | "
           f"{len(train_ds)} train / {len(val_ds)} val samples")
-    print(f"{'Epoch':>5} | {'train_loss':>10} | {'val_loss':>8} | {'val_acc':>7} | {'lr':>8}")
 
-    for epoch in range(1, config.epochs + 1):
-        t0 = time.time()
-        train_loss, _ = train_one_epoch(model, train_loader, criterion, optimiser)
-        val_loss, val_acc = evaluate(model, val_loader, criterion)
-        scheduler.step(val_loss)
-        lr = optimiser.param_groups[0]["lr"]
-
-        row = {"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss,
-               "val_acc": val_acc, "lr": lr, "elapsed": time.time() - t0}
-        history.append(row)
-        print(f"{epoch:>5} | {train_loss:>10.4f} | {val_loss:>8.4f} | {val_acc:>7.3f} | {lr:>8.2e}")
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            epochs_no_improve = 0
-            torch.save({
-                "model_state": model.state_dict(),
-                "label_map": train_ds.label_map,
-                "config": config.__dict__,
-                "epoch": epoch,
-                "val_loss": val_loss,
-                "val_acc": val_acc,
-            }, checkpoint_path)
-        else:
-            epochs_no_improve += 1
-            if epochs_no_improve >= config.patience:
-                print(f"Early stop at epoch {epoch} (no improvement for {config.patience} epochs)")
-                break
-
-    history_path = config.output_dir / "history.json"
-    history_path.write_text(json.dumps(history, indent=2))
-    print(f"\nBest val_loss={best_val_loss:.4f} → {checkpoint_path}")
-    return {"history": history, "best_val_loss": best_val_loss, "checkpoint": str(checkpoint_path)}
+    return run_training_loop(
+        model, train_loader, val_loader, criterion, optimiser, scheduler,
+        label_map=train_ds.label_map,
+        checkpoint_path=config.output_dir / "best_model.pt",
+        epochs=config.epochs,
+        patience=config.patience,
+        config_dict=config.__dict__,
+    )
 
 
 def main() -> None:

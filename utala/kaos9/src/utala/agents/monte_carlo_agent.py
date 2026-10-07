@@ -249,7 +249,7 @@ class MonteCarloAgent(Agent):
             for sample_idx in range(samples):
                 # Create fresh engine from current state
                 assert state.rng_seed is not None
-                engine = GameEngine(seed=state.rng_seed)
+                engine = GameEngine(seed=state.rng_seed, config=state.config)
 
                 # Sample hidden information if enabled
                 if self.use_information_sets:
@@ -317,7 +317,7 @@ class MonteCarloAgent(Agent):
                 try:
                     # Create fresh engine from current state
                     assert state.rng_seed is not None
-                    engine = GameEngine(seed=state.rng_seed)
+                    engine = GameEngine(seed=state.rng_seed, config=state.config)
 
                     # Sample hidden information if enabled
                     if self.use_information_sets:

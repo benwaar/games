@@ -121,7 +121,7 @@ class LinearValueAgent(Agent, SerializableAgent):
         if self.is_training and best_features is not None:
             self.trajectory.append((best_features, best_action, best_q_value))
 
-        return best_action
+        return best_action if best_action is not None else legal_actions[0]
 
     def _extract_state_action_features(
         self,

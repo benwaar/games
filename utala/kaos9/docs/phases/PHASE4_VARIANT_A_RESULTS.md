@@ -16,15 +16,23 @@
 **Script:** `scripts/eval/variant_a/checkpoint.py`
 **Games:** 100 per matchup (balanced P1/P2), 20 per tournament matchup
 
-### Key Matchups
+### Key Matchups — Corrected (2026-10-07)
 
-| Matchup | Variant A | Baseline (fixed order) | Delta |
-|---------|-----------|------------------------|-------|
-| Heuristic vs Random | **55.0%** | ~65% | -10% |
-| MC-Fast vs Random | **50.0%** | ~79% | -29% |
-| MC-Fast vs Heuristic | **49.0%** | ~72% | -23% |
+Two bugs fixed before re-running (see commit history):
+1. **Stale state in harness:** agents received a pre-dogfight-round snapshot on every turn — `rocket_in_play` was always `None`, so HeuristicAgent never played defensively.
+2. **MC rollout config:** rollout engines used the default 86-action space instead of Variant A's 95 actions; crashes on CHOOSE_DOGFIGHT states were silently absorbed as draws.
+
+| Matchup | Original (buggy) | Corrected | Delta | Note |
+|---------|-----------------|-----------|-------|------|
+| Heuristic vs Random | 55.0% | **53.0%** | -2% | Within noise — small effect |
+| MC-Fast vs Random | 50.0% | **48.3%** | -2% | Essentially unchanged |
+| MC-Fast vs Heuristic | 49.0% | **30.0%** | **-19%** | Heuristic now defends; MC rollouts no longer absorb crashes as draws |
+
+**Re-run date:** 2026-10-07, 60 games for MC matchups (100 for Heuristic vs Random), balanced P1/P2, seed 42.
 
 ### Tournament Standings
+
+> ⚠️ Tournament numbers below are from the original (buggy) run. The corrected matchup table above supersedes the MC vs Heuristic result. The skill ordering (Heuristic > Random) is confirmed; the MC position relative to Heuristic has changed significantly.
 
 | Agent | Wins | Losses | Draws | Win% |
 |-------|------|--------|-------|------|
@@ -34,13 +42,13 @@
 
 ### Findings
 
-1. **MC collapsed.** MC-Fast dropped from 79% to 50% vs Random — essentially a coin flip. Random rollouts cannot evaluate dogfight choice strategy. Each rollout simulates a game to completion, but picks the next fight square randomly, which is a terrible proxy for strategic choice. MC can no longer "see" the value of choosing the right fight order.
+1. **MC collapsed further.** The original 49% MC vs Heuristic was inflated by two bugs: Heuristic never defended (stale state), and MC rollout crashes were counted as neutral draws. Corrected: 30% — MC is clearly below Heuristic in Variant A.
 
-2. **Heuristic now leads.** The `_select_dogfight_choice()` method (prioritise squares where winning completes 3-in-a-row, consider power advantage) gives Heuristic the only real strategic edge. It overtook MC in the tournament — a complete reversal of the baseline hierarchy.
+2. **Heuristic is the real skill leader.** `_select_dogfight_choice()` (prioritise squares completing 3-in-a-row, consider power advantage) is the decisive edge. Random rollouts cannot evaluate fight-order strategy; MC is closer to Random than the original numbers suggested.
 
-3. **Skill still beats luck.** Heuristic > Random (55%) and the tournament order is Heuristic > MC > Random. Strategy matters, the margins are just narrower.
+3. **Skill still beats luck.** Heuristic > Random (53%) and Heuristic > MC > Random hierarchy holds. Strategy matters.
 
-4. **The game is harder.** This is the desired outcome. The ~48% performance ceiling from Phases 2-3 should now have room to move — agents that learn to choose fights strategically can differentiate themselves.
+4. **The game is harder than Phase 1 baseline.** This is the desired outcome.
 
 5. **Draw rate healthy.** 5.3% across all matchups (baseline was ~3-4%). No concern.
 

@@ -13,7 +13,7 @@ import numpy as np
 
 from ..agents.base import Agent
 from ..engine import GameEngine
-from ..state import Player, GameState
+from ..state import Phase, Player, GameState
 from .features import get_feature_extractor
 
 
@@ -76,7 +76,7 @@ class TrainingDataGenerator:
         while not engine.is_game_over():
             state = engine.get_state_copy()
 
-            if state.phase.value == "placement":
+            if state.phase == Phase.PLACEMENT:
                 # Placement phase
                 current_player = state.current_player
                 agent = agent_one if current_player == Player.ONE else agent_two
@@ -100,13 +100,14 @@ class TrainingDataGenerator:
 
                 engine.apply_action(action_idx)
 
-            elif state.phase.value == "dogfights":
+            elif state.phase == Phase.DOGFIGHTS:
                 # Dogfight phase
                 engine.begin_current_dogfight()
                 state = engine.get_state_copy()
 
                 # Collect turn-by-turn dogfight actions
                 while not engine.is_dogfight_complete():
+                    state = engine.get_state_copy()  # refresh each turn so features see rocket_in_play
                     current_player = engine.get_dogfight_current_actor()
                     agent = agent_one if current_player == Player.ONE else agent_two
 
