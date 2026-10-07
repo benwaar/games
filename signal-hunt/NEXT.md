@@ -1,18 +1,30 @@
-# M16 — Evaluation & Domain Gap Test
+# M18 — Chord Dataset
 
-**Goal:** Analyse the confusion matrix, understand which confusions are musically sensible, and document the evaluation findings. Optionally test on real piano clips if recorded.
+**Goal:** Synthesise chord clips from existing Iowa piano recordings and run them through the Phase 1 pipeline to produce augmented tensors for Phase 4 chord training.
 
 ## Status going in
 
-M15 is done:
-- Fine-tune test accuracy: **89.5%** (34/38 samples)
-- Confusion matrix saved to `explainers/images/confusion_matrix.png`
-- Per-note report saved to `output/transfer/finetune/eval_report.txt`
-- F4 is the hardest note (F1=0.40): adjacent-semitone confusion with E4/Gb4
-- G4/Ab4 also confused (adjacent semitone pair)
-- 6/12 notes perfect F1=1.00
+Phase 3 is complete. We have:
+- `data/raw/notes/{note}/iowa_{pp,mf,ff}_{note}.wav` — 36 WAV files, 12 notes × 3 dynamics
+- `pipeline/batch.py` — already handles arbitrary `data/raw/{label}/` folders
+- `output/transfer/finetune/best_model.pt` — Phase 3 checkpoint (12-class note classifier)
 
-Gate from PLAN.md: confusion patterns make musical sense ✅ (already confirmed). Real piano test is the optional stretch goal.
+Phase 4 goal: chord detection (multi-label) → chord progressions (CNN-RNN). M18 is the data layer.
+
+## What a chord is here
+
+A **chord** = 2 or more notes played simultaneously. We start with the 6 diatonic triads in C major — built entirely from the 12 notes we already have:
+
+| Chord | Notes | Type |
+|-------|-------|------|
+| Cmaj | C4 + E4 + G4 | Major triad |
+| Dmin | D4 + F4 + A4 | Minor triad |
+| Emin | E4 + G4 + B4 | Minor triad |
+| Fmaj | F4 + A4 + C4 | Major triad |
+| Gmaj | G4 + B4 + D4 | Major triad |
+| Amin | A4 + C4 + E4 | Minor triad |
+
+Each chord is synthesised by **mixing the individual note WAVs** in the time domain — no new recordings needed.
 
 ---
 
@@ -20,54 +32,53 @@ Gate from PLAN.md: confusion patterns make musical sense ✅ (already confirmed)
 
 ---
 
-### Step 1 — Error analysis write-up
+### Step 1 — `scripts/synthesise_chords.py`
 
-The main work of M16 is interpreting what the confusion matrix shows and documenting it. The evaluation already ran in M15. Now explain the patterns.
+Mix single-note WAVs to create chord clips. For each chord:
+1. Load the three note WAVs (use mf/ff/pp for variety)
+2. Normalise each to the same peak amplitude before mixing (avoids clipping)
+3. Mix (sum) the signals, renormalise the result
+4. Save to `data/raw/chords/{chord_name}/` (e.g. `data/raw/chords/Cmaj/`)
 
-**Questions to answer:**
-- Which notes confuse the model, and is the pattern musically sensible?
-- Is F4's struggle a data problem (only 3 raw clips, one test sample) or a model problem (Mel resolution)?
-- What would fix it — more data, higher `n_mels`, or CQT?
+Generate multiple combinations per chord:
+- pp+pp+pp, mf+mf+mf, ff+ff+ff (uniform dynamics)
+- pp+mf+ff (mixed — one note louder than others, common in real playing)
+- That gives ~4–5 clips per chord × 3 chords each = sufficient variety
 
-**New explainer: `explainers/evaluation-phase3.md`**
-- Confusion matrix walkthrough: which cells are non-zero, why
-- Semitone adjacency as the pattern: frequency proximity → spectrogram proximity → model confusion
-- F4 specifically: sitting between E4 (330 Hz) and Gb4 (370 Hz), both at semitone distance
-- Small test set caveat: 38 samples, 3 per note — one wrong prediction changes F1 by 33%
-- Mel resolution limit: default `n_mels=128` represents ~86 Hz per bin at the C4/B4 range. C4→C#4 is 15 Hz. That's smaller than one bin — the model is working at or near the resolution limit.
-- What would help: more data per note, or CQT (Constant-Q Transform) — log-frequency bins aligned to musical pitch
+Target: **≥10 source clips per chord** before augmentation.
 
-**Commit:** `docs(signal-hunt): M16 per-note error analysis and evaluation explainer`
+**Test:** Load and play back a synthesised Cmaj. Its spectrogram should show 3 harmonic ladders (C4, E4, G4) overlaid.
+
+**Docs:** Note in `explainers/iowa-piano-data.md` that chords are synthesised from the same Iowa source files.
+
+**Commit:** `feat(signal-hunt): synthesise_chords.py — mix Iowa notes into diatonic triads`
 
 ---
 
-### Step 2 — Real piano clips (optional)
-
-If you have an electric piano, record ~3 clips per note (C4–B4, ~2 seconds each) and save to `data/raw/notes/{note}/my_*.wav`. Then run:
+### Step 2 — Run pipeline, verify tensors
 
 ```bash
-python -m pipeline.batch data/raw/notes data/processed/notes_real --source-dir notes
-python -m model.evaluate \
-  --checkpoint output/transfer/finetune/best_model.pt \
-  --processed-dir data/processed/notes_real \
-  --output-dir output/eval_real \
-  --images-dir explainers/images
+python -m pipeline.batch data/raw/chords data/processed/chords
 ```
 
-**What to expect:** accuracy drop from 89.5%. Iowa piano is clean studio recordings. Real piano has sustain, room acoustic, possibly slight tuning differences. The gap size tells you how much augmentation (reverb, noise) the model needs.
+Expect: 6 chord labels, ≥70 tensors per chord (10 source × 7 augmentations).
 
-**If you don't have a piano:** skip. The M16 gate ("evaluation report with per-note metrics") is already met from M15.
+Check `data/processed/chords/manifest.json` — labels should be the chord names (`Cmaj`, `Dmin`, etc.).
 
-**Commit (if done):** `feat(signal-hunt): domain gap test — real piano vs Iowa training data`
+**Spot-check:** render a Cmaj spectrogram — should look meaningfully different from a single C4 spectrogram.
+
+**Test:** `assert len(manifest) >= 420` (6 chords × 10 clips × 7 aug). All label values are valid chord names.
+
+**Commit:** `feat(signal-hunt): generate chord tensors — 6 diatonic triads, 7 augmentations each`
 
 ---
 
-### Step 3 — Tick M16, point NEXT at M17
+### Step 3 — Tick M18, point NEXT at M19
 
-- Tick M16 checkboxes in PLAN.md, add results summary
-- Rewrite NEXT.md for M17 (inference `--mode note`, docs consolidation)
+- Tick M18 checkboxes in PLAN.md, add results summary
+- Rewrite NEXT.md for M19
 
-**Commit:** `docs(signal-hunt): tick M16 checkboxes, NEXT → M17`
+**Commit:** `docs(signal-hunt): tick M18 checkboxes, NEXT → M19`
 
 ---
 
@@ -75,12 +86,12 @@ python -m model.evaluate \
 
 | Situation | Action |
 |-----------|--------|
-| Real piano accuracy < 30% | Domain gap too large — add reverb augmentation and retrain before M17 |
-| Real piano accuracy > 70% | Model generalises well — proceed to M17 without augmentation changes |
-| No piano available | Skip Step 2 entirely — gate is already met |
+| Synthesised chords clip (amplitude > 1.0) | Normalise each note before mixing — check peak amplitude after load |
+| Spectrogram looks identical to single note | Mixing levels wrong — verify all three notes are audible |
+| Pipeline produces fewer than 6 distinct labels | Check folder structure: `data/raw/chords/{Cmaj,Dmin,...}/` |
 
 ---
 
 ## Scope check
 
-2 steps (Step 2 is optional). Estimated ~1–2 hours. The heavy lifting (training, evaluation) is already done — M16 is mostly interpretation and documentation.
+3 steps, ~2 hours. The pipeline already exists — this is a script to generate input data.

@@ -234,6 +234,22 @@ See: [model/transfer_train.py](../model/transfer_train.py) — training loop, `-
 
 ---
 
-## 12. RNN Temporal Learning (Phase 4)
+## 12. Iowa Piano Data & Public Datasets (Phase 3 — M13)
 
-*Coming in Phase 4.* Recurrent layers learn how features change over time — the sequence that makes "hum then clap" different from "clap then hum".
+Why we used the University of Iowa Musical Instrument Samples instead of recording our own, what the domain gap is, and why we switched from the original NSynth plan.
+
+→ [Iowa piano data explained](iowa-piano-data.md) — public datasets, domain gap, NSynth vs Iowa, business parallel
+
+---
+
+## 13. Phase 3 Evaluation — Per-Note Results (Phase 3 — M16)
+
+89.5% test accuracy on 12 chromatic notes. Confusion pattern is musically sensible: F4 is hardest (sits between two adjacent semitones), G4/Ab4 confuse each other. Analysis of Mel resolution limits and what CQT would fix.
+
+→ [Phase 3 evaluation](evaluation-phase3.md) — per-note F1 table, semitone adjacency pattern, data vs model diagnosis
+
+---
+
+## 14. RNN Temporal Learning (Phase 4)
+
+*Coming in Phase 4.* Recurrent layers learn how chord states change over time — the sequence that makes a I–IV–V–I progression different from V–IV–I–I.

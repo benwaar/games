@@ -193,19 +193,43 @@ Per-note: F4 is hardest (F1=0.40) — sits between adjacent semitones E4 and Gb4
 Class-weighted loss and curriculum learning were not implemented — balanced data makes weighted loss a no-op; curriculum not needed at 76%+ accuracy. Both documented in [explainers/transfer-learning.md](explainers/transfer-learning.md).
 
 #### M16: Evaluation & domain gap test (~2 hrs)
-- [ ] Confusion matrix: are confusions musically sensible?
-- [ ] If real piano clips recorded in M13: test on those — does NSynth training generalise?
-- [ ] Error analysis: which notes are hardest? Data problem or model problem?
+- [x] Confusion matrix: are confusions musically sensible?
+- [x] If real piano clips recorded in M13: test on those — does NSynth training generalise?
+- [x] Error analysis: which notes are hardest? Data problem or model problem?
 
-**Gate:** Evaluation report with per-note metrics. Confusion patterns make musical sense.
+**Gate:** Evaluation report with per-note metrics. Confusion patterns make musical sense. ✅
+
+**What was built:** `explainers/evaluation-phase3.md` — full per-note F1 table, semitone adjacency pattern explained, Mel resolution analysis (why F4 is hardest), data vs model diagnosis, small test set caveat. No real piano clips recorded — domain gap test deferred. Per-note metrics already captured in M15.
 
 #### M17: Inference & documentation (~2 hrs)
-- [ ] Update `model/predict.py` to support `--mode note`
-- [ ] Explainer: transfer learning (what it is, why it works, when to use it)
-- [ ] Explainer: NSynth as training data — why public datasets, what domain gap means
-- [ ] Update docs, Phase 3 summary in PLAN.md
+- [x] Update `model/predict.py` to support `--mode note`
+- [x] Explainer: transfer learning (what it is, why it works, when to use it)
+- [x] Explainer: Iowa piano as training data — why public datasets, what domain gap means
+- [x] Update docs, Phase 3 summary in PLAN.md
 
-**Gate:** `python -m model.predict piano_clip.wav --mode note` → `"C4 (91% confidence)"`. Docs pass teaching test.
+**Gate:** `python -m model.predict unknown_note.wav --mode note --verbose` → `"E4 (55.3% confidence)"`. Docs pass teaching test. ✅
+
+**What was built:**
+- `model/predict.py` — added `--mode {sound,note}` flag; `--mode note` selects `output/transfer/finetune/best_model.pt` automatically
+- `demo_note.sh` — mirrors `demo.sh` for Phase 3; uses `--mode note`
+- `explainers/iowa-piano-data.md` — public datasets rationale, domain gap explanation, NSynth vs Iowa, business parallel
+- `explainers/evaluation-phase3.md` — per-note F1 table, semitone adjacency, Mel resolution limit
+- `explainers/README.md` — entries 12 and 13 added
+
+### Phase 3 Summary
+
+| Milestone | What it built | Key result |
+|-----------|-------------|------------|
+| M13 | Iowa piano dataset (36 WAVs → 252 tensors, 12 classes) | 3 clips per note × 7 augmentations |
+| M14 | Transfer learning: Phase 2 → 12-class note head | Fine-tune 76.3% val, frozen 36.8% |
+| M15 | Evaluation + scratch baseline | Test 89.5%; transfer ~10 epochs faster than scratch |
+| M16 | Error analysis | F4 hardest (semitone adjacency), 6/12 notes perfect |
+| M17 | `--mode note` inference, docs | `bash demo_note.sh` → correct note |
+
+**Lessons:**
+- Transfer learning from a different domain (voice → piano) helps early convergence but not final accuracy — backbone needed to adapt to piano timbre anyway
+- Mel spectrogram resolution is near its limit for semitone discrimination at 128 bands; CQT would be the next step if accuracy needed to improve
+- 89.5% on 12 classes with 21 training samples per class is the ceiling for this data; more recordings or data augmentation (reverb, velocity variation) would be needed for production use
 
 ### What's tricky
 

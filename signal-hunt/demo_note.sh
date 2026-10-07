@@ -30,13 +30,10 @@ if [ ! -f "$TARGET" ]; then
   exit 1
 fi
 
-echo "File:       $TARGET"
-echo "Model:      $CHECKPOINT  (fine-tuned from Phase 2 on Iowa piano)"
+echo "File:  $TARGET"
 echo ""
 
-python -m model.predict "$TARGET" \
-  --checkpoint "$CHECKPOINT" \
-  --verbose
+python -m model.predict "$TARGET" --mode note --verbose
 
 echo ""
 echo "To identify your own recording:"
