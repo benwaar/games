@@ -107,6 +107,7 @@ class TrainingDataGenerator:
 
                 # Collect turn-by-turn dogfight actions
                 while not engine.is_dogfight_complete():
+                    state = engine.get_state_copy()  # refresh each turn so features see rocket_in_play
                     current_player = engine.get_dogfight_current_actor()
                     agent = agent_one if current_player == Player.ONE else agent_two
 
