@@ -1,12 +1,14 @@
-# Explainers
+# Signal Hunt — Explainers
 
-Brief notes on each step of the pipeline — what it does and why. Detailed explainers linked where the concept needs more depth.
+Step-by-step notes on what each part of the pipeline does and why.
 
-→ [Key Libraries](libraries.md) — what each dependency does and when you'd reach for it
-→ [Python Concepts](python-concepts.md) — tuples, type hints, fixtures, and other patterns used in this codebase
-→ [Data Collection](data-collection.md) — why real recordings, why these sounds, how to record and add more
-→ [Train / Val / Test Split](train-val-test-split.md) — why three sets, why random isn't enough, the no-peeking rule
-→ [Evaluation](evaluation.md) — precision, recall, F1, confusion matrix, loss curves, and what our run proved
+General concepts (training loops, CNNs, transfer learning, Python patterns) have moved to the
+shared explainers folder: **[../../explainers/](../../explainers/README.md)**
+
+Project-specific explainers below.
+
+→ [Iowa Piano Data](iowa-piano-data.md) — why Iowa not NSynth, domain gap, public dataset rationale
+→ [Phase 3 Evaluation](evaluation-phase3.md) — per-note F1, semitone confusion pattern, Mel resolution analysis
 
 ---
 
@@ -227,7 +229,7 @@ Only the final classification layer is replaced (3 classes → 12) and retrained
 - **Fine-tune** — everything trains end-to-end. Allows the backbone to adapt to piano timbre.
 - **`--compare` flag** — runs both modes and prints a side-by-side accuracy summary.
 
-→ [Transfer learning explained](transfer-learning.md) — what we froze and why, the head swap, frozen vs fine-tune comparison, business parallels
+→ [Transfer learning explained](../../explainers/transfer-learning.md) — what we froze and why, the head swap, frozen vs fine-tune comparison, business parallels
 
 See: [model/transfer.py](../model/transfer.py) — `load_transfer_model`, `frozen_param_count`  
 See: [model/transfer_train.py](../model/transfer_train.py) — training loop, `--compare`
