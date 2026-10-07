@@ -46,7 +46,7 @@ Technical reference. ✅ complete · planned (project named) · 🔷 separate pr
 ```
 AI / ML
 │
-├── Classic ML ──────────────────────────────────── 🔶 work project (not in this repo)
+├── Classic ML ──────────────────────────────────── 🔶 prior role (ice cream sales, ~2004)
 │   ├── Linear / logistic regression
 │   ├── Decision trees, random forests
 │   ├── Gradient boosting (XGBoost, LightGBM)
