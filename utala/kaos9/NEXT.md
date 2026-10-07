@@ -35,6 +35,14 @@ Key things to watch:
 
 **Commit:** `feat(utala): DQN v3 — retrain against corrected Heuristic`
 
+> **After training:** run the visualisation script and update the learning hub:
+> ```bash
+> python scripts/analysis/visualise_agents.py
+> cp docs/images/*.png ../../explainers/images/
+> ```
+> This overwrites the baseline charts in the shared learning hub with the post-retrain versions.
+> Key comparison: does the placement heatmap still show 93.6% → R square, or does the new DQN develop varied opening strategy?
+
 ---
 
 ### Step 2 — Evaluate and set new checkpoint
