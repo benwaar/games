@@ -19,10 +19,10 @@ from model.train import train
 
 
 @pytest.fixture(scope="module")
-def trained_output(tmp_path_factory):
+def trained_output(tmp_path_factory, synthetic_processed_dir):
     """Run a short training session once for all tests in this module."""
     out = tmp_path_factory.mktemp("output")
-    config = TrainConfig(epochs=3, processed_dir=Path("data/processed"), output_dir=out, seed=42)
+    config = TrainConfig(epochs=3, processed_dir=synthetic_processed_dir, output_dir=out, seed=42)
     train(config)
     return out
 
@@ -47,20 +47,20 @@ class TestLoadCheckpoint:
 
 
 class TestCollectPredictions:
-    def test_lengths_match(self, checkpoint_path):
+    def test_lengths_match(self, checkpoint_path, synthetic_processed_dir):
         from model.dataset import load_splits
         from torch.utils.data import DataLoader
         model, _, cfg = load_checkpoint(checkpoint_path)
-        _, _, test_ds = load_splits(Path("data/processed"), seed=cfg["seed"])
+        _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
         loader = DataLoader(test_ds, batch_size=32)
         preds, labels = collect_predictions(model, loader)
         assert len(preds) == len(labels) == len(test_ds)
 
-    def test_predictions_in_range(self, checkpoint_path):
+    def test_predictions_in_range(self, checkpoint_path, synthetic_processed_dir):
         from model.dataset import load_splits
         from torch.utils.data import DataLoader
         model, _, cfg = load_checkpoint(checkpoint_path)
-        _, _, test_ds = load_splits(Path("data/processed"), seed=cfg["seed"])
+        _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
         loader = DataLoader(test_ds, batch_size=32)
         preds, _ = collect_predictions(model, loader)
         assert all(0 <= p <= 2 for p in preds)
@@ -94,21 +94,21 @@ class TestPlots:
 
 
 class TestRunEvaluation:
-    def test_returns_summary(self, tmp_path, trained_output):
+    def test_returns_summary(self, tmp_path, trained_output, synthetic_processed_dir):
         result = run_evaluation(
             checkpoint_path=trained_output / "best_model.pt",
-            processed_dir=Path("data/processed"),
+            processed_dir=synthetic_processed_dir,
             images_dir=tmp_path / "images",
             output_dir=trained_output,
         )
         assert "test_acc" in result
         assert 0.0 <= result["test_acc"] <= 1.0
 
-    def test_all_output_files_written(self, tmp_path, trained_output):
+    def test_all_output_files_written(self, tmp_path, trained_output, synthetic_processed_dir):
         images = tmp_path / "images"
         run_evaluation(
             checkpoint_path=trained_output / "best_model.pt",
-            processed_dir=Path("data/processed"),
+            processed_dir=synthetic_processed_dir,
             images_dir=images,
             output_dir=trained_output,
         )

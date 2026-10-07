@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from pipeline.ingest import ingest, DEFAULT_SR, DEFAULT_DURATION
+from pipeline.ingest import ingest, pad_or_truncate, DEFAULT_SR, DEFAULT_DURATION
 from pipeline.augment import add_noise, pitch_shift, time_stretch
 from pipeline.features import extract_features, DEFAULT_N_MELS, DEFAULT_HOP_LENGTH
 
@@ -45,7 +45,6 @@ def apply_augmentation(
     if aug["fn"] == "pitch_shift":
         kwargs["sr"] = sr
     result = fn(signal, **kwargs)
-    from pipeline.ingest import pad_or_truncate
     return pad_or_truncate(result, len(signal))
 
 

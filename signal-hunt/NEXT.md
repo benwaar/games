@@ -1,3 +1,49 @@
+# Before M18 — Code Quality Cleanup
+
+Four real issues found in the PPR review. Work through these before starting chord work.
+
+---
+
+### Cleanup 1 — Padding before normalisation skews stats (`features.py`)
+
+`pad_or_truncate_frames` fills padding with `spectrogram.min()`. Normalisation then runs on the padded array — synthetic low-value columns pull the mean and compress the std for short clips. `ingest.py`'s equivalent pads with zeros, making the two inconsistent.
+
+Fix: pad with zeros (neutral value) not the spectrogram minimum. Check the effect on normalised output stats.
+
+**Commit:** `fix(signal-hunt): pad spectrogram frames with zeros not min value`
+
+---
+
+### Cleanup 2 — `predict.py` reloads model from disk on every file in scan mode
+
+`scan()` calls `predict()` per file; each `predict()` calls `load_checkpoint` → `torch.load`. N files = N full model deserialises. The model should be loaded once and reused.
+
+Fix: add a `predict_batch(wav_paths, checkpoint_path)` helper, or have `scan()` load the model once and pass it in.
+
+**Commit:** `fix(signal-hunt): load model once in scan() not once per file`
+
+---
+
+### Cleanup 3 — Training loop duplicated between `train.py` and `transfer_train.py`
+
+~50 lines of identical logic: epoch iteration, early stopping counter, scheduler step, checkpoint saving, history writing, print format. The only real differences are where the model comes from and a `label` string.
+
+Fix: extract a shared `run_training_loop(model, train_loader, val_loader, criterion, optimiser, scheduler, config, checkpoint_path, label)` into `model/train.py`. Both `train()` and `run_transfer()` delegate to it.
+
+**Commit:** `refactor(signal-hunt): extract shared training loop, remove duplication`
+
+---
+
+### Cleanup 4 — `evaluate.py` runs two forward passes over the test set
+
+`evaluate(model, test_loader, criterion)` gives `test_loss` and `test_acc`. Then `collect_predictions` runs another full pass for the report. Loss is needed from the first pass but `test_acc` is immediately discarded — `collect_predictions` computes the same thing.
+
+Fix: remove the redundant accuracy from `run_evaluation`, or fold the loss computation into `collect_predictions` so there's only one pass.
+
+**Commit:** `fix(signal-hunt): single forward pass in run_evaluation`
+
+---
+
 # M18 — Chord Dataset
 
 **Goal:** Synthesise chord clips from existing Iowa piano recordings and run them through the Phase 1 pipeline to produce augmented tensors for Phase 4 chord training.
