@@ -44,6 +44,16 @@ The overarching project bridges art, software development, card games, and a dev
 
 ---
 
+## Void Duel (Planned)
+
+A 2-player space shooter that runs on real ZX Spectrum hardware and through a WASM emulator in the browser with P2P multiplayer.
+
+AI research studying classic ML, multi-agent RL, and extreme-edge model distillation — train in Python, compress to fit a 3.5MHz Z80 with 48K RAM. Uses [Duello](../duello/) for P2P transport and the [rustzx](https://github.com/rustzx/rustzx) emulator compiled to WASM.
+
+[Project folder](./void-duel/)
+
+---
+
 ## License
 
 Source code is licensed under the MIT License.
