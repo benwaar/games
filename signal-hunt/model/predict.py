@@ -51,11 +51,8 @@ def scan(
     checkpoint_path: Path = Path("output/best_model.pt"),
 ) -> list[dict]:
     """
-    Find all .wav files in raw_dir that are NOT inside a class subfolder
-    (i.e. not in data/raw/hum/, data/raw/whistle/, data/raw/clap/) and
-    predict each one.
-
-    Drop any .wav into data/raw/ and run: python -m model.predict --scan
+    Find all .wav files in raw_dir that are NOT inside a class subfolder and
+    predict each one. The model is loaded once and reused across all files.
     """
     raw_dir = Path(raw_dir)
     unknown_files = sorted(raw_dir.glob("*.wav"))  # flat files only, not subfolders
@@ -65,12 +62,20 @@ def scan(
         print("Drop a recording there (not in a subfolder) and re-run.")
         return []
 
+    model, label_map, _ = load_checkpoint(Path(checkpoint_path))
+    inv_map = {v: k for k, v in label_map.items()}
+
     results = []
     for wav in unknown_files:
-        result = predict(wav, checkpoint_path)
-        result["file"] = wav.name
+        signal, sr = ingest(wav, target_sr=DEFAULT_SR, duration=DEFAULT_DURATION)
+        tensor = extract_features(signal, sr).unsqueeze(0)
+        with torch.no_grad():
+            probs = torch.softmax(model(tensor), dim=1)[0]
+        scores = {inv_map[i]: round(probs[i].item(), 4) for i in range(len(inv_map))}
+        top = max(scores, key=scores.__getitem__)
+        result = {"file": wav.name, "class": top, "confidence": scores[top], "scores": scores}
         results.append(result)
-        print(f"{wav.name:<30} → {result['class']} ({result['confidence']:.1%})")
+        print(f"{wav.name:<30} → {top} ({scores[top]:.1%})")
 
     return results
 
