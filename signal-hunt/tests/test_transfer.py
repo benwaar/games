@@ -3,7 +3,6 @@
 import torch
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from model.cnn import SoundClassifier
 from model.config import TransferConfig

@@ -33,6 +33,7 @@ def load_transfer_model(config: TransferConfig) -> SoundClassifier:
 
     Returns a SoundClassifier ready for Phase 3 training.
     """
+    # weights_only=False: checkpoint dict contains non-tensor objects (label_map, config)
     checkpoint = torch.load(config.checkpoint_path, map_location="cpu", weights_only=False)
 
     # Build the Phase 2 architecture and load saved weights.
@@ -72,5 +73,6 @@ def trainable_param_count(model: SoundClassifier) -> int:
 
 def checkpoint_label_map(checkpoint_path: Path) -> dict[str, int]:
     """Read the label_map from a saved checkpoint without loading the full model."""
+    # weights_only=False: checkpoint dict contains non-tensor objects (label_map, config)
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     return ckpt["label_map"]

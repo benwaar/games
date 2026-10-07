@@ -18,7 +18,8 @@ from model.train import evaluate
 
 def load_checkpoint(checkpoint_path: Path) -> tuple[SoundClassifier, dict, dict]:
     """Load model weights, label_map and config from a checkpoint file."""
-    ckpt = torch.load(checkpoint_path, weights_only=False)
+    # weights_only=False: checkpoint dict contains non-tensor objects (label_map, config)
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     cfg = ckpt["config"]
     model = SoundClassifier(num_classes=cfg["num_classes"], dropout=cfg["dropout"])
     model.load_state_dict(ckpt["model_state"])
