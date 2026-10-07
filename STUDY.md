@@ -46,7 +46,7 @@ Technical reference. ✅ complete · planned (project named) · 🔷 separate pr
 ```
 AI / ML
 │
-├── Classic ML ──────────────────────────────────── void-duel Ph 2
+├── Classic ML ──────────────────────────────────── 🔶 work project (not in this repo)
 │   ├── Linear / logistic regression
 │   ├── Decision trees, random forests
 │   ├── Gradient boosting (XGBoost, LightGBM)
@@ -93,7 +93,7 @@ AI / ML
 │   ├── Binary / ROM data ───────────────────────── artefact/dig
 │   ├── Image restoration ───────────────────────── artefact/bloom
 │   ├── NLP / LLM engineering ───────────────────── 🔷 TPP
-│   ├── Tabular data ────────────────────────────── void-duel Ph 2
+│   ├── Tabular data ────────────────────────────── 🔶 work project
 │   └── ASR / speech recognition ────────────────── ⬜
 │
 ├── Reinforcement Learning
