@@ -9,8 +9,9 @@ All numbers corrected (2026-10-07) using the fixed harness. Variant A rules, 200
 | **Random** | 0 | ~47% | — | No | Baseline |
 | **Heuristic** | 0 | — | 53% | Candidate | Strongest agent |
 | **MC-Fast** | 0 | 30% | 48% | No | Collapses in Variant A |
-| **DQN-v3 (best ckpt)** | ~39K | **56%** | ~48% | No | ✅ Clears 50% gate. Stage 3 oscillation — 47.5% final. Redistil needed. |
-| **TinyNN (shipped)** | ~5.7K | 38.5% | 48% | ⚠️ Stale | Distilled from v2 (weak teacher). Needs redistil from v3. |
+| **DQN-v3 (best ckpt)** | ~39K | **56% peak / 49% eval** | 48% | No | Teacher for distillation |
+| **TinyNN-v2** | ~5.7K | **48%** | 50% | ✅ Ready | Redistilled from v3. Matches teacher at 7x smaller. |
+| **TinyNN-v1 (shipped)** | ~5.7K | 38.5% | 48% | ⚠️ Stale | Old teacher — replace in Flutter |
 
 ---
 
@@ -29,27 +30,29 @@ Retrained 2026-10-07. 50K games, same curriculum config.
 
 ---
 
-### Step 2 — Redistil from DQN v3 best checkpoint
+### ✅ Step 2 — Redistil TinyNN from DQN v3 — DONE
 
-Best checkpoint (56%) is the teacher. Redistil into TinyNN (80→32→95, ~5.7K params).
+Redistilled 2026-10-07. 5K game dataset (93K decisions), 50 epochs.
 
-**Script:** `scripts/train/variant_a/distill_dqn.py`
-**Target:** TinyNN ≥45% vs corrected Heuristic
-**Steps:**
-1. Generate 5K–10K games with DQN v3 best checkpoint vs Heuristic + Random
-2. Train TinyNN student on teacher logits
-3. Eval: target ≥45% vs corrected Heuristic (100 games balanced)
-4. Export to `export/tiny_nn_f32.json` for Flutter
+**Results:**
+- TinyNN (80→32→95, 5,727 params): **48% vs Heuristic**, 50% vs Random — ✅ exceeds 45% target
+- Linear (80→95, 7,695 params): 46.5% vs Heuristic — also above 45%
+- Teacher DQN: 49% vs Heuristic (200-game final eval; 56% was mid-training peak)
+- TinyNN matches teacher at **7× fewer parameters** — excellent compression
+- Imitation accuracy: 89% — student closely copies teacher's action choices
 
-**After redistil:** run visualise_agents.py, copy charts to explainers/images/, update this file.
-
-**Commit:** `feat(utala): redistil TinyNN from DQN v3 — stronger teacher`
+New weights exported to `export/tiny_nn_f32.json` — ready for Flutter.
 
 ---
 
 ### Step 3 — Ship updated ONNX to Flutter
 
-Replace weights in Flutter app with new `tiny_nn_f32.json`.
+Replace `export/tiny_nn_f32.json` in the Flutter app. This is a drop-in replacement — same 80→32→95 architecture, same JSON format. The weights are updated; no Dart code changes needed.
+
+Steps:
+1. Copy `export/tiny_nn_f32.json` into the Flutter asset bundle
+2. Confirm the forward pass produces correct output shape (95 logits)
+3. Test against Random and Heuristic in the app
 
 ---
 
