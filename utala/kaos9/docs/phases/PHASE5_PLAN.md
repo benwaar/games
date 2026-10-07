@@ -32,6 +32,12 @@ Improvements to try:
 
 **CHECKPOINT PASSED (2026-04-14)** — DQN v2 (Run 4 / `dqn_v2d`) achieved consistent >50% vs Heuristic.
 
+> ⚠️ **Corrected (2026-10-07):** Checkpoint pass was evaluated with a buggy harness (stale state in dogfights — Heuristic never defended). Re-evaluated `dqn_v2_best.pth` against the corrected Heuristic (200 games, balanced, seed 42):
+> - **DQN-v2 vs Heuristic: 41.5%** — below 50%, checkpoint pass does not hold
+> - **DQN-v2 vs Random: 59.0%** — clear skill above random baseline
+> - DQN still leads MC-Fast (30% vs Heuristic) and is the strongest trained agent
+> - Phase 5.1 goal of consistent >50% vs corrected Heuristic is **still open** — needs a re-train
+
 Run 4 config that worked:
 - Checkpoint saving + LR scheduling (halve at Stage 3 start, game 30K)
 - Polyak averaging **off**, prioritised replay **off** (both destabilised self-play in Runs 1–2)
