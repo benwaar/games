@@ -99,10 +99,10 @@ class StateFeatureExtractor:
         return [
             len(my_res.rocketmen) / 9.0,
             len(my_res.weapons) / 4.0,
-            my_res.remaining_kaos_cards() / 9.0,
+            my_res.remaining_kaos_cards() / 13.0,
             len(opp_res.rocketmen) / 9.0,
             len(opp_res.weapons) / 4.0,
-            opp_res.remaining_kaos_cards() / 9.0,
+            opp_res.remaining_kaos_cards() / 13.0,
         ]
 
     def _extract_material_balance(self, state: GameState, player: Player) -> List[float]:
@@ -118,9 +118,9 @@ class StateFeatureExtractor:
         kaos_diff = my_res.remaining_kaos_cards() - opp_res.remaining_kaos_cards()
 
         return [
-            (rocketmen_diff + 9) / 18.0,  # [-9, 9] → [0, 1]
-            (weapons_diff + 4) / 8.0,     # [-4, 4] → [0, 1]
-            (kaos_diff + 9) / 18.0,       # [-9, 9] → [0, 1]
+            (rocketmen_diff + 9) / 18.0,   # [-9, 9] → [0, 1]
+            (weapons_diff + 4) / 8.0,      # [-4, 4] → [0, 1]
+            (kaos_diff + 13) / 26.0,       # [-13, 13] → [0, 1]
         ]
 
     def _extract_grid_control(self, state: GameState, player: Player) -> List[float]:

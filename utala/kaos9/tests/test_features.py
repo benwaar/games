@@ -81,6 +81,24 @@ def test_initial_state_features():
     assert features[43] == 0.0  # dogfights
 
 
+def test_feature_range_with_populated_kaos_deck():
+    """
+    Range test using an engine-initialised state (kaos decks populated).
+    GameState() alone has empty kaos decks — this test catches normalisation
+    bugs that are invisible when remaining_kaos_cards() == 0.
+    """
+    import sys
+    sys.path.insert(0, 'src')
+    from utala.engine import GameEngine
+
+    extractor = StateFeatureExtractor()
+    engine = GameEngine(seed=1)
+    features = extractor.extract(engine.state, Player.ONE)
+
+    assert np.all(features >= 0.0), f"Features below 0: {features[features < 0.0]}"
+    assert np.all(features <= 1.0), f"Features above 1: {features[features > 1.0]}"
+
+
 if __name__ == '__main__':
     test_feature_extractor_shape()
     test_feature_extractor_range()
