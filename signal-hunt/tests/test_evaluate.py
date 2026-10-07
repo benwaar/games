@@ -53,7 +53,7 @@ class TestCollectPredictions:
         model, _, cfg = load_checkpoint(checkpoint_path)
         _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
         loader = DataLoader(test_ds, batch_size=32)
-        preds, labels = collect_predictions(model, loader)
+        preds, labels, _, _ = collect_predictions(model, loader)
         assert len(preds) == len(labels) == len(test_ds)
 
     def test_predictions_in_range(self, checkpoint_path, synthetic_processed_dir):
@@ -62,8 +62,29 @@ class TestCollectPredictions:
         model, _, cfg = load_checkpoint(checkpoint_path)
         _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
         loader = DataLoader(test_ds, batch_size=32)
-        preds, _ = collect_predictions(model, loader)
+        preds, _, _, _ = collect_predictions(model, loader)
         assert all(0 <= p <= 2 for p in preds)
+
+    def test_loss_none_without_criterion(self, checkpoint_path, synthetic_processed_dir):
+        from model.dataset import load_splits
+        from torch.utils.data import DataLoader
+        model, _, cfg = load_checkpoint(checkpoint_path)
+        _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
+        loader = DataLoader(test_ds, batch_size=32)
+        _, _, loss, acc = collect_predictions(model, loader)
+        assert loss is None
+        assert isinstance(acc, float) and 0.0 <= acc <= 1.0
+
+    def test_loss_and_acc_returned_with_criterion(self, checkpoint_path, synthetic_processed_dir):
+        import torch.nn as nn
+        from model.dataset import load_splits
+        from torch.utils.data import DataLoader
+        model, _, cfg = load_checkpoint(checkpoint_path)
+        _, _, test_ds = load_splits(synthetic_processed_dir, seed=cfg["seed"])
+        loader = DataLoader(test_ds, batch_size=32)
+        _, _, loss, acc = collect_predictions(model, loader, nn.CrossEntropyLoss())
+        assert isinstance(loss, float) and loss > 0
+        assert isinstance(acc, float) and 0.0 <= acc <= 1.0
 
 
 class TestPrintMetrics:

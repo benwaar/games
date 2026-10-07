@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 
 from model.cnn import SoundClassifier
 from model.dataset import load_splits
-from model.train import evaluate
 
 
 def load_checkpoint(checkpoint_path: Path) -> tuple[SoundClassifier, dict, dict]:
@@ -30,14 +29,28 @@ def load_checkpoint(checkpoint_path: Path) -> tuple[SoundClassifier, dict, dict]
 def collect_predictions(
     model: SoundClassifier,
     loader: DataLoader,
-) -> tuple[list[int], list[int]]:
-    """Run model over loader, return (predictions, true_labels)."""
+    criterion: nn.Module | None = None,
+) -> tuple[list[int], list[int], float | None, float | None]:
+    """
+    Run model over loader in a single forward pass.
+
+    Returns (predictions, true_labels, loss, accuracy).
+    loss and accuracy are None when criterion is not provided.
+    """
     preds, labels = [], []
+    total_loss, total = 0.0, 0
+    model.eval()
     with torch.no_grad():
         for x, y in loader:
-            preds.extend(model(x).argmax(dim=1).tolist())
+            logits = model(x)
+            preds.extend(logits.argmax(dim=1).tolist())
             labels.extend(y.tolist())
-    return preds, labels
+            if criterion is not None:
+                total_loss += criterion(logits, y).item() * len(y)
+                total += len(y)
+    loss = total_loss / total if criterion is not None else None
+    acc = sum(p == l for p, l in zip(preds, labels)) / len(labels) if labels else None
+    return preds, labels, loss, acc
 
 
 def print_metrics(
@@ -126,10 +139,9 @@ def run_evaluation(
     test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
     criterion = nn.CrossEntropyLoss()
-    test_loss, test_acc = evaluate(model, test_loader, criterion)
+    preds, labels, test_loss, test_acc = collect_predictions(model, test_loader, criterion)
     print(f"\nTest set ({len(test_ds)} samples): loss={test_loss:.4f} | acc={test_acc:.3f}\n")
 
-    preds, labels = collect_predictions(model, test_loader)
     print_metrics(preds, labels, label_map, output_dir)
 
     images_dir.mkdir(parents=True, exist_ok=True)
