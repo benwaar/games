@@ -33,6 +33,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | Planned |
 | [Artefact: dig](artefact/dig/) | Binary art scanner — find hidden sprites in ROM/memory using CV and autoencoders | Planned |
 | [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
+| [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
@@ -44,7 +45,7 @@ Technical reference. ✅ complete · planned (project named) · 🔷 separate pr
 ```
 AI / ML
 │
-├── Classic ML ──────────────────────────────────── ⬜ shallow gap (2-day project)
+├── Classic ML ──────────────────────────────────── void-duel Ph 2
 │   ├── Linear / logistic regression
 │   ├── Decision trees, random forests
 │   ├── Gradient boosting (XGBoost, LightGBM)
@@ -82,7 +83,7 @@ AI / ML
 │       ├── Loss curves / overfitting analysis ────── ✅ signal-hunt Ph 2
 │       ├── ROC / AUC ───────────────────────────── artefact/dig
 │       ├── PSNR / SSIM / perceptual loss ────────── artefact/bloom
-│       └── Interpretability (SHAP, LIME) ─────────── ⬜
+│       └── Interpretability (SHAP, LIME) ─────────── void-duel Ph 2
 │
 ├── Domains
 │   ├── Audio / signal processing ───────────────── ✅ signal-hunt
@@ -91,14 +92,14 @@ AI / ML
 │   ├── Binary / ROM data ───────────────────────── artefact/dig
 │   ├── Image restoration ───────────────────────── artefact/bloom
 │   ├── NLP / LLM engineering ───────────────────── 🔷 TPP
-│   ├── Tabular data ────────────────────────────── ⬜
+│   ├── Tabular data ────────────────────────────── void-duel Ph 2
 │   └── ASR / speech recognition ────────────────── ⬜
 │
 ├── Reinforcement Learning
 │   ├── TD learning, deep RL, distillation ─────── ✅ utala
 │   ├── MDP + Q-learning ────────────────────────── acoustic-odyssey/echo
 │   ├── Exploration vs exploitation ─────────────── acoustic-odyssey/echo
-│   └── Multi-agent / offline RL ────────────────── ⬜
+│   └── Multi-agent / offline RL ────────────────── void-duel Ph 3
 │
 ├── LLM Engineering ─────────────────────────────── 🔷 all covered (TPP)
 │   └── RAG, MCP, skills, evals, agent orchestration
