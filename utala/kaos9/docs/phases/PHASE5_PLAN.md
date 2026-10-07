@@ -32,11 +32,16 @@ Improvements to try:
 
 **CHECKPOINT PASSED (2026-04-14)** — DQN v2 (Run 4 / `dqn_v2d`) achieved consistent >50% vs Heuristic.
 
-> ⚠️ **Corrected (2026-10-07):** Checkpoint pass was evaluated with a buggy harness (stale state in dogfights — Heuristic never defended). Re-evaluated `dqn_v2_best.pth` against the corrected Heuristic (200 games, balanced, seed 42):
-> - **DQN-v2 vs Heuristic: 41.5%** — below 50%, checkpoint pass does not hold
-> - **DQN-v2 vs Random: 59.0%** — clear skill above random baseline
-> - DQN still leads MC-Fast (30% vs Heuristic) and is the strongest trained agent
-> - Phase 5.1 goal of consistent >50% vs corrected Heuristic is **still open** — needs a re-train
+> ⚠️ **Corrected (2026-10-07):** Original checkpoint pass was against a buggy Heuristic (stale state — never defended). Re-trained and re-evaluated with the fix applied.
+
+**DQN v3 — retrained against corrected Heuristic (2026-10-07):**
+- 50K games, same curriculum config as v2d
+- **Best checkpoint: 56.0% vs Heuristic** (game 32,500 — early Stage 3) — ✅ clears 50% gate
+- Final model: 47.5% (Stage 3 oscillation again — loss climbs 0.27 → 0.57)
+- Best checkpoint saved: `results/dqn_v2d/dqn_v2_best.pth`
+- Training time: 8.5 minutes
+
+The oscillation pattern from the original v2 run repeated. Stage 3 self-play causes loss to rise and performance to fluctuate. The best checkpoint (56%) is the correct model to use for distillation. See training log: `/tmp/dqn_v3_train.txt`.
 
 Run 4 config that worked:
 - Checkpoint saving + LR scheduling (halve at Stage 3 start, game 30K)

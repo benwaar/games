@@ -47,7 +47,7 @@ def plot_strength_ladder():
         ("Random",        47, "#aaaaaa"),
         ("MC-Fast",       30, "#e07b54"),
         ("TinyNN (shipped)", 38.5, "#f5a623"),
-        ("DQN-v2",        41.5, "#4a90d9"),
+        ("DQN-v3 (best ckpt)", 56, "#4a90d9"),
         ("Heuristic",     None, "#2ecc71"),
     ]
 
