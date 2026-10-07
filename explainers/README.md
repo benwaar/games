@@ -1,70 +1,95 @@
-# Explainers
+# Learning Hub
 
-Shared learning docs covering concepts used across all projects in this programme. Each file explains *why* a technique exists, how it works, and where it appears in business problems — not just what it does.
-
-Project-specific notes (dataset details, per-experiment results) live inside each project folder.
-
----
-
-## Python & PyTorch foundations
-
-→ [Python Concepts](python-concepts.md) — tuples, type hints, dataclasses, dunder methods, comprehensions, fixtures — patterns used throughout this codebase, with C/JS/TS callouts
-
-→ [Key Libraries](libraries.md) — NumPy, librosa, PyTorch (`nn`, `optim`, `DataLoader`), sklearn — what each does, when to reach for it, checkpoint save/load, `requires_grad`
+Concepts, visualisations, and code — one place for all projects in this programme.
+Each section explains why a technique exists, shows what it looks like in practice, and links to the code that produced it.
 
 ---
 
-## Data pipelines
+## Signal Processing & Data Pipelines
 
-→ [Data Collection](data-collection.md) — why real recordings, labelling strategy, how to add more
+| Concept | What it shows | Code |
+|---------|--------------|------|
+| [Reading Waveforms & Spectrograms](reading-plots.md) | Waveform and Mel-spectrogram from a real recording | [pipeline/ingest.py](../signal-hunt/pipeline/ingest.py), [pipeline/features.py](../signal-hunt/pipeline/features.py) |
+| [Mel-Spectrograms](mel-spectrograms.md) | STFT → Mel scale → log-dB → tensor, with piano spectrogram example | [pipeline/features.py](../signal-hunt/pipeline/features.py) |
+| [Signal-to-Noise Ratio](snr.md) | Why SNR matters for augmentation | [pipeline/augment.py](../signal-hunt/pipeline/augment.py) |
+| [Data Collection](data-collection.md) | Why real recordings, labelling strategy | [data/raw/](../signal-hunt/data/raw/) |
+| [Batch Processing](batch-processing.md) | Augmentation strategy, manifest schema | [pipeline/batch.py](../signal-hunt/pipeline/batch.py) |
 
-→ [Batch Processing](batch-processing.md) — augmentation strategy, manifest schema, DataLoader integration
+### Waveform and spectrogram from Signal Hunt Phase 1
 
-→ [Mel-Spectrograms](mel-spectrograms.md) — STFT → Mel scale → log-dB → tensor, with annotated output and C/JS/TS parallels
-
-→ [Signal-to-Noise Ratio](snr.md) — what SNR is, why it matters for augmentation, how to control it
-
-→ [Reading Waveforms & Spectrograms](reading-plots.md) — how to read the two core audio visualisations
+![Waveform](images/waveform.png)
+![Mel-spectrogram features](images/mel_features.png)
 
 ---
 
-## Model training
+## Model Training
 
-→ [Train / Val / Test Split](train-val-test-split.md) — why three sets, stratification, the no-peeking rule
+| Concept | What it shows | Code |
+|---------|--------------|------|
+| [Train / Val / Test Split](train-val-test-split.md) | Why three sets, stratification, no-peeking rule | [model/dataset.py](../signal-hunt/model/dataset.py) |
+| [Dataset & DataLoader](dataset-dataloader.md) | PyTorch Dataset protocol, label encoding, batching | [model/dataset.py](../signal-hunt/model/dataset.py) |
+| [Training Loop](training-loop.md) | Loss curves, Adam, scheduling, early stopping | [model/train.py](../signal-hunt/model/train.py) |
+| [Evaluation](evaluation.md) | Precision, recall, F1, confusion matrix | [model/evaluate.py](../signal-hunt/model/evaluate.py) |
 
-→ [Dataset & DataLoader](dataset-dataloader.md) — the PyTorch Dataset protocol, label encoding, batching
+### Loss curves — Signal Hunt Phase 2 (hum/whistle/clap classifier)
 
-→ [Training Loop](training-loop.md) — forward pass, loss, backprop, Adam, scheduling, early stopping
+![Loss curves](images/loss_curves.png)
 
-→ [Evaluation](evaluation.md) — precision, recall, F1, confusion matrix, loss curves
+### Confusion matrix — Signal Hunt Phase 3 (piano note classifier, 12 classes)
+
+![Confusion matrix](images/confusion_matrix.png)
 
 ---
 
 ## Architectures
 
-→ [CNN Architecture](cnn-architecture.md) — Conv2d, BatchNorm, ReLU, MaxPool, Global Average Pooling, parameter count
+| Concept | What it shows | Code |
+|---------|--------------|------|
+| [CNN Architecture](cnn-architecture.md) | Conv2d, BatchNorm, ReLU, MaxPool, Global Average Pooling | [model/cnn.py](../signal-hunt/model/cnn.py) |
+| [Transfer Learning](transfer-learning.md) | Frozen vs fine-tune, scratch comparison, per-note results | [model/transfer.py](../signal-hunt/model/transfer.py), [model/transfer_train.py](../signal-hunt/model/transfer_train.py) |
 
-→ [Transfer Learning](transfer-learning.md) — frozen backbone, head swap, fine-tune vs frozen, scratch vs transfer comparison, what actually happened in Signal Hunt Phase 3
+### Piano C4 spectrogram — harmonic ladder visible
 
-→ [Reinforcement Learning](reinforcement-learning.md) — MDP, Q-learning, TD learning, DQN (replay buffer, target network, ε-greedy), curriculum training, distillation, self-play — from Utala KAOS 9
+![Piano C4 spectrogram](images/piano_C4_spectrogram.png)
 
 ---
 
-## Where each explainer came from
+## Reinforcement Learning
 
-| Explainer | Project | Phase |
-|-----------|---------|-------|
-| Python Concepts | Signal Hunt | Phase 1–3 |
-| Libraries | Signal Hunt | Phase 1–3 |
-| Data Collection | Signal Hunt | Phase 1 |
-| Batch Processing | Signal Hunt | Phase 1 |
-| Mel-Spectrograms | Signal Hunt | Phase 1 |
-| SNR | Signal Hunt | Phase 1 |
-| Reading Plots | Signal Hunt | Phase 1 |
-| Train/Val/Test | Signal Hunt | Phase 2 |
-| Dataset & DataLoader | Signal Hunt | Phase 2 |
-| Training Loop | Signal Hunt | Phase 2 |
-| Evaluation | Signal Hunt | Phase 2 |
-| CNN Architecture | Signal Hunt | Phase 2 |
-| Transfer Learning | Signal Hunt | Phase 3 |
-| Reinforcement Learning | Utala KAOS 9 | Phases 1–5 |
+| Concept | What it shows | Code |
+|---------|--------------|------|
+| [Reinforcement Learning](reinforcement-learning.md) | MDP, TD, DQN, curriculum, distillation, self-play | [src/utala/deep_learning/](../utala/kaos9/src/utala/deep_learning/) |
+
+### Agent strength ladder — all agents vs Heuristic (Variant A, corrected)
+
+![Strength ladder](images/strength_ladder.png)
+
+### DQN placement preferences — first move in 500 games
+
+![Placement heatmap](images/placement_heatmap.png)
+
+### DQN Q-values at game start — what each piece is worth where
+
+![Q-value heatmap](images/qvalue_heatmap.png)
+
+---
+
+## Python & PyTorch Foundations
+
+| Concept | What it covers |
+|---------|---------------|
+| [Python Concepts](python-concepts.md) | Tuples, type hints, dataclasses, comprehensions, dunder methods — with C/JS/TS callouts |
+| [Key Libraries](libraries.md) | NumPy, librosa, PyTorch (`nn`, `optim`, `DataLoader`), checkpoint save/load, `requires_grad` |
+
+---
+
+## Projects
+
+| Project | Phase | Key explainers used |
+|---------|-------|---------------------|
+| [Signal Hunt](../signal-hunt/) | Ph 1–2 complete, Ph 3 complete, Ph 4 planned | Mel-spectrograms, CNN, training loop, evaluation, transfer learning |
+| [Utala KAOS 9](../utala/kaos9/) | Ph 1–5 (re-train in progress) | Reinforcement learning, model distillation |
+| [Acoustic Odyssey: cast](../acoustic-odyssey/cast/) | Planned | ONNX, quantisation, edge deployment |
+| [Acoustic Odyssey: echo](../acoustic-odyssey/echo/) | Planned | MDP, Q-learning, adaptive systems |
+| [Artefact: dig](../artefact/dig/) | Planned | Autoencoders, anomaly detection |
+| [Artefact: bloom](../artefact/bloom/) | Planned | U-Net, super-resolution |

@@ -108,7 +108,36 @@ In Utala Phase 5, Stage 3 self-play caused oscillation — the loss climbed as t
 
 ---
 
-## Business parallel
+## Agent performance — Utala KAOS 9 (corrected, Variant A)
+
+![Agent strength ladder](images/strength_ladder.png)
+
+All agents below 50% vs Heuristic. DQN is the strongest trained agent at 41.5%, but hasn't cleared the 50% threshold. Re-training against a corrected Heuristic (one that properly defends) is the next step.
+
+---
+
+## What the DQN learned — placement heatmap
+
+![DQN placement preferences](images/placement_heatmap.png)
+
+First-placement preference over 500 games. The DQN places its opening piece on the **Right-middle square 93.6% of the time** — a near-deterministic opening strategy. This may reflect exploitation of a Heuristic that was trained against a broken opponent. Post-retrain comparison will show whether this changes.
+
+---
+
+## What the DQN values — Q-value heatmap at game start
+
+![DQN Q-values at game start](images/qvalue_heatmap.png)
+
+Q-values for placing each rocketman power on each grid square at an empty board. Key observations:
+- **Power 9** strongly avoids center (Q=1.25, brightest red) — unexpected, since Heuristic treats center as the key position
+- **Power 10** (face-down piece) prefers bottom-right (Q=1.74)
+- **Power 8** has a low Q for bottom-center (Q=1.11, deep red)
+
+These patterns reflect what the DQN learned when playing against a Heuristic that never defended — the valuations may shift significantly after retraining.
+
+---
+
+
 
 RL maps to a wide class of business problems:
 

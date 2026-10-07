@@ -206,6 +206,8 @@ Warning signs:
 
 Run: `python -m model.train --epochs 50` on 161 training / 35 val / 35 test samples.
 
+![Loss curves — Signal Hunt Phase 2](images/loss_curves.png)
+
 ```
 Epoch  1 | train_loss=1.071 | val_loss=1.089 | val_acc=0.371  ← near random (log(3)=1.099)
 Epoch 11 | train_loss=0.735 | val_loss=0.736 | val_acc=0.743  ← model learning fast
