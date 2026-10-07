@@ -129,19 +129,75 @@ We ran them as separate experiments to compare. In a production setting, you'd d
 
 ---
 
-## Why not just train from scratch?
+## Why not just train from scratch? (We tried it)
 
-You can — and it's a useful experiment (`model/train.py` works fine with note data). But:
+We ran `model/train.py` from random initialisation on the same notes dataset for 60 epochs.
 
-- **Less data per class.** 21 samples per note vs 77 per sound type in Phase 2. The backbone already has shape knowledge; starting fresh forces the conv layers to relearn it.
-- **Slower convergence.** Transfer typically reaches useful accuracy 2–3× faster.
-- **Better generalisation on small datasets.** The pretrained features act as a regulariser.
+| Mode | Best val_acc | Epoch to reach 50% |
+|------|-------------|-------------------|
+| Transfer fine-tune | 76.3% | ~epoch 24 |
+| Scratch (random init) | **78.9%** | ~epoch 26 |
 
-The `--compare` flag in `transfer_train.py` logs both runs so you can see the difference yourself.
+**Scratch matched fine-tune.** At 60 epochs on this dataset, both converge to similar accuracy (~76–79%). Transfer is not a clear winner on the final number.
+
+**Where transfer did help: early convergence.** Fine-tune was at 47.4% by epoch 16. Scratch was at 28.9%. Transfer got to usable accuracy roughly 10 epochs faster. If training is expensive or you need quick iterations, that advantage is real.
+
+**Why scratch caught up:** The source domain (voice: hum/whistle/clap) is quite different from the target (piano pitch). The fine-tune backbone had to unlearn voice features and relearn piano features anyway — it just started from a closer-to-useful initial state. Given enough epochs, a randomly initialised backbone learns the same pitch features from scratch.
+
+**When transfer wins more decisively:**
+- Source and target domains are close (e.g. acoustic piano → electric piano, not voice → piano)
+- Target dataset is very small (the backbone provides regularisation that scratch can't match)
+- Pre-trained model was trained on a very large dataset (ImageNet, language model corpora)
+
+In all three of those situations, the pretrained features transfer more directly and scratch can't compete within the same number of epochs. Here, with 252 balanced samples and a domain gap, the advantage was timing — not final accuracy.
 
 ---
 
-## Python concepts used here
+## Per-note results (test set, fine-tune model)
+
+89.5% test accuracy (34/38 samples). 6 of 12 notes are perfect (F1 = 1.00).
+
+| Note | Precision | Recall | F1 | Freq (Hz) |
+|------|-----------|--------|-----|-----------|
+| C4 | 1.00 | 1.00 | 1.00 | 262 |
+| Db4 | 1.00 | 1.00 | 1.00 | 277 |
+| D4 | 1.00 | 1.00 | 1.00 | 294 |
+| E4 | 1.00 | 1.00 | 1.00 | 330 |
+| A4 | 1.00 | 1.00 | 1.00 | 440 |
+| Bb4 | 1.00 | 1.00 | 1.00 | 466 |
+| B4 | 0.75 | 1.00 | 0.86 | 494 |
+| Eb4 | 0.75 | 1.00 | 0.86 | 311 |
+| Gb4 | 0.75 | 1.00 | 0.86 | 370 |
+| Ab4 | 1.00 | 0.67 | 0.80 | 415 |
+| G4 | 1.00 | 0.67 | 0.80 | 392 |
+| **F4** | **0.50** | **0.33** | **0.40** | **349** |
+
+**The confusions are musically sensible.** F4 is the hardest note — it sits between E4 (330 Hz) and Gb4 (370 Hz), both adjacent semitones. The model gets only 1 of 3 F4 test samples right; the others are mis-classified as its neighbours. G4/Ab4 are also an adjacent semitone pair — both show recall 0.67.
+
+Eb4 and B4 and Gb4 all show precision < 1.00 — something else is being misclassified as them. That something is most likely the adjacent-semitone neighbour in each case.
+
+**Key pattern:** notes with no semitone neighbours at the edges of the scale (C4, D4, A4, Bb4) tend to be cleaner. Notes surrounded by two semitone neighbours (F4 between E4 and Gb4) are the hardest. This is exactly the Mel resolution limit described in PLAN.md "What's tricky" — a semitone is ~6% frequency difference, which is subtle at default `n_mels=128`.
+
+---
+
+## Two M15 techniques we didn't implement (and why)
+
+### Class-weighted CrossEntropyLoss
+
+Standard `CrossEntropyLoss` treats every class equally. Class-weighted loss applies a per-class multiplier to the loss — misclassifying a rare class hurts more than misclassifying a common one.
+
+```python
+weights = torch.tensor([w0, w1, ..., w11])  # inverse of class frequency
+criterion = nn.CrossEntropyLoss(weight=weights)
+```
+
+**Why we skipped it:** our dataset is perfectly balanced — 21 samples per note by design (3 recordings × 7 augmentations, every note). With equal class counts, all weights would be 1.0, so it has no effect. It's the right tool for imbalanced data (e.g. if you had 50 C4 samples and only 5 F4 samples — which is realistic for a self-recorded dataset).
+
+### Curriculum learning
+
+The idea: start training on the easy cases (C4, E4, G4 — a major triad, well-separated in frequency), then add the hard cases (Db4, Eb4, Gb4 — semitones adjacent to notes you already know).
+
+**Why we skipped it:** at 76.3–89.5% accuracy, the model is not struggling. Curriculum helps when the model can't learn at all with the full label set — too many similar classes, too little data. We didn't hit that. If accuracy had stalled at 20–30%, curriculum would be the next thing to try.
 
 - **`requires_grad = False`** — tells PyTorch not to compute or store gradients for a parameter. Without a gradient, the optimiser has nothing to update, so the weight stays frozen.
 - **`model.parameters()`** — returns all parameters in the model. Passing only `[p for p in model.parameters() if p.requires_grad]` to the optimiser ensures frozen layers are excluded from the update step.
