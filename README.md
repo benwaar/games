@@ -11,17 +11,22 @@ These projects are about:
 
 Everything is text-based, inspectable, and hackable.
 
-## Signal Hunt (In Development)
+---
 
-A deep learning project — from raw audio to a trained classifier.
+## Projects
 
-Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
-
-[Project folder](./signal-hunt/)
+- [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation ✅
+- [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
+- [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
+- [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
+- [Artefact: dig](artefact/dig/) — binary art scanner: find hidden sprites in ROM using CV and autoencoders
+- [Artefact: bloom](artefact/bloom/) — pixel art upscaler: super-resolution CNN and GAN
+- [Artefact: dream](artefact/dream/) — LoRA fine-tune a diffusion model on extracted sprites
+- [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
 
 ---
 
-## Utala: KAOS 9 (Complete)
+## Utala: KAOS 9 
 
 A competitive 2-player tactical duel playable with any standard 52-card deck.
 
@@ -39,6 +44,15 @@ The overarching project bridges art, music, AI and a developing series of compan
 * 🎵 **Listen to the Soundtrack:** [Aerythen Soundtrack](https://song.link/jtmzgwknhjt8g)
 * 📖 **Read the novel:** [Utala — An Aerythen Novel](https://mybook.to/utala)
 
+---
+
+## Signal Hunt
+
+A deep learning project — from raw audio to a trained classifier.
+
+Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
+
+[Project folder](./signal-hunt/)
 
 ---
 

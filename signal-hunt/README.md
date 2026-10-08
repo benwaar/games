@@ -1,109 +1,59 @@
 # Signal Hunt
 
-Signal Hunt is a deep learning project — from raw audio to a trained classifier.
+A deep learning project — from raw audio to a piano teacher prototype, built phase by phase.
 
-Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
+## What it builds
 
-## What this builds
+| Phase | Task | Result |
+|-------|------|--------|
+| 1 | Data pipeline — ingest, augment, Mel-spectrograms | `(1, 128, 65)` tensors, 7 augmentations per clip |
+| 2 | Sound type CNN (hum / whistle / clap) | 100% test accuracy |
+| 3 | Piano note classifier, transfer learning | 89.5% test accuracy, 12 classes |
+| 4a | Chord detection — name + note-set models | 96.2% / 73.1% exact-match |
+| 4b | Chord progression CNN-RNN | 66.7% on 4 classes |
 
-### Phase 1: Data Pipelines & Feature Extraction
-- **Ingestion wrapper** — load or record 1–2s audio clips
-- **Augmentation engine** — noise injection, pitch shift, time stretch
-- **Feature extraction** — STFT → Mel-spectrogram → normalised PyTorch tensor
-- **Batch pipeline** — process folders of audio into `.pt` dataset files
+The end result: drop in a chord recording and get piano tutor feedback.
 
-### Phase 2: Sound Type Classification
-- **3-class CNN** — classifies spectrograms as hum, whistle, or clap (25K parameters)
-- **Training loop** — loss, backprop, validation, early stopping, checkpoints
-- **Evaluation** — accuracy, confusion matrix, loss curves (100% test accuracy)
-- **Inference** — `bash demo.sh` to identify any `.wav` file
-
-## Learn
-
-Step-by-step notes on each part of the pipeline — what it does and why: [explainers/](explainers/README.md)
+```bash
+bash demo_chord.sh chord.wav --expected Cmaj
+# Chord:   Amin  ✗  (expected Cmaj)
+# Notes:   A4 ✓  C4 ✓  E4 ✓
+# Missing: G4
+```
 
 ## Quick start
 
 ```bash
-bash setup.sh              # install Python, venv, deps
+bash setup.sh
 source .venv/bin/activate
-python hello_audio.py      # verify everything works
+python hello_audio.py       # verify everything works
 ```
 
-## Usage
-
-### Run the full pipeline
+## Run each phase
 
 ```bash
-python -m pipeline.batch data/raw data/processed
+# Phase 2 — classify sound type
+bash demo.sh path/to/sound.wav
+
+# Phase 3 — classify piano note
+bash demo_note.sh path/to/note.wav
+
+# Phase 4a — identify chord (two-pass: verdict + correction)
+bash demo_chord.sh path/to/chord.wav --expected Cmaj
 ```
 
-Takes every `.wav` in `data/raw/`, runs it through ingest → augment (7 variants) → feature extraction, and saves `.pt` tensors + a `manifest.json` to `data/processed/`. Output tensors are `(1, 128, 65)` — one channel, 128 Mel bands, 65 time frames.
-
-### Run the demo
+## Train
 
 ```bash
-bash demo.sh                        # identify data/raw/unknown.wav
-bash demo.sh path/to/my_sound.wav   # identify any recording
+python -m model.train                              # Phase 2
+python -m model.transfer_train --compare           # Phase 3
+python -m model.chord_train --mode name --mode notes  # Phase 4a
+python -m model.progression_train                  # Phase 4b
 ```
 
-### Run tests
+## Learn
 
-```bash
-python -m pytest tests/ -v
-```
-
-### Train the classifier (Phase 2)
-
-```bash
-python -m model.train --epochs 50
-```
-
-Trains a 3-class CNN (hum / whistle / clap) on the processed tensors.
-Saves best checkpoint to `output/best_model.pt` and training history to `output/history.json`.
-
-### Evaluate
-
-```bash
-python -m model.evaluate
-```
-
-Loads the best checkpoint, runs it on the held-out test set, prints a classification report,
-and saves a confusion matrix and loss curves to `explainers/images/`.
-
-### Predict
-
-```bash
-# Single file
-python -m model.predict path/to/recording.wav
-python -m model.predict path/to/recording.wav --verbose   # show all class scores
-
-# Drop any .wav into data/raw/ and scan
-python -m model.predict --scan
-```
-
-Drop a recording directly into `data/raw/` (not in a subfolder) and run `--scan`
-to identify it. Files inside `data/raw/hum/`, `data/raw/whistle/`, `data/raw/clap/`
-are ignored — only flat files are treated as unknowns.
-
-### Project structure
-
-```
-pipeline/
-  ingest.py      — load, resample, trim, pad/truncate audio
-  augment.py     — noise, ambient, pitch shift, time stretch
-  features.py    — STFT → Mel-spectrogram → log-dB → normalise → tensor
-  batch.py       — folder → augmented tensors + manifest
-model/
-  dataset.py     — SignalDataset, make_label_map, load_splits
-  cnn.py         — SoundClassifier (25K params, 3-class CNN)
-  config.py      — TrainConfig hyperparameter dataclass
-  train.py       — training loop, checkpointing, early stopping
-  evaluate.py    — metrics, confusion matrix, loss curves
-  predict.py     — raw .wav → class + confidence
-tests/             — 115 unit tests across all modules
-data/raw/          — source .wav files (hum/, whistle/, clap/ — 11 each)
-data/processed/    — generated .pt tensors (gitignored, regenerated by setup.sh)
-output/            — checkpoints and history (gitignored)
-explainers/        — step-by-step notes on every concept in the pipeline
-```
+- Project log (what was built, decisions, results): [LOG.md](LOG.md)
+- Project-specific explainers: [explainers/](explainers/README.md)
+- Shared concept explainers: [../explainers/](../explainers/README.md)
+- Full command reference and project structure: [DOCS.md](DOCS.md)

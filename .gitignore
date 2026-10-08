@@ -15,6 +15,8 @@ signal-hunt/output/
 signal-hunt/data/processed/
 signal-hunt/data/raw/ambient/
 signal-hunt/data/raw/notes/
+signal-hunt/data/raw/chords/
+signal-hunt/data/raw/progressions/
 
 # IDE
 .vscode/
