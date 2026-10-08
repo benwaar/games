@@ -1,80 +1,97 @@
-# M20 — Training on Chords
+# M21 — Chord Progressions + RNN
 
-**Goal:** Deep evaluation of both chord classifiers — per-chord confusion, threshold sensitivity for the note-set model, and a final decision on which head to carry into Phase 4b (progressions).
-
-## The two-model design
-
-Both classifiers are used together in the tutor — they're not alternatives, they're a pipeline:
-
-1. **Name model (verdict):** "you played Amin, should be Cmaj" — fast, confident, tells the student what chord they hit
-2. **Notes model (correction):** "you have A4 and C4, you're missing E4" — tells the student exactly which note to fix
-
-Same clip, two passes. M20 evaluates each model for its specific role: name model on chord-level accuracy, notes model on per-note precision (does it reliably identify which note is missing?).
+**Goal:** Synthesise chord progression clips and build a CNN-RNN hybrid that classifies sequences of chords over time.
 
 ## Status going in
 
-M19 complete:
-- `model/chord.py` — `ChordNameClassifier` (6-class) and `NoteSetClassifier` (12-label)
-- `model/chord_train.py` — `--mode name` and `--mode notes`
-- `output/chords/name/best_model.pt` — 96% val_acc
-- `output/chords/notes/best_model.pt` — 76% exact-match
+M20 complete:
+- `output/chords/name/best_model.pt` — 96.2% test accuracy (chord-name, 6-class)
+- `output/chords/notes/best_model.pt` — 73.1% exact-match / F1 0.89 avg (note-set, 12-label)
+- `model/chord_evaluate.py` — full evaluation tooling for both modes
+- Both models ready for the two-pass tutor pipeline
 
-Both models trained 80 epochs. Notes mode was still improving at epoch 80.
+Phase 4b goal: model temporal sequences — "Cmaj → Fmaj → Gmaj → Cmaj" (I-IV-V-I).
+
+---
+
+## The two-part architecture
+
+**CNN (already built):** Extracts per-frame chord features. Takes `(B, 1, 128, T)` spectrogram → `(B, 64, T')` feature maps.
+
+**GRU on top:** Collapses the frequency axis, then passes the time-step sequence through a bidirectional GRU to classify the progression as a whole.
+
+```
+(B, 1, 128, T)
+    ↓  CNN conv_blocks
+(B, 64, H, T')
+    ↓  mean over freq axis
+(B, T', 64)
+    ↓  bidirectional GRU
+(B, hidden*2)
+    ↓  linear head
+(B, num_progressions)
+```
+
+Start with whole-clip classification (one label per progression) before per-step decoding.
 
 ---
 
 ## Steps
 
-### Step 1 — Evaluate chord-name model
+### Step 1 — `scripts/synthesise_progressions.py`
 
-```bash
-python -m model.chord_evaluate --mode name
-```
+Concatenate chord clips with short gaps to produce 4-chord progression clips.
 
-- Confusion matrix: does Cmaj confuse with Amin? (share C4, E4) vs Gmaj? (share G4)
-- Per-chord F1
-- Save confusion matrix to `explainers/images/chord_confusion_name.png`
+Target progressions (start with 4, can add more):
 
-**Gate:** Confusion pattern is musically sensible — shared-note chords confuse more than unrelated ones.
+| Label | Progression | Roman numerals |
+|-------|------------|----------------|
+| I-IV-V-I | Cmaj→Fmaj→Gmaj→Cmaj | Tonic-subdominant-dominant-tonic |
+| vi-IV-I-V | Amin→Fmaj→Cmaj→Gmaj | Common pop progression |
+| I-V-vi-IV | Cmaj→Gmaj→Amin→Fmaj | Another pop staple |
+| ii-V-I | Dmin→Gmaj→Cmaj | Jazz cadence |
 
-**Commit:** `feat(signal-hunt): chord_evaluate.py — per-chord metrics and confusion matrix`
+Mix dynamics: use pp/mf/ff combos for each chord within a progression. Target ≥8 source clips per label before augmentation → ≥56 tensors per label.
 
----
+**Gate:** 4 progression labels, ≥50 tensors each. Spectrogram shows clear chord-boundary transitions.
 
-### Step 2 — Evaluate note-set model + threshold sensitivity
-
-```bash
-python -m model.chord_evaluate --mode notes --thresholds 0.3 0.5 0.7
-```
-
-- Exact-match accuracy at each threshold
-- Per-note F1 (which notes does the model miss most?)
-- Save to `explainers/images/chord_confusion_notes.png`
-
-**Gate:** Threshold sweep shows precision/recall tradeoff. Best threshold identified.
-
-**Commit:** `feat(signal-hunt): chord_evaluate.py --mode notes — threshold sweep, per-note F1`
+**Commit:** `feat(signal-hunt): synthesise_progressions.py — 4-chord progression clips`
 
 ---
 
-### Step 3 — Retrain notes model longer if needed
+### Step 2 — `model/progression.py`
 
-If exact-match was still improving at epoch 80, try 120 epochs:
+CNN-RNN hybrid:
+- Load Phase 4 chord-name backbone (conv_blocks + gap) as feature extractor
+- Replace gap with adaptive avg pool over freq axis only → preserve time axis
+- Bidirectional GRU (hidden=64, 1 layer)
+- Linear head → num_progressions logits
+- CrossEntropyLoss (whole-clip classification to start)
 
-```bash
-python -m model.chord_train --mode notes --epochs 120
-```
+**Gate:** Forward pass with `(B, 1, 128, T)` input produces `(B, num_progressions)`. No gradient explosion.
 
-**Gate:** Exact-match > 80% or plateaued.
+**Commit:** `feat(signal-hunt): progression.py — CNN-RNN hybrid for chord progressions`
 
 ---
 
-### Step 4 — Close M20
+### Step 3 — Train and evaluate
 
-- Tick M20 in PLAN.md, add results summary
-- Rewrite NEXT for M21
+```bash
+python -m model.progression_train --epochs 100
+```
 
-**Commit:** `docs(signal-hunt): tick M20, NEXT → M21`
+**Gate:** Test accuracy > 40% (random = 25% for 4 classes). Verify: I-IV-V-I ≠ V-I-IV-I (order matters).
+
+**Commit:** `feat(signal-hunt): progression_train.py — train CNN-RNN on chord progressions`
+
+---
+
+### Step 4 — Close M21
+
+- Tick M21 in PLAN.md, add results summary
+- Rewrite NEXT for M22
+
+**Commit:** `docs(signal-hunt): tick M21, NEXT → M22`
 
 ---
 
@@ -82,6 +99,7 @@ python -m model.chord_train --mode notes --epochs 120
 
 | Situation | Action |
 |-----------|--------|
-| Name model confusions are random (not musical) | Check label map — ensure chord folder names loaded correctly |
-| Notes model stuck below 50% at all thresholds | Try lower lr (1e-4) or more augmentation |
-| Per-note F1 shows one note always missed | Check `_NOTE_INDEX` mapping in chord_train.py — may be an index mismatch |
+| Progression spectrograms look like noise | Check gap length between chords — may need silence trimming |
+| RNN gradients explode | Add gradient clipping (`torch.nn.utils.clip_grad_norm_`) |
+| Accuracy stuck near random (25%) after tuning | Shorten progressions to 2 chords, reduce complexity |
+| I-IV-V-I and V-I-IV-I not distinguished | Check label encoding — progression order must be in the label |
