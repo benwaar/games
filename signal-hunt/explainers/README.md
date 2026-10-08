@@ -64,6 +64,14 @@ Exact-match vs per-label F1, threshold selection, why precision and recall behav
 
 ---
 
+### RNNs and the CNN→RNN Reshape (Phase 4 — M21)
+
+How GRUs work, why bidirectional matters, and the `(B,64,16,T) → mean → permute → GRU` reshape that connects the CNN to the RNN. The Signal Hunt progression classifier: 36 time steps, 73,956 params, 66.7% on 4 progression classes.
+
+→ [RNN sequence modelling](rnn-sequence-modelling.md)
+
+---
+
 ### RNN Temporal Learning (Phase 4 — coming)
 
 *Coming in Phase 4.* Recurrent layers for chord progressions over time.
