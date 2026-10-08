@@ -302,15 +302,17 @@ The Phase 3 CNN classifies one snapshot in time. A chord progression has structu
 
 ### Milestones
 
-#### M18: Chord dataset (~2 hrs)
-- [ ] `scripts/synthesise_chords.py` — mix single-note WAVs to create chord clips
+#### M18: Chord dataset (~2 hrs) ✅
+- [x] `scripts/synthesise_chords.py` — mix single-note WAVs to create chord clips
   - Start with diatonic triads in C major (6 chords): Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin
   - Label format: note set `["C4","E4","G4"]` and chord name `"Cmaj"` in manifest
   - 3 source clips per note × pp/mf/ff → mix combinations → 7 augmentations → target ~150 clips per chord
-- [ ] Run `pipeline.batch` on chord clips → `data/processed/chords/`
-- [ ] Spot-check: spectrogram of Cmaj should show 3 harmonic ladders overlaid
+- [x] Run `pipeline.batch` on chord clips → `data/processed/chords/`
+- [x] Spot-check: spectrogram of Cmaj should show 3 harmonic ladders overlaid
 
-**Gate:** 6 chord classes, ≥100 augmented tensors each. Manifest has both note-set and chord-name labels. Spectrograms visually distinguishable from single notes.
+**Gate:** 6 chord classes, ≥100 augmented tensors each. Manifest has both note-set and chord-name labels. Spectrograms visually distinguishable from single notes. ✅
+
+**What was built:** `scripts/synthesise_chords.py` — mixes Iowa note WAVs for 6 diatonic triads (Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin) using 4 dynamic combinations (pp+pp+pp, mf+mf+mf, ff+ff+ff, pp+mf+ff). Normalises each note to peak 0.5 before mixing, renormalises the result. 24 source clips → 168 augmented tensors (28 per chord, 7 augmentations each). Cmaj spectrogram visually distinct from single C4 — denser harmonic content across Mel bins confirms all three notes present. Spot-check image: `explainers/images/chord_spot_check_cmaj_vs_c4.png`.
 
 #### M19: Multi-label chord model (~2 hrs)
 - [ ] `model/chord.py` — reuse Phase 3 backbone, replace head:

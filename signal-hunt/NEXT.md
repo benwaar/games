@@ -1,71 +1,92 @@
-# M18 — Chord Dataset
+# M19 — Multi-Label Chord Model
 
-**Goal:** Synthesise chord clips from the Iowa piano recordings and run them through the pipeline to produce augmented tensors for Phase 4 chord training.
+**Goal:** Build a chord detection head on top of the Phase 3 backbone that predicts which notes are present in a chord clip.
 
 ## Status going in
 
-Phase 3 complete:
-- `data/raw/notes/{note}/iowa_{pp,mf,ff}_{note}.wav` — 36 WAVs, 12 notes × 3 dynamics
-- `pipeline/batch.py` — handles arbitrary `data/raw/{label}/` folders
+M18 complete:
+- `scripts/synthesise_chords.py` — 24 source chord clips from Iowa piano notes
+- `data/raw/chords/{Cmaj,Dmin,Emin,Fmaj,Gmaj,Amin}/` — 4 clips per chord
+- `data/processed/chords/` — 168 tensors (28 per chord × 6 chords)
 - `output/transfer/finetune/best_model.pt` — Phase 3 checkpoint (12-class note classifier, 89.5% test acc)
 
-Phase 4 goal: chord detection (multi-label) → chord progressions (CNN-RNN). M18 is the data layer.
+Phase 4 goal: chord detection (multi-label) → chord progressions (CNN-RNN). M19 is the model layer.
 
 ---
 
-## What a chord is here
+## The two approaches
 
-A chord = 2+ notes played simultaneously. Starting with the 6 diatonic triads in C major — built entirely from notes we already have:
+**Option A — Note-set head (multi-label):**
+- Output: `(B, 12)` — one sigmoid logit per note
+- Loss: `BCEWithLogitsLoss`
+- Prediction: `(sigmoid(logits) > 0.5)` — which notes are "on"
+- Richer: tells you exactly which notes are present
+- Harder: 12 binary tasks vs 1 multi-class task
 
-| Chord | Notes |
-|-------|-------|
-| Cmaj | C4 + E4 + G4 |
-| Dmin | D4 + F4 + A4 |
-| Emin | E4 + G4 + B4 |
-| Fmaj | F4 + A4 + C4 |
-| Gmaj | G4 + B4 + D4 |
-| Amin | A4 + C4 + E4 |
+**Option B — Chord-name head (multi-class):**
+- Output: `(B, 6)` — one softmax logit per chord name
+- Loss: `CrossEntropyLoss`
+- Simpler: same setup as Phase 2/3
+- Loses note-level detail
 
-Synthesised by mixing individual note WAVs in the time domain — no new recordings needed.
+Build both, document the tradeoff, train Option B first (faster to get running), then Option A.
 
 ---
 
 ## Steps
 
-### Step 1 — `scripts/synthesise_chords.py`
+### Step 1 — `model/chord.py`
 
-Mix single-note WAVs into chord clips. For each chord:
-1. Load the three note WAVs (vary dynamics: pp+pp+pp, mf+mf+mf, ff+ff+ff, pp+mf+ff)
-2. Normalise each to the same peak amplitude before mixing — avoids clipping
-3. Sum the signals, renormalise the result
-4. Save to `data/raw/chords/{chord_name}/`
+Two head variants on the Phase 3 backbone:
 
-Target: **≥10 source clips per chord** before augmentation.
+```python
+# ChordNameClassifier — Option B (start here)
+# Load Phase 3 backbone, swap Linear(32→12) → Linear(32→6)
+# CrossEntropyLoss, same training loop as Phase 3
 
-**Gate:** Cmaj spectrogram shows 3 harmonic ladders overlaid. Waveform doesn't clip.
-
-**Commit:** `feat(signal-hunt): synthesise_chords.py — mix Iowa notes into diatonic triads`
-
----
-
-### Step 2 — Run pipeline, verify tensors
-
-```bash
-python -m pipeline.batch data/raw/chords data/processed/chords
+# NoteSetClassifier — Option A
+# Load Phase 3 backbone, swap Linear(32→12) → Linear(32→12) with sigmoid
+# BCEWithLogitsLoss, threshold at 0.5
 ```
 
-**Gate:** 6 chord labels, ≥70 tensors per chord (10 source × 7 aug). Cmaj spectrogram visually distinct from single C4.
+**Gate:** Both models load Phase 3 weights. Forward passes produce correct output shapes. BCEWithLogitsLoss computes without NaN.
 
-**Commit:** `feat(signal-hunt): chord tensors — 6 diatonic triads, 7 augmentations each`
+**Commit:** `feat(signal-hunt): chord.py — ChordNameClassifier and NoteSetClassifier heads`
 
 ---
 
-### Step 3 — Close M18
+### Step 2 — Train chord-name classifier (Option B)
 
-- Tick M18 in PLAN.md, add results summary
-- Rewrite NEXT for M19
+```bash
+python -m model.chord_train --mode name --epochs 80
+```
 
-**Commit:** `docs(signal-hunt): tick M18, NEXT → M19`
+**Gate:** Validation accuracy > 50% (random = 16.7%). Loss decreasing. No NaN.
+
+**Commit:** `feat(signal-hunt): chord_train.py — train chord-name classifier`
+
+---
+
+### Step 3 — Train note-set classifier (Option A)
+
+```bash
+python -m model.chord_train --mode notes --epochs 80
+```
+
+Metrics: per-note F1, exact-match accuracy (all 3 notes in chord correct).
+
+**Gate:** Exact-match accuracy > 50% (random ≈ 1.6% for 3-of-12 subsets). Predict on Cmaj → C4, E4, G4 flagged above threshold.
+
+**Commit:** `feat(signal-hunt): chord_train.py --mode notes — multi-label note-set classifier`
+
+---
+
+### Step 4 — Close M19
+
+- Tick M19 in PLAN.md, add results summary
+- Rewrite NEXT for M20
+
+**Commit:** `docs(signal-hunt): tick M19, NEXT → M20`
 
 ---
 
@@ -73,6 +94,6 @@ python -m pipeline.batch data/raw/chords data/processed/chords
 
 | Situation | Action |
 |-----------|--------|
-| Output waveform clips | Normalise each note to peak 0.5 before mixing |
-| Spectrogram looks like single note | Check mix levels — verify all three notes audible |
-| Fewer than 6 labels in manifest | Check folder names: `data/raw/chords/{Cmaj,Dmin,...}/` |
+| BCELoss produces NaN | Switch to `BCEWithLogitsLoss` (already planned), add eps clipping |
+| Option B stuck near random (16.7%) | Check label loading — confirm chord folder names match expected keys |
+| Option A exact-match < 20% after tuning | Fall back to chord-name classification only, document why |
