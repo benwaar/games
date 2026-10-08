@@ -252,6 +252,14 @@ Why we used the University of Iowa Musical Instrument Samples instead of recordi
 
 ---
 
-## 14. RNN Temporal Learning (Phase 4)
+## 14. Chord Synthesis — Mixing Notes in the Time Domain (Phase 4 — M18)
+
+Three Iowa piano note WAVs mixed into a chord clip by summing waveforms. Normalisation before mixing prevents clipping; four dynamic combinations per chord (pp+pp+pp, mf+mf+mf, ff+ff+ff, pp+mf+ff) add realistic variation. Six diatonic triads in C major — all built from notes already in `data/raw/notes/`.
+
+→ [Chord synthesis explained](chord-synthesis.md) — time-domain mixing, clipping prevention, dynamic combinations, why the spectrograms look different
+
+---
+
+## 15. RNN Temporal Learning (Phase 4)
 
 *Coming in Phase 4.* Recurrent layers learn how chord states change over time — the sequence that makes a I–IV–V–I progression different from V–IV–I–I.
