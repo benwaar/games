@@ -391,15 +391,37 @@ Precision high across all notes (0.80–1.00) — when the model says a note is 
 - Early stopped at epoch 53 (patience=15)
 - Dataset is the constraint: 16 source clips (13 train / 3 val). Architecture proven; more clips would improve accuracy.
 
-#### M22: Documentation & project wrap-up (~2 hrs)
-- [ ] Explainer: multi-label classification (sigmoid vs softmax, BCE vs CE, threshold selection, exact-match vs per-label F1)
-- [ ] Explainer: RNNs (GRU vs LSTM, vanishing gradients, bidirectional, hidden states, the reshape from CNN to RNN)
-- [ ] Explainer: chord progressions as sequence modelling (how music theory maps to ML sequence problems)
-- [ ] Final project README: what Signal Hunt is, what it teaches, how to run everything end to end
-- [ ] Phase 4 summary in PLAN.md
-- [ ] Retrospective: what worked, what was harder than expected, what you'd do differently
+#### M22: Documentation & project wrap-up (~2 hrs) ✅
+- [x] Explainer: multi-label classification (sigmoid vs softmax, BCE vs CE, threshold selection, exact-match vs per-label F1)
+- [x] Explainer: RNNs (GRU vs LSTM, vanishing gradients, bidirectional, hidden states, the reshape from CNN to RNN)
+- [x] Explainer: chord progressions as sequence modelling (how music theory maps to ML sequence problems)
+- [x] Final project README: what Signal Hunt is, what it teaches, how to run everything end to end
+- [x] Phase 4 summary in PLAN.md
+- [x] Retrospective: what worked, what was harder than expected, what you'd do differently
 
-**Gate:** Full project documentation passes the teaching test. All phases summarised. Someone can clone, run `setup.sh`, and work through all four phases.
+**Gate:** Full project documentation passes the teaching test. All phases summarised. Someone can clone, run `setup.sh`, and work through all four phases. ✅
+
+---
+
+## Phase 4 Summary
+
+| Milestone | What it built | Key result |
+|-----------|-------------|------------|
+| M18 | Chord synthesis (Iowa WAV mixing, 6 diatonic triads, 168 tensors) | Cmaj spectrogram visually distinct from single C4 |
+| M19 | Two chord heads: name (6-class) + note-set (12-label) | Name 96% val_acc, notes 76% exact-match |
+| M20 | Chord evaluation: confusion matrix, per-note F1, threshold sweep | Threshold 0.5 optimal; D4/F4 weakest (2 chords each) |
+| M21 | CNN-RNN progression classifier (bidirectional GRU, 4 progressions) | 66.7% val_acc vs 25% random |
+| M22 | Two-pass chord inference, RNN + progression explainers, README | `bash demo_chord.sh --expected Cmaj` → "Missing: G4" |
+
+**The two-model tutor design:**
+- Pass 1 — name model: "you played Amin, should be Cmaj" (verdict)
+- Pass 2 — notes model: "you have A4 and C4, missing E4" (correction)
+
+**Lessons:**
+- Synthesising training data from existing recordings is powerful — 24 source chord clips → 168 augmented tensors with no new recordings
+- Multi-label exact-match understates usefulness: per-note F1 0.82–1.00 means the model rarely flags a wrong note (high precision), it just occasionally misses one (false negatives). Right failure mode for a tutor
+- The CNN→RNN reshape (`mean over freq → permute`) is the critical step and the most common source of bugs — it's a spatial dimension collapse, not a data transformation
+- Synthetic progression data works as proof of concept; domain gap to real piano playing would need real recordings or stronger augmentation for production
 
 ### What's tricky
 

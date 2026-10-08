@@ -72,6 +72,14 @@ How GRUs work, why bidirectional matters, and the `(B,64,16,T) → mean → perm
 
 ---
 
+### Chord Progressions as Sequence Modelling (Phase 4 — M22)
+
+Why order matters (I-IV-V-I ≠ V-IV-I-I), how synthetic progressions give free labels, the gap between 66.7% on 16 clips and what more data would do, and how progression classification connects to the piano teacher goal.
+
+→ [Chord progressions](chord-progressions.md)
+
+---
+
 ### RNN Temporal Learning (Phase 4 — coming)
 
 *Coming in Phase 4.* Recurrent layers for chord progressions over time.
