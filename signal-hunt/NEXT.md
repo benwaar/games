@@ -2,6 +2,15 @@
 
 **Goal:** Deep evaluation of both chord classifiers — per-chord confusion, threshold sensitivity for the note-set model, and a final decision on which head to carry into Phase 4b (progressions).
 
+## The two-model design
+
+Both classifiers are used together in the tutor — they're not alternatives, they're a pipeline:
+
+1. **Name model (verdict):** "you played Amin, should be Cmaj" — fast, confident, tells the student what chord they hit
+2. **Notes model (correction):** "you have A4 and C4, you're missing E4" — tells the student exactly which note to fix
+
+Same clip, two passes. M20 evaluates each model for its specific role: name model on chord-level accuracy, notes model on per-note precision (does it reliably identify which note is missing?).
+
 ## Status going in
 
 M19 complete:

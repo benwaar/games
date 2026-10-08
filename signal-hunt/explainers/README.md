@@ -260,6 +260,14 @@ Three Iowa piano note WAVs mixed into a chord clip by summing waveforms. Normali
 
 ---
 
-## 15. RNN Temporal Learning (Phase 4)
+## 15. The Two-Model Feedback Design (Phase 4 — M19)
+
+Phase 4 uses two classifiers together: a chord-name model (verdict — "you played Amin, should be Cmaj") and a note-set model (correction — "you have A4 and C4, missing E4"). Same clip, two passes. Mirrors how a real piano teacher gives feedback.
+
+→ [Two-model feedback explained](two-model-feedback.md) — verdict vs correction, why exact-match understates the notes model, business parallels
+
+---
+
+## 16. RNN Temporal Learning (Phase 4)
 
 *Coming in Phase 4.* Recurrent layers learn how chord states change over time — the sequence that makes a I–IV–V–I progression different from V–IV–I–I.

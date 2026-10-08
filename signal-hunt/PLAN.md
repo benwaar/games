@@ -286,6 +286,17 @@ The Phase 3 CNN classifies one snapshot in time. A chord progression has structu
 > Player plays a chord → model detects which notes are present → compare against expected chord → "you hit Ab, the note should be A"
 > Player plays a progression → model labels each chord → compare against the expected I-IV-V-I → "bar 2 should be F major, you played Fmin"
 
+### The two-model feedback design
+
+Phase 4 produces two complementary classifiers that are used together in the tutor:
+
+1. **Chord-name model (verdict):** fast, high-confidence label. "You played A minor, it should be C major." Tells the student *what* they got wrong.
+2. **Note-set model (correction):** pinpoints which notes were right and which were off. "You have A4 and C4, you're missing E4." Tells the student *why*.
+
+Same clip, two passes. The name model gives the verdict; the note-set model gives the actionable correction. This mirrors how a real teacher works — "that's A minor, not C major — you've got two of the three notes but your middle finger is missing the E."
+
+The name model's higher headline accuracy (96% vs 76% exact-match) doesn't mean it's more useful — exact-match is a harsh metric. The note-set model getting 2 of 3 notes right on a miss is still useful feedback; the name model failing just says "wrong chord" with no detail.
+
 ### Dataset strategy
 
 **Chords:** synthesise from existing Iowa piano recordings. Mix two or three individual note clips together in the time domain — no new recordings needed. Start with common triads in C major: Cmaj (C+E+G), Dmin (D+F+A), Emin (E+G+B), Fmaj (F+A+C), G (G+B+D), Amin (A+C+E). That's 6 chord types from notes we already have.
