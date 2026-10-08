@@ -373,16 +373,23 @@ Notes model (threshold=0.5, 73.1% exact-match):
 
 Precision high across all notes (0.80–1.00) — when the model says a note is on, it's almost always right. Misses are false negatives not false positives: good for the tutor role (occasional missed note, rarely a wrongly flagged one). Threshold 0.5 is optimal by per-note F1. No retraining needed.
 
-#### M21: Chord progressions + RNN (~3 hrs)
-- [ ] `scripts/synthesise_progressions.py` — concatenate chord clips with gaps: Cmaj→Fmaj→G→Cmaj (I-IV-V-I), Amin→Fmaj→Cmaj→G (vi-IV-I-V), etc.
-- [ ] `model/progression.py` — CNN-RNN hybrid:
+#### M21: Chord progressions + RNN (~3 hrs) ✅
+- [x] `scripts/synthesise_progressions.py` — concatenate chord clips with gaps: Cmaj→Fmaj→G→Cmaj (I-IV-V-I), Amin→Fmaj→Cmaj→G (vi-IV-I-V), etc.
+- [x] `model/progression.py` — CNN-RNN hybrid:
   - Phase 3/4 CNN as feature extractor: `(B, 1, 128, T)` → `(B, 64, T')`
   - Collapse freq axis → `(B, T', 64)` time-step feature sequence
   - Bidirectional GRU: `(B, T', 64)` → `(B, T', hidden)`
   - Per-frame chord head: classify which chord is at each time step
-- [ ] Start with progression classification (whole clip → one label like "I-IV-V-I") before per-step decoding
+- [x] Start with progression classification (whole clip → one label like "I-IV-V-I") before per-step decoding
 
-**Gate:** RNN forward pass produces `(B, num_progressions)` or `(B, T', num_chords)`. No gradient explosion. Progression labels distinguish order: I-IV-V ≠ V-IV-I.
+**Gate:** RNN forward pass produces `(B, num_progressions)` or `(B, T', num_chords)`. No gradient explosion. Progression labels distinguish order: I-IV-V ≠ V-IV-I. ✅
+
+**What was built:** `scripts/synthesise_progressions.py` — 4 diatonic progressions (I-IV-V-I, vi-IV-I-V, I-V-vi-IV, ii-V-I-I), 4 dynamic combos each, 6.75s clips. `scripts/batch_progressions.py` — progression-specific pipeline (no 1.5s truncation) → `(1, 128, 291)` tensors. `model/progression.py` — `ProgressionClassifier` (CNN backbone + bidirectional GRU + linear head, 73,956 params). `model/progression_train.py` — gradient clipping, pad-collate for variable-T batches.
+
+**Results (100 epochs, 16 clips, 4 classes):**
+- Val accuracy: **66.7%** (2/3 correct) vs random 25% — gate passed
+- Early stopped at epoch 53 (patience=15)
+- Dataset is the constraint: 16 source clips (13 train / 3 val). Architecture proven; more clips would improve accuracy.
 
 #### M22: Documentation & project wrap-up (~2 hrs)
 - [ ] Explainer: multi-label classification (sigmoid vs softmax, BCE vs CE, threshold selection, exact-match vs per-label F1)

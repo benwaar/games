@@ -1,105 +1,74 @@
-# M21 — Chord Progressions + RNN
+# M22 — Documentation & Project Wrap-Up
 
-**Goal:** Synthesise chord progression clips and build a CNN-RNN hybrid that classifies sequences of chords over time.
+**Goal:** Write the final explainers, complete the Phase 4 summary in PLAN.md, and leave the project in a state someone can clone and run end-to-end.
 
 ## Status going in
 
-M20 complete:
-- `output/chords/name/best_model.pt` — 96.2% test accuracy (chord-name, 6-class)
-- `output/chords/notes/best_model.pt` — 73.1% exact-match / F1 0.89 avg (note-set, 12-label)
-- `model/chord_evaluate.py` — full evaluation tooling for both modes
-- Both models ready for the two-pass tutor pipeline
+M21 complete. The full Signal Hunt pipeline is built:
+- Phase 1: data pipelines (ingest, augment, features, batch)
+- Phase 2: 3-class CNN (hum/whistle/clap, 100% test accuracy)
+- Phase 3: 12-class note classifier (transfer learning, 89.5% test accuracy)
+- Phase 4a: chord classifiers — name (96.2%) and note-set (73.1% exact-match)
+- Phase 4b: CNN-RNN progression classifier (66.7% val, 4 classes, data-limited)
 
-Phase 4b goal: model temporal sequences — "Cmaj → Fmaj → Gmaj → Cmaj" (I-IV-V-I).
-
----
-
-## The two-part architecture
-
-**CNN (already built):** Extracts per-frame chord features. Takes `(B, 1, 128, T)` spectrogram → `(B, 64, T')` feature maps.
-
-**GRU on top:** Collapses the frequency axis, then passes the time-step sequence through a bidirectional GRU to classify the progression as a whole.
-
-```
-(B, 1, 128, T)
-    ↓  CNN conv_blocks
-(B, 64, H, T')
-    ↓  mean over freq axis
-(B, T', 64)
-    ↓  bidirectional GRU
-(B, hidden*2)
-    ↓  linear head
-(B, num_progressions)
-```
-
-Start with whole-clip classification (one label per progression) before per-step decoding.
+M22 is documentation only — no new code.
 
 ---
 
 ## Steps
 
-### Step 1 — `scripts/synthesise_progressions.py`
+### Step 1 — Explainer: RNNs and the CNN→RNN reshape
 
-Concatenate chord clips with short gaps to produce 4-chord progression clips.
+Write `explainers/rnn-sequence-modelling.md`:
+- GRU vs LSTM (gating mechanisms, when to use each)
+- Why vanishing gradients matter in sequences and what gating fixes
+- Bidirectional: seeing past AND future context
+- The CNN→RNN reshape: `(B, C, freq, time)` → mean over freq → `(B, time, features)`
+- Why this reshape is the most common source of bugs in CNN-RNN hybrids
+- Business parallel: any sequence classification (clickstreams, log events, transaction chains)
 
-Target progressions (start with 4, can add more):
-
-| Label | Progression | Roman numerals |
-|-------|------------|----------------|
-| I-IV-V-I | Cmaj→Fmaj→Gmaj→Cmaj | Tonic-subdominant-dominant-tonic |
-| vi-IV-I-V | Amin→Fmaj→Cmaj→Gmaj | Common pop progression |
-| I-V-vi-IV | Cmaj→Gmaj→Amin→Fmaj | Another pop staple |
-| ii-V-I | Dmin→Gmaj→Cmaj | Jazz cadence |
-
-Mix dynamics: use pp/mf/ff combos for each chord within a progression. Target ≥8 source clips per label before augmentation → ≥56 tensors per label.
-
-**Gate:** 4 progression labels, ≥50 tensors each. Spectrogram shows clear chord-boundary transitions.
-
-**Commit:** `feat(signal-hunt): synthesise_progressions.py — 4-chord progression clips`
+Add entry to `signal-hunt/explainers/README.md`.
 
 ---
 
-### Step 2 — `model/progression.py`
+### Step 2 — Explainer: chord progressions as sequence modelling
 
-CNN-RNN hybrid:
-- Load Phase 4 chord-name backbone (conv_blocks + gap) as feature extractor
-- Replace gap with adaptive avg pool over freq axis only → preserve time axis
-- Bidirectional GRU (hidden=64, 1 layer)
-- Linear head → num_progressions logits
-- CrossEntropyLoss (whole-clip classification to start)
+Write `explainers/chord-progressions.md`:
+- What a progression is (ordered sequence of chords, not a bag)
+- Why order matters: I-IV-V-I ≠ V-IV-I-I (different musical meaning)
+- How synthetic progressions give exact labels for free
+- The gap between 66.7% (16 clips) and what more data would do
+- What per-step decoding would add (label each chord, not just the whole sequence)
+- Link to the two-model tutor design
 
-**Gate:** Forward pass with `(B, 1, 128, T)` input produces `(B, num_progressions)`. No gradient explosion.
-
-**Commit:** `feat(signal-hunt): progression.py — CNN-RNN hybrid for chord progressions`
-
----
-
-### Step 3 — Train and evaluate
-
-```bash
-python -m model.progression_train --epochs 100
-```
-
-**Gate:** Test accuracy > 40% (random = 25% for 4 classes). Verify: I-IV-V-I ≠ V-I-IV-I (order matters).
-
-**Commit:** `feat(signal-hunt): progression_train.py — train CNN-RNN on chord progressions`
+Add entry to `signal-hunt/explainers/README.md`.
 
 ---
 
-### Step 4 — Close M21
+### Step 3 — Update README with Phase 4 and full usage
 
-- Tick M21 in PLAN.md, add results summary
-- Rewrite NEXT for M22
-
-**Commit:** `docs(signal-hunt): tick M21, NEXT → M22`
+Update `signal-hunt/README.md`:
+- Add Phase 4a and 4b to "What this builds"
+- Add progression training and pipeline commands
+- Update project structure (progression.py, progression_train.py, batch_progressions.py, synthesise_progressions.py)
 
 ---
 
-## Stop conditions
+### Step 4 — Phase 4 summary in PLAN.md
 
-| Situation | Action |
-|-----------|--------|
-| Progression spectrograms look like noise | Check gap length between chords — may need silence trimming |
-| RNN gradients explode | Add gradient clipping (`torch.nn.utils.clip_grad_norm_`) |
-| Accuracy stuck near random (25%) after tuning | Shorten progressions to 2 chords, reduce complexity |
-| I-IV-V-I and V-I-IV-I not distinguished | Check label encoding — progression order must be in the label |
+Add a Phase 4 summary section (like Phase 2/3 have) with milestones table and lessons.
+
+---
+
+### Step 5 — Close M22
+
+- Tick all M22 items in PLAN.md
+- Update memory
+
+**Commit:** `docs(signal-hunt): M22 — RNN explainers, progression explainer, Phase 4 summary`
+
+---
+
+## Note on multi-label explainer
+
+`explainers/multi-label-evaluation.md` was written as part of M20 — M22 originally planned to add this, but it's already done.
