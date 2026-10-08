@@ -56,6 +56,14 @@ Name model (verdict) + note-set model (correction). Same clip, two passes. Mirro
 
 ---
 
+### Multi-Label Evaluation (Phase 4 — M20)
+
+Exact-match vs per-label F1, threshold selection, why precision and recall behave differently when multiple labels are simultaneously active. Phase 4 results: D4/F4 weakest (appear in only 2 chords), precision high across all notes (false negatives, not false positives).
+
+→ [Multi-label evaluation](multi-label-evaluation.md)
+
+---
+
 ### RNN Temporal Learning (Phase 4 — coming)
 
 *Coming in Phase 4.* Recurrent layers for chord progressions over time.
