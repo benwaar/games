@@ -34,8 +34,11 @@ These projects are about understanding algorithms by building them — seeing ho
 
 - **Real systems, not tutorials.** Each project ships a working thing. Checkpoints train. Models infer. Games play.
 - **Build incrementally.** Milestones are small, gated, and committed one at a time. NEXT.md always points at the next concrete step.
-- **Document as you build.** Explainers are written alongside the code, not after. The teaching test: could someone read the explainer cold and understand what was built?
+- **Document as you build.** Explainers are written alongside the code, not after. The teaching test: could someone read the explainer cold and understand what was built? Add to docs with each milestone, not in a batch at the end.
 - **Every skill maps to a real problem.** The business alignment in STUDY.md shows where each capability lands. This isn't abstract — it's practice for specific classes of production ML problem.
+- **Learning first, speed second.** When there's a choice between the fast way and the way that teaches more, pick the one that teaches. Cut corners on polish, not understanding.
+- **Bridge from what you know.** When a Python or ML concept appears, map it to the equivalent in C, JS/TS, or business domains. The explainers use "Coming from C/JS/TS" callouts and "In practice" business parallels — add these where the connection is strong and non-obvious.
+- **Connect to business.** Resampling is normalising data from different sources. Augmentation is synthetic data for imbalanced datasets. Normalisation is feature scaling. Flag these parallels in explainers so it's clear why these skills transfer.
 
 ---
 
@@ -61,7 +64,7 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 
 | Project | Status |
 |---------|--------|
-| [Signal Hunt](signal-hunt/) | Phase 4 in progress (M20 next — chord evaluation) |
+| [Signal Hunt](signal-hunt/) | Phase 4 complete — all milestones done |
 | [Utala: KAOS 9](utala/kaos9/) | Phase 1–5 complete |
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
