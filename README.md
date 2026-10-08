@@ -1,102 +1,49 @@
 # Games AI Lab
 
-Hands-on ML and game AI — built from scratch, phase by phase. Each project is a working system, not a tutorial exercise.
+Hands-on machine learning and game AI projects — reinforcement learning, deep learning, audio classification, neural networks, and model distillation. Built from scratch in Python with PyTorch.
 
-→ [STUDY.md](STUDY.md) — capability map and business alignment
+## Development Ethos
 
----
+These projects are about:
+- understanding algorithms by building them
+- seeing how different approaches *think*
+- learning by stripping problems down to their **nuts and bolts**
 
-## Contents
+Everything is text-based, inspectable, and hackable.
 
-- [Up next](#up-next)
-  - [Acoustic Odyssey](#acoustic-odyssey)
-  - [Artefact](#artefact)
-  - [Void Duel](#void-duel)
-- [Complete](#complete)
-  - [Signal Hunt](#signal-hunt)
-  - [Utala: KAOS 9](#utala-kaos-9)
+## Signal Hunt (In Development)
 
----
+A deep learning project — from raw audio to a trained classifier.
 
-## Up next
+Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
 
-### Acoustic Odyssey
-
-Deploy Signal Hunt's trained models into the real world — on-device inference and an adaptive difficulty system.
-
-| Project | What | Status |
-|---------|------|--------|
-| [cast](acoustic-odyssey/cast/) | Export to ONNX/TFLite, INT8 quantisation, sub-100ms on-device inference | Planned |
-| [echo](acoustic-odyssey/echo/) | RL agent that adapts task difficulty to the user in real time | Planned |
-
-Depends on Signal Hunt Phase 4 ✅
+[Project folder](./signal-hunt/)
 
 ---
 
-### Artefact
+## Utala: KAOS 9 (Complete)
 
-Extract hidden sprites from ROM/memory using computer vision, upscale them, and generate new pixel art in the same style using a fine-tuned diffusion model.
+A competitive 2-player tactical duel playable with any standard 52-card deck.
 
-| Project | What | Status |
-|---------|------|--------|
-| [dig](artefact/dig/) | Binary art scanner — find hidden sprites using CV and autoencoders | Planned |
-| [bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN | Planned |
-| [dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites | Planned |
+AI research studying skill expression, risk management, and learning algorithms — from random baselines through hand-built TD learning to deep reinforcement learning and model distillation.
 
----
+[Utala KAOS 9 Rules (PDF)](utala-kaos-9-rules.pdf) · [Project folder](./utala/kaos9/)
 
-### Void Duel
+### Explore the Aerythen Universe
 
-2-player space shooter on a ZX Spectrum emulator (WASM). Classic ML baselines → multi-agent RL → extreme-edge distillation into a model that runs in 48KB.
+Utala: KAOS 9 contains artificial intelligence code for the card game in the [Aerythen](https://aerythen.com) universe — a Command Line Punk world created by [David Benoy](https://aerythen.com).
 
-[void-duel/](void-duel/) · Planned (Phase 0: PoC)
+The overarching project bridges art, music, AI and a developing series of companion novels and games.
 
----
+* 🎮 **Play the demo:** [Aerythen Interactive Demo](https://aerythen.com/demo)
+* 🎵 **Listen to the Soundtrack:** [Aerythen Soundtrack](https://song.link/jtmzgwknhjt8g)
+* 📖 **Read the novel:** [Utala — An Aerythen Novel](https://mybook.to/utala)
 
-## Complete
-
-### Signal Hunt
-
-Audio classifier — from raw audio to a piano teacher prototype, phase by phase.
-
-| Phase | What | Result |
-|-------|------|--------|
-| 1 | Data pipeline (ingest, augment, Mel-spectrograms) | `(1,128,65)` tensors |
-| 2 | 3-class CNN (hum / whistle / clap) | 100% test accuracy |
-| 3 | 12-class piano note classifier, transfer learning | 89.5% test accuracy |
-| 4a | Chord detection — two-model pipeline | 96.2% name / 73.1% exact-match |
-| 4b | Chord progressions, CNN-RNN | 66.7% on 4 classes |
-
-```bash
-bash demo_chord.sh chord.wav --expected Cmaj
-# Chord:   Amin  ✗  (expected Cmaj)
-# Notes:   A4 ✓  C4 ✓  E4 ✓
-# Missing: G4
-```
-
-[signal-hunt/](signal-hunt/) · [Log](signal-hunt/LOG.md) · [Explainers](signal-hunt/explainers/README.md)
-
----
-
-### Utala: KAOS 9
-
-Card game AI — one engine, one harness, progressively sophisticated agents.
-
-| Phase | What | Result |
-|-------|------|--------|
-| 1 | Engine, replay, baselines | Heuristic 65% vs Random — game worth studying |
-| 2 | TD-linear, hand-built gradients | 47.5% vs Heuristic (27 weights) |
-| 3 | DQN, distillation (original rules) | DQN failed; TinyNN imitation 48% |
-| 4 | Variant A rules, DQN retrained | DQN 53% peak — deep learning justified |
-| 5 | Better DQN → TinyNN v2, Flutter | 48% shipped at 5,727 params |
-
-[utala/kaos9/](utala/kaos9/) · [Log](utala/kaos9/LOG.md) · [Explainers](utala/kaos9/explainers/README.md) · [Rules (PDF)](utala-kaos-9-rules.pdf)
-
-Part of the [Aerythen](https://aerythen.com) universe — [play the demo](https://aerythen.com/demo) · [read the novel](https://mybook.to/utala)
 
 ---
 
 ## License
 
-Source code: MIT License.  
-Aerythen, artwork, game names, rulebook text, and branding: © 2026 David Benoy. All rights reserved.
+Source code is licensed under the MIT License.
+
+Aerythen, the associated artwork, the game names, rulebook text, and branding are © 2026 David Benoy. All rights reserved.
