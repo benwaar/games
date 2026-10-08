@@ -53,7 +53,7 @@ python -m model.progression_train                  # Phase 4b
 
 ## Learn
 
-- Project record (what was built, decisions, results): [PLAN.md](PLAN.md)
+- Project log (what was built, decisions, results): [LOG.md](LOG.md)
 - Project-specific explainers: [explainers/](explainers/README.md)
 - Shared concept explainers: [../explainers/](../explainers/README.md)
 - Full command reference and project structure: [DOCS.md](DOCS.md)
