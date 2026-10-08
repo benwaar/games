@@ -1,92 +1,71 @@
-# M19 — Multi-Label Chord Model
+# M20 — Training on Chords
 
-**Goal:** Build a chord detection head on top of the Phase 3 backbone that predicts which notes are present in a chord clip.
+**Goal:** Deep evaluation of both chord classifiers — per-chord confusion, threshold sensitivity for the note-set model, and a final decision on which head to carry into Phase 4b (progressions).
 
 ## Status going in
 
-M18 complete:
-- `scripts/synthesise_chords.py` — 24 source chord clips from Iowa piano notes
-- `data/raw/chords/{Cmaj,Dmin,Emin,Fmaj,Gmaj,Amin}/` — 4 clips per chord
-- `data/processed/chords/` — 168 tensors (28 per chord × 6 chords)
-- `output/transfer/finetune/best_model.pt` — Phase 3 checkpoint (12-class note classifier, 89.5% test acc)
+M19 complete:
+- `model/chord.py` — `ChordNameClassifier` (6-class) and `NoteSetClassifier` (12-label)
+- `model/chord_train.py` — `--mode name` and `--mode notes`
+- `output/chords/name/best_model.pt` — 96% val_acc
+- `output/chords/notes/best_model.pt` — 76% exact-match
 
-Phase 4 goal: chord detection (multi-label) → chord progressions (CNN-RNN). M19 is the model layer.
-
----
-
-## The two approaches
-
-**Option A — Note-set head (multi-label):**
-- Output: `(B, 12)` — one sigmoid logit per note
-- Loss: `BCEWithLogitsLoss`
-- Prediction: `(sigmoid(logits) > 0.5)` — which notes are "on"
-- Richer: tells you exactly which notes are present
-- Harder: 12 binary tasks vs 1 multi-class task
-
-**Option B — Chord-name head (multi-class):**
-- Output: `(B, 6)` — one softmax logit per chord name
-- Loss: `CrossEntropyLoss`
-- Simpler: same setup as Phase 2/3
-- Loses note-level detail
-
-Build both, document the tradeoff, train Option B first (faster to get running), then Option A.
+Both models trained 80 epochs. Notes mode was still improving at epoch 80.
 
 ---
 
 ## Steps
 
-### Step 1 — `model/chord.py`
-
-Two head variants on the Phase 3 backbone:
-
-```python
-# ChordNameClassifier — Option B (start here)
-# Load Phase 3 backbone, swap Linear(32→12) → Linear(32→6)
-# CrossEntropyLoss, same training loop as Phase 3
-
-# NoteSetClassifier — Option A
-# Load Phase 3 backbone, swap Linear(32→12) → Linear(32→12) with sigmoid
-# BCEWithLogitsLoss, threshold at 0.5
-```
-
-**Gate:** Both models load Phase 3 weights. Forward passes produce correct output shapes. BCEWithLogitsLoss computes without NaN.
-
-**Commit:** `feat(signal-hunt): chord.py — ChordNameClassifier and NoteSetClassifier heads`
-
----
-
-### Step 2 — Train chord-name classifier (Option B)
+### Step 1 — Evaluate chord-name model
 
 ```bash
-python -m model.chord_train --mode name --epochs 80
+python -m model.chord_evaluate --mode name
 ```
 
-**Gate:** Validation accuracy > 50% (random = 16.7%). Loss decreasing. No NaN.
+- Confusion matrix: does Cmaj confuse with Amin? (share C4, E4) vs Gmaj? (share G4)
+- Per-chord F1
+- Save confusion matrix to `explainers/images/chord_confusion_name.png`
 
-**Commit:** `feat(signal-hunt): chord_train.py — train chord-name classifier`
+**Gate:** Confusion pattern is musically sensible — shared-note chords confuse more than unrelated ones.
+
+**Commit:** `feat(signal-hunt): chord_evaluate.py — per-chord metrics and confusion matrix`
 
 ---
 
-### Step 3 — Train note-set classifier (Option A)
+### Step 2 — Evaluate note-set model + threshold sensitivity
 
 ```bash
-python -m model.chord_train --mode notes --epochs 80
+python -m model.chord_evaluate --mode notes --thresholds 0.3 0.5 0.7
 ```
 
-Metrics: per-note F1, exact-match accuracy (all 3 notes in chord correct).
+- Exact-match accuracy at each threshold
+- Per-note F1 (which notes does the model miss most?)
+- Save to `explainers/images/chord_confusion_notes.png`
 
-**Gate:** Exact-match accuracy > 50% (random ≈ 1.6% for 3-of-12 subsets). Predict on Cmaj → C4, E4, G4 flagged above threshold.
+**Gate:** Threshold sweep shows precision/recall tradeoff. Best threshold identified.
 
-**Commit:** `feat(signal-hunt): chord_train.py --mode notes — multi-label note-set classifier`
+**Commit:** `feat(signal-hunt): chord_evaluate.py --mode notes — threshold sweep, per-note F1`
 
 ---
 
-### Step 4 — Close M19
+### Step 3 — Retrain notes model longer if needed
 
-- Tick M19 in PLAN.md, add results summary
-- Rewrite NEXT for M20
+If exact-match was still improving at epoch 80, try 120 epochs:
 
-**Commit:** `docs(signal-hunt): tick M19, NEXT → M20`
+```bash
+python -m model.chord_train --mode notes --epochs 120
+```
+
+**Gate:** Exact-match > 80% or plateaued.
+
+---
+
+### Step 4 — Close M20
+
+- Tick M20 in PLAN.md, add results summary
+- Rewrite NEXT for M21
+
+**Commit:** `docs(signal-hunt): tick M20, NEXT → M21`
 
 ---
 
@@ -94,6 +73,6 @@ Metrics: per-note F1, exact-match accuracy (all 3 notes in chord correct).
 
 | Situation | Action |
 |-----------|--------|
-| BCELoss produces NaN | Switch to `BCEWithLogitsLoss` (already planned), add eps clipping |
-| Option B stuck near random (16.7%) | Check label loading — confirm chord folder names match expected keys |
-| Option A exact-match < 20% after tuning | Fall back to chord-name classification only, document why |
+| Name model confusions are random (not musical) | Check label map — ensure chord folder names loaded correctly |
+| Notes model stuck below 50% at all thresholds | Try lower lr (1e-4) or more augmentation |
+| Per-note F1 shows one note always missed | Check `_NOTE_INDEX` mapping in chord_train.py — may be an index mismatch |

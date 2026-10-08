@@ -314,16 +314,25 @@ The Phase 3 CNN classifies one snapshot in time. A chord progression has structu
 
 **What was built:** `scripts/synthesise_chords.py` — mixes Iowa note WAVs for 6 diatonic triads (Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin) using 4 dynamic combinations (pp+pp+pp, mf+mf+mf, ff+ff+ff, pp+mf+ff). Normalises each note to peak 0.5 before mixing, renormalises the result. 24 source clips → 168 augmented tensors (28 per chord, 7 augmentations each). Cmaj spectrogram visually distinct from single C4 — denser harmonic content across Mel bins confirms all three notes present. Spot-check image: `explainers/images/chord_spot_check_cmaj_vs_c4.png`.
 
-#### M19: Multi-label chord model (~2 hrs)
-- [ ] `model/chord.py` — reuse Phase 3 backbone, replace head:
+#### M19: Multi-label chord model (~2 hrs) ✅
+- [x] `model/chord.py` — reuse Phase 3 backbone, replace head:
   - Output: `(B, 12)` — one logit per note (sigmoid, not softmax)
   - Loss: `BCEWithLogitsLoss` — treats each note as an independent binary prediction
   - Threshold: `pred = (sigmoid(logits) > 0.5)` — which notes are "on"
-- [ ] Alternatively: chord-name classification head `(B, 6)` with `CrossEntropyLoss` — simpler, loses note-level detail
-- [ ] Build both heads, document the tradeoff, pick one to train
-- [ ] Metrics for multi-label: per-note F1, exact-match accuracy (all notes in chord correct)
+- [x] Alternatively: chord-name classification head `(B, 6)` with `CrossEntropyLoss` — simpler, loses note-level detail
+- [x] Build both heads, document the tradeoff, pick one to train
+- [x] Metrics for multi-label: per-note F1, exact-match accuracy (all notes in chord correct)
 
-**Gate:** Forward pass produces correct output shape. BCEWithLogitsLoss computes without NaN. Predict on a Cmaj clip → C4, E4, G4 flagged above threshold.
+**Gate:** Forward pass produces correct output shape. BCEWithLogitsLoss computes without NaN. Predict on a Cmaj clip → C4, E4, G4 flagged above threshold. ✅
+
+**What was built:** `model/chord.py` — `ChordNameClassifier` (Option B, `(B,6)` softmax) and `NoteSetClassifier` (Option A, `(B,12)` sigmoid), both loaded from Phase 3 fine-tune checkpoint. `model/chord_train.py` — shared training loop with `--mode name` and `--mode notes`. Training results (80 epochs, 168 tensors, 6 chords):
+
+| Mode | Best val metric | vs random |
+|------|----------------|-----------|
+| name (6-class) | 96.0% val_acc | 5.8× (random=16.7%) |
+| notes (12-label) | 76.0% exact-match | 47× (random≈1.6%) |
+
+Both well above gate. Notes mode still improving at epoch 80 — more epochs or data would push it higher.
 
 #### M20: Training on chords (~2.5 hrs)
 - [ ] Train multi-label chord detector
