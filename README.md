@@ -15,16 +15,14 @@ Everything is text-based, inspectable, and hackable.
 
 ## Projects
 
-| Project | What | Status |
-|---------|------|--------|
-| [Utala: KAOS 9](utala/kaos9/) | Card game AI — TD learning, deep RL, distillation | ✅ Complete |
-| [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, transfer learning, chords, CNN-RNN | ✅ Complete |
-| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, quantisation, sub-100ms on-device inference | Planned |
-| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL — personalises task difficulty to the user in real time | Planned |
-| [Artefact: dig](artefact/dig/) | Binary art scanner — find hidden sprites in ROM using CV and autoencoders | Planned |
-| [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN | Planned |
-| [Artefact: dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites | Planned |
-| [Void Duel](void-duel/) | ZX Spectrum shooter — classic ML, multi-agent RL, extreme-edge distillation | Planned |
+- [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation ✅
+- [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
+- [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
+- [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
+- [Artefact: dig](artefact/dig/) — binary art scanner: find hidden sprites in ROM using CV and autoencoders
+- [Artefact: bloom](artefact/bloom/) — pixel art upscaler: super-resolution CNN and GAN
+- [Artefact: dream](artefact/dream/) — LoRA fine-tune a diffusion model on extracted sprites
+- [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
 
 ---
 
@@ -45,7 +43,6 @@ The overarching project bridges art, music, AI and a developing series of compan
 * 🎮 **Play the demo:** [Aerythen Interactive Demo](https://aerythen.com/demo)
 * 🎵 **Listen to the Soundtrack:** [Aerythen Soundtrack](https://song.link/jtmzgwknhjt8g)
 * 📖 **Read the novel:** [Utala — An Aerythen Novel](https://mybook.to/utala)
-
 
 ---
 
