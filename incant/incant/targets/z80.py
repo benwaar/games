@@ -11,7 +11,7 @@ Rules:
 - Output ONLY valid Z80 assembly. No prose, no markdown fences, no explanation.
 - End every program with HALT.
 - Registers are pre-loaded by the test harness — do not set input registers yourself.
-- Use standard Zilog mnemonics (LD, ADD, SUB, etc.).
+- Use lowercase mnemonics (ld, add, sub, jp, jr, halt).
 - Use labels for jumps (not raw addresses).
 - Keep code minimal — do exactly what the spec asks, nothing more.
 """
@@ -42,8 +42,9 @@ def assemble(source: str) -> tuple[bool, bytes | None, str | None]:
     """Assemble Z80 source. Returns (success, bytes, error_message)."""
     try:
         asm = z80lib.Asm()
-        sf = z80lib.SourceFile("generated.asm", source)
+        sf = z80lib.SourceFile("generated.asm", source.lower())
         code = asm.assemble(sf)
+        code.resolve()
         chunks = code.encode()
         if not chunks:
             return False, None, "Assembly produced no output"

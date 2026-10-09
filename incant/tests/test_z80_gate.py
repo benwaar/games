@@ -75,3 +75,29 @@ def test_extract_code_plain():
     raw = "add a, b\nhalt"
     code = extract_code(raw)
     assert code == raw
+
+
+def test_assemble_with_labels():
+    source = "ld b, 5\nloop:\ninc a\ndjnz loop\nhalt"
+    ok, data, err = assemble(source)
+    assert ok, f"Assembly with labels failed: {err}"
+    assert data is not None
+
+
+def test_run_counter_loop():
+    source = "ld a, 0\nloop:\ninc a\ndjnz loop\nhalt"
+    ok, data, _ = assemble(source)
+    assert ok
+
+    sigil = _make_sigil(
+        inputs=[SigilParam(name="count", type="u8", register="B")],
+    )
+    test = SigilTest(inputs={"count": 5}, expect={"a": 5})
+    passed, msg = run_test(data, test, sigil)
+    assert passed, msg
+
+
+def test_assemble_lowercases_uppercase():
+    source = "ADD A, B\nHALT"
+    ok, data, err = assemble(source)
+    assert ok, f"Uppercase assembly failed: {err}"
