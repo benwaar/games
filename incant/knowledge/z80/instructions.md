@@ -71,3 +71,44 @@ Where `r` is any 8-bit register (A, B, C, D, E, H, L) or `(HL)` or immediate `n`
 - `HALT` — stop CPU until interrupt. Used to end programs in testing.
 - `DI` — disable interrupts
 - `EI` — enable interrupts
+
+## Undocumented instructions
+
+These are real Z80 opcodes that Zilog never put in the manual. They work on every Z80 CPU ever made and are widely used in Spectrum demos, games, and debugging tools. You'll see them in disassemblies and other people's code.
+
+**incant's assembler (`z80` pip package) does not support these.** Do not generate them. They're documented here for reading comprehension, not code generation.
+
+### IXH, IXL, IYH, IYL — index register halves
+
+The IX and IY 16-bit registers can be accessed as two separate 8-bit registers. This gives you 4 extra 8-bit working registers without the cost of an EXX shadow swap.
+
+- `LD A, IXH` — load high byte of IX into A
+- `LD A, IXL` — load low byte of IX into A
+- `LD IXH, 42` — load immediate into high byte of IX
+- `ADD A, IYL` — arithmetic works too
+
+Syntax varies by assembler: `IXH`/`IXL` (common), `HX`/`LX` (some), `XH`/`XL` (rare).
+
+Opcodes: DD-prefixed versions of the H/L register instructions. E.g. `LD A, IXH` is `DD 7C` (the DD prefix makes `LD A, H` operate on IXH instead).
+
+### SLL — shift left logical (set bit 0)
+
+- `SLL r` — shift left, set bit 0 to 1 (not 0 like SLA). Opcode CB 30+r.
+
+Useful for building bitmasks. `SLA` shifts in a 0; `SLL` shifts in a 1. No documented equivalent exists.
+
+### IN F,(C) — port read without clobbering
+
+- `IN F,(C)` (or `IN (C)`) — reads port C, sets flags (S, Z, P), discards the value.
+
+The documented `IN r,(C)` always stores the result in a register. This undocumented form sets flags without overwriting any register — ideal for polling hardware status in a loop.
+
+### OUT (C),0 — zero output
+
+- `OUT (C),0` — outputs 0 to port C. Opcode ED 71.
+
+On NMOS Z80s (original Zilog) this outputs 0. On CMOS variants (some clones) it outputs 255. Not portable across CPU versions.
+
+### Why these matter
+
+When reading other people's Z80 code (game disassemblies, demoscene, OS routines), you'll see these everywhere. A disassembler that doesn't know them will show raw hex or misparse the instruction stream. Understanding them is essential for reading real-world Z80 code, even if we don't generate them.
