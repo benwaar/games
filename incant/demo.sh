@@ -61,6 +61,13 @@ run_step "Z80 basics (add + counter + store)" python -m incant multi sigils/prog
 run_step "WAT composed (deps: sum_of_factorials → factorial + add)" \
     python -m incant multi sigils/programs/wat_composed.manifest.yaml
 
+# --- Smelt (BDD spec → binary) ---
+
+echo ""
+echo "━━━ Smelt (BDD spec → binary) ━━━"
+
+run_step "Smelt greet spec → WASI binary" python -m incant smelt specs/greet.spec.md -v
+
 # --- RAG query ---
 
 echo ""
