@@ -132,6 +132,78 @@ def run_test(wasm_path: Path, test: SigilTest, sigil: Sigil) -> tuple[bool, str]
     return True, "pass"
 
 
+WASI_SYSTEM_PROMPT = """\
+You are a WebAssembly Text (WAT) programmer writing WASI programs.
+
+Rules:
+- Output ONLY a valid WAT module. No prose, no markdown fences, no explanation.
+- Always wrap code in (module ... ).
+- Import fd_read and fd_write from "wasi_snapshot_preview1".
+- Export "_start" as the entry point and "memory" as the memory.
+- Use iovec structures for fd_read/fd_write (pointer + length at known offsets).
+- Keep code minimal — do exactly what the spec asks, nothing more.
+- String constants should be stored in linear memory using (data ...) segments.
+- fd_write signature: (param i32 i32 i32 i32) (result i32) — fd, iovs_ptr, iovs_len, nwritten_ptr
+- fd_read signature: (param i32 i32 i32 i32) (result i32) — fd, iovs_ptr, iovs_len, nread_ptr
+- fd 0 = stdin, fd 1 = stdout
+"""
+
+
+def build_wasi_prompt(sigil: Sigil, rag_context: str) -> str:
+    """Build a prompt for WASI program generation."""
+    scenario_text = ""
+    if sigil.tests:
+        examples = []
+        for t in sigil.tests:
+            stdin_val = t.inputs.get("stdin", "")
+            stdout_val = t.expect if isinstance(t.expect, str) else str(t.expect)
+            examples.append(f'  stdin: "{stdin_val}" → stdout: "{stdout_val}"')
+        scenario_text = "\n".join(examples)
+
+    return f"""{rag_context}
+
+Write a WASI WAT module for the following spec:
+
+Name: {sigil.name}
+Description: {sigil.description}
+
+The program reads from stdin (fd 0) and writes to stdout (fd 1).
+Import fd_read and fd_write from "wasi_snapshot_preview1".
+Export "_start" as the entry point and "memory".
+
+Examples:
+{scenario_text}
+
+Memory layout suggestion:
+- Offset 0-7: iovec struct (4 bytes pointer + 4 bytes length)
+- Offset 8-15: nread/nwritten result
+- Offset 100+: string constants and read buffer
+- Offset 200+: output buffer (for building dynamic strings)
+
+Output ONLY the WAT module. No explanation."""
+
+
+def run_wasi_test(
+    wasm_path: Path, stdin_input: str, expected_stdout: str,
+) -> tuple[bool, str]:
+    """Run a WASI program with stdin input and check stdout."""
+    result = subprocess.run(
+        ["wasm-interp", "--wasi", str(wasm_path)],
+        capture_output=True,
+        text=True,
+        input=stdin_input,
+    )
+
+    if result.returncode != 0:
+        return False, f"wasm-interp --wasi failed: {result.stderr.strip()}"
+
+    actual = result.stdout
+    if actual == expected_stdout:
+        return True, "pass"
+
+    return False, f"Expected stdout {expected_stdout!r}, got {actual!r}"
+
+
 def extract_code(llm_output: str) -> str:
     """Strip markdown fences and prose from LLM output."""
     lines = llm_output.strip().splitlines()

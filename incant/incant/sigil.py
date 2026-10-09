@@ -37,6 +37,7 @@ class Sigil:
     export: str | None = None
     memory: int | None = None
     dependencies: list[str] = field(default_factory=list)
+    wasi: bool = False
 
 
 def parse_sigil(path: Path) -> Sigil:
@@ -81,4 +82,5 @@ def parse_sigil(path: Path) -> Sigil:
         export=raw.get("export"),
         memory=raw.get("memory"),
         dependencies=raw.get("dependencies", []),
+        wasi=raw.get("wasi", False),
     )

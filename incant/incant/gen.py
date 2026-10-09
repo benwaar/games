@@ -60,6 +60,12 @@ def cast_sigil(
     rag_context = get_rag_context(store, sigil)
     prompt = target.build_prompt(sigil, rag_context)
 
+    # Use WASI prompt for WASI sigils
+    system_prompt = target.SYSTEM_PROMPT
+    if sigil.wasi and sigil.target == "wat":
+        prompt = target.build_wasi_prompt(sigil, rag_context)
+        system_prompt = target.WASI_SYSTEM_PROMPT
+
     if verbose:
         print(f"  RAG context: {len(rag_context)} chars")
         print(f"  Prompt: {len(prompt)} chars")
@@ -78,7 +84,7 @@ def cast_sigil(
         else:
             retry_prompt = prompt
 
-        raw_output = call_llm(target.SYSTEM_PROMPT, retry_prompt)
+        raw_output = call_llm(system_prompt, retry_prompt)
         code = target.extract_code(raw_output)
 
         if verbose:
@@ -95,7 +101,12 @@ def cast_sigil(
         # gate: run tests
         all_passed = True
         for i, test in enumerate(sigil.tests):
-            passed, msg = target.run_test(artifact, test, sigil)
+            if sigil.wasi and sigil.target == "wat":
+                stdin_val = test.inputs.get("stdin", "")
+                expected = test.expect if isinstance(test.expect, str) else str(test.expect)
+                passed, msg = target.run_wasi_test(artifact, stdin_val, expected)
+            else:
+                passed, msg = target.run_test(artifact, test, sigil)
             if verbose:
                 status = "PASS" if passed else "FAIL"
                 print(f"  Test {i + 1}: {status} — {msg}")
@@ -138,6 +149,11 @@ def _generate_code(
 
     prompt = target.build_prompt(sigil, rag_context)
 
+    system_prompt = target.SYSTEM_PROMPT
+    if sigil.wasi and sigil.target == "wat":
+        prompt = target.build_wasi_prompt(sigil, rag_context)
+        system_prompt = target.WASI_SYSTEM_PROMPT
+
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         if verbose:
@@ -152,7 +168,7 @@ def _generate_code(
         else:
             retry_prompt = prompt
 
-        raw_output = call_llm(target.SYSTEM_PROMPT, retry_prompt)
+        raw_output = call_llm(system_prompt, retry_prompt)
         code = target.extract_code(raw_output)
 
         success, artifact, error = target.assemble(code)
@@ -164,7 +180,12 @@ def _generate_code(
 
         all_passed = True
         for i, test in enumerate(sigil.tests):
-            passed, msg = target.run_test(artifact, test, sigil)
+            if sigil.wasi and sigil.target == "wat":
+                stdin_val = test.inputs.get("stdin", "")
+                expected = test.expect if isinstance(test.expect, str) else str(test.expect)
+                passed, msg = target.run_wasi_test(artifact, stdin_val, expected)
+            else:
+                passed, msg = target.run_test(artifact, test, sigil)
             if verbose:
                 status = "PASS" if passed else "FAIL"
                 print(f"    Test {i + 1}: {status} — {msg}")

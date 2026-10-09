@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 from incant.sigil import Sigil, SigilParam, SigilSignature, SigilTest
-from incant.targets.wat import assemble, extract_code, run_test
+from incant.targets.wat import assemble, extract_code, run_test, run_wasi_test
 
 
 @pytest.fixture
@@ -135,3 +135,31 @@ def test_run_test_wrong_result(has_wabt):
     passed, msg = run_test(wasm_path, test, sigil)
     assert not passed
     assert "Expected 99" in msg
+
+
+WASI_HELLO_WAT = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (data (i32.const 8) "hello world\\n")
+  (data (i32.const 0) "\\08\\00\\00\\00\\0c\\00\\00\\00")
+  (func (export "_start")
+    (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 20))
+    drop
+  )
+)"""
+
+
+def test_wasi_assemble_and_run(has_wabt):
+    ok, wasm_path, err = assemble(WASI_HELLO_WAT)
+    assert ok, f"Assembly failed: {err}"
+    passed, msg = run_wasi_test(wasm_path, "", "hello world\n")
+    assert passed, msg
+
+
+def test_wasi_wrong_output(has_wabt):
+    ok, wasm_path, err = assemble(WASI_HELLO_WAT)
+    assert ok, err
+    passed, msg = run_wasi_test(wasm_path, "", "wrong output")
+    assert not passed
+    assert "Expected stdout" in msg
