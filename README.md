@@ -23,6 +23,7 @@ Everything is text-based, inspectable, and hackable.
 - [Artefact: bloom](artefact/bloom/) — pixel art upscaler: super-resolution CNN and GAN
 - [Artefact: dream](artefact/dream/) — LoRA fine-tune a diffusion model on extracted sprites
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
+- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly 🔨
 
 ---
 
