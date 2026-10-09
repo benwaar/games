@@ -66,6 +66,33 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ---
 
+## M6 — Smelt: natural language → sigils
+
+Human writes intent in plain English. The pipeline generates sigil YAMLs + manifest. Brings in standard library support (WASI for I/O, string ops).
+
+Example input:
+```
+Say hello, ask the user to enter their name, output "hello <name>"
+```
+
+Pipeline generates:
+- Sigil: `greet(name: string) -> string` — returns "hello " + name
+- Sigil: `read_name() -> string` — read from stdin
+- Sigil: `main()` — call read_name, pass to greet, print result
+- Manifest: all three, with dependencies
+
+- [ ] Define smelt input format (freeform markdown, like foundry's `human-inputs/`)
+- [ ] Add WASI target support (fd_read, fd_write for stdin/stdout)
+- [ ] `smelt` CLI subcommand: intent → structured spec → sigils + manifest
+- [ ] Standard library: reusable sigils for common ops (I/O, string, math)
+- [ ] LLM decomposes intent into function graph with dependencies
+- [ ] Generate test cases from the spec (LLM picks representative inputs)
+- [ ] Run: write intent, get working binary with no YAML by hand
+
+**Gate:** `echo "greet the user by name" | python -m incant smelt --target wat` produces sigils + manifest that build a working .wasm.
+
+---
+
 ## Skills this covers
 
 | Skill | Gap filled |
@@ -75,6 +102,8 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 | Gate-driven LLM iteration | ⬜ → ✅ |
 | WASM binary pipeline | ⬜ → ✅ |
 | Z80 assembly | ⬜ → ✅ |
+| Multi-step LLM decomposition | ⬜ → ✅ (M6) |
+| Intent → spec → code pipeline | ⬜ → ✅ (M6) |
 
 ---
 
