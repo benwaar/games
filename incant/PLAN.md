@@ -57,10 +57,10 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ## M5 — Docs + integration
 
-- [ ] Explainers: WAT format, Z80 instruction set, RAG for code gen, sigil design
-- [ ] Update STUDY.md skills coverage
-- [ ] Update root CLAUDE.md project table
-- [ ] Demo script: `bash demo.sh`
+- [x] Explainers: WAT format, Z80 instruction set, RAG for code gen, sigil design
+- [x] Update STUDY.md skills coverage
+- [x] Update root CLAUDE.md project table
+- [x] Demo script: `bash demo.sh`
 
 **Gate:** `bash demo.sh` works from cold clone after `bash setup.sh`.
 

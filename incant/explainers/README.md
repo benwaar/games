@@ -20,11 +20,12 @@ manifest.yaml → toposort → generate each → stitch → assemble → verify 
 
 | Doc | Covers |
 |-----|--------|
+| [Sigil Design](sigil-design.md) | YAML spec format, Z80 vs WAT differences, dependencies, design principles |
 | [RAG Pipeline](rag-pipeline.md) | Chunking, embedding, vector search, prompt injection |
 | [Z80 Backend](z80-backend.md) | Assembly, emulation, gate-driven retry, code extraction |
 | [WAT Backend](wat-backend.md) | wat2wasm, wasm-interp, signed/unsigned conversion, structured control flow |
 | [Multi-Sigil Orchestration](multi-sigil.md) | Manifests, stitching, dependencies, topological sort |
-| [Python Concepts](python-concepts.md) | dataclass, zip, generators, pathlib, JSONL, regex, setattr/getattr, subprocess |
+| [Python Concepts](python-concepts.md) | dataclass, zip, generators, pathlib, JSONL, regex, setattr/getattr, subprocess, topological sort |
 | [Libraries](libraries.md) | ollama, z80, pyyaml, wabt |
 
 For shared concepts (CNNs, training loops, RL), see [../../explainers/](../../explainers/README.md).

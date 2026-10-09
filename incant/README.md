@@ -7,12 +7,13 @@ Spec-driven code generation — local LLM + RAG produces WAT (WebAssembly Text) 
 A pipeline that reads a sigil (spec file), retrieves relevant instruction set docs via RAG, prompts a local LLM, and gates the output by assembling and running it.
 
 ```
-sigil → RAG context → LLM → code → assemble → test → binary
+sigil.yaml → RAG context → LLM → code → assemble → test → binary
+manifest.yaml → toposort → generate each → stitch → assemble → verify → combined binary
 ```
 
 | Target | LLM outputs | Assembler | Test runner |
 |--------|-------------|-----------|-------------|
-| WASM | WAT (S-expressions) | `wat2wasm` | `wasm-interp --run-all-exports` |
+| WASM | WAT (S-expressions) | `wat2wasm` | `wasm-interp -r <func> -a type:val` |
 | Z80 | Raw Z80 asm | `z80.Asm()` | `z80.Z80Machine()` |
 
 No intermediate languages. The LLM writes the target format directly.
@@ -24,11 +25,20 @@ cd incant
 bash setup.sh
 source .venv/bin/activate
 
+# Generate WASM module from a sigil
+python -m incant cast sigils/examples/wat_add.sigil.yaml
+
 # Generate Z80 binary from a sigil
 python -m incant cast sigils/examples/z80_add.sigil.yaml
 
-# Generate WASM module from a sigil
-python -m incant cast sigils/examples/wat_add.sigil.yaml
+# Multi-sigil build (independent functions)
+python -m incant multi sigils/programs/wat_math.manifest.yaml
+
+# Multi-sigil build with dependencies (sum_of_factorials calls factorial + add)
+python -m incant multi sigils/programs/wat_composed.manifest.yaml
+
+# Run all examples end-to-end
+bash demo.sh
 ```
 
 ## Sigils
@@ -52,6 +62,31 @@ signature:
 tests:
   - inputs: { a: 2, b: 3 }
     expect: { a: 5 }
+```
+
+## Manifests (multi-sigil)
+
+A manifest lists sigils to compose into one program. All sigils must share the same target.
+
+```yaml
+name: math
+target: wat
+sigils:
+  - sigils/examples/wat_add.sigil.yaml
+  - sigils/examples/wat_factorial.sigil.yaml
+```
+
+Sigils can declare dependencies — the pipeline sorts them topologically, injects generated code from dependencies into the LLM prompt, and stitches the outputs into a single binary.
+
+```yaml
+name: sum_of_factorials
+target: wat
+dependencies:
+  - factorial
+  - add
+tests:
+  - inputs: { a: 3, b: 4 }
+    expect: 30
 ```
 
 ## Stack
