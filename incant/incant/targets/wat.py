@@ -59,6 +59,7 @@ def assemble(source: str) -> tuple[bool, Path | None, str | None]:
         ["wat2wasm", str(wat_path), "-o", str(wasm_path)],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     wat_path.unlink()
@@ -95,7 +96,10 @@ def run_test(wasm_path: Path, test: SigilTest, sigil: Sigil) -> tuple[bool, str]
         bits = _bits_for_type(param.type)
         cmd.extend(["-a", f"{param.type}:{_to_unsigned(value, bits)}"])
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        return False, "wasm-interp timed out (possible infinite loop)"
 
     if result.returncode != 0:
         return False, f"wasm-interp failed: {result.stderr.strip()}"
@@ -235,12 +239,16 @@ def run_wasi_test(
     wasm_path: Path, stdin_input: str, expected_stdout: str,
 ) -> tuple[bool, str]:
     """Run a WASI program with stdin input and check stdout."""
-    result = subprocess.run(
-        ["wasm-interp", "--wasi", str(wasm_path)],
-        capture_output=True,
-        text=True,
-        input=stdin_input,
-    )
+    try:
+        result = subprocess.run(
+            ["wasm-interp", "--wasi", str(wasm_path)],
+            capture_output=True,
+            text=True,
+            input=stdin_input,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "wasm-interp --wasi timed out (possible infinite loop)"
 
     if result.returncode != 0:
         return False, f"wasm-interp --wasi failed: {result.stderr.strip()}"
