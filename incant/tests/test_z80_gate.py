@@ -1,7 +1,7 @@
 """Tests for Z80 target — assemble and run known-good code."""
 
 from incant.sigil import Sigil, SigilParam, SigilSignature, SigilTest
-from incant.targets.z80 import assemble, run_test, extract_code
+from incant.targets.z80 import assemble, run_test, run_harness_io_test, extract_code
 
 
 def _make_sigil(inputs, output_reg="A", tests=None):
@@ -101,3 +101,59 @@ def test_assemble_lowercases_uppercase():
     source = "ADD A, B\nHALT"
     ok, data, err = assemble(source)
     assert ok, f"Uppercase assembly failed: {err}"
+
+
+# --- harness_io tests ---
+
+GREET_ASM = """\
+INPUT_BUF  equ 0x8000
+OUTPUT_BUF equ 0x9000
+  ld de, OUTPUT_BUF
+  ld a, 0x68
+  ld (de), a
+  inc de
+  ld a, 0x69
+  ld (de), a
+  inc de
+  ld a, 0x20
+  ld (de), a
+  inc de
+  ld hl, INPUT_BUF
+copy:
+  ld a, (hl)
+  or a
+  jr z, done
+  ld (de), a
+  inc hl
+  inc de
+  jr copy
+done:
+  xor a
+  ld (de), a
+  halt
+"""
+
+
+def test_harness_io_basic():
+    ok, data, err = assemble(GREET_ASM)
+    assert ok, f"Assembly failed: {err}"
+    test = SigilTest(inputs={"stdin": "Ben"}, expect="hi Ben")
+    passed, msg = run_harness_io_test(data, test)
+    assert passed, msg
+
+
+def test_harness_io_empty_input():
+    ok, data, _ = assemble(GREET_ASM)
+    assert ok
+    test = SigilTest(inputs={"stdin": ""}, expect="hi ")
+    passed, msg = run_harness_io_test(data, test)
+    assert passed, msg
+
+
+def test_harness_io_wrong_output():
+    ok, data, _ = assemble(GREET_ASM)
+    assert ok
+    test = SigilTest(inputs={"stdin": "Ben"}, expect="wrong")
+    passed, msg = run_harness_io_test(data, test)
+    assert not passed
+    assert "Expected" in msg

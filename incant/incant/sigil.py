@@ -38,6 +38,7 @@ class Sigil:
     memory: int | None = None
     dependencies: list[str] = field(default_factory=list)
     wasi: bool = False
+    harness_io: bool = False
 
 
 def parse_sigil(path: Path) -> Sigil:
@@ -83,4 +84,5 @@ def parse_sigil(path: Path) -> Sigil:
         memory=raw.get("memory"),
         dependencies=raw.get("dependencies", []),
         wasi=raw.get("wasi", False),
+        harness_io=raw.get("harness_io", False),
     )

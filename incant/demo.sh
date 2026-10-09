@@ -61,6 +61,13 @@ run_step "Z80 basics (add + counter + store)" python -m incant multi sigils/prog
 run_step "WAT composed (deps: sum_of_factorials → factorial + add)" \
     python -m incant multi sigils/programs/wat_composed.manifest.yaml
 
+# --- Harness I/O (Z80 string programs) ---
+
+echo ""
+echo "━━━ Harness I/O (Z80 string programs) ━━━"
+
+run_step "Z80 greet (harness_io)" python -m incant cast sigils/examples/z80_greet.sigil.yaml
+
 # --- Smelt (BDD spec → binary) ---
 
 echo ""
