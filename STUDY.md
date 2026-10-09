@@ -37,7 +37,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
 | [Artefact: dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites → generate new pixel art in the same ROM style | Planned |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
-| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete |
+| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete, harness_io added — M7 (unified harness) next |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
@@ -113,7 +113,8 @@ AI / ML
 │   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3 + 🔷 foundry
 │   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3 + 🔷 foundry
 │   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
-│   └── Intent → spec → code pipeline ─────────── ✅ incant M6
+│   ├── Intent → spec → code pipeline ─────────── ✅ incant M6
+│   └── Unified test harness (WASM + Z80) ─────── incant M7
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
