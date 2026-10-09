@@ -49,11 +49,13 @@ Technical reference. ✅ complete · planned (project named) · 🔷 separate pr
 ```
 AI / ML
 │
-├── Classic ML ──────────────────────────────────── 🔶 prior role (ice cream sales, ~2004)
-│   ├── Linear / logistic regression
-│   ├── Decision trees, random forests
-│   ├── Gradient boosting (XGBoost, LightGBM)
-│   └── SVM, k-means, PCA
+├── Classic ML ──────────────────────────────────── 🔶 prior role (~2004) + void-duel Ph 2
+│   ├── Linear / logistic regression ────────────── void-duel Ph 2b
+│   ├── Decision trees, random forests ──────────── void-duel Ph 2b
+│   ├── Gradient boosting (XGBoost, LightGBM) ──── void-duel Ph 2b
+│   ├── SVM ─────────────────────────────────────── void-duel Ph 2b
+│   ├── k-means clustering ──────────────────────── void-duel Ph 2a
+│   └── PCA ─────────────────────────────────────── void-duel Ph 2a
 │
 ├── Deep Learning
 │   │
@@ -87,7 +89,7 @@ AI / ML
 │       ├── Loss curves / overfitting analysis ────── ✅ signal-hunt Ph 2
 │       ├── ROC / AUC ───────────────────────────── artefact/dig
 │       ├── PSNR / SSIM / perceptual loss ────────── artefact/bloom
-│       └── Interpretability (SHAP, LIME) ─────────── void-duel Ph 2
+│       └── Interpretability (SHAP, LIME) ─────────── void-duel Ph 2c
 │
 ├── Domains
 │   ├── Audio / signal processing ───────────────── ✅ signal-hunt

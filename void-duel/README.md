@@ -90,17 +90,33 @@ Pass: responsive controls on real hardware, no desync in WASM P2P, and Python si
 
 ### Phase 2 — Classic ML AI Opponent
 
-Train AI pilots in Python using classic ML. This is the primary learning phase. Depends on the Python simulator from Phase 1b.
+Train AI pilots in Python using the full classic ML toolkit. This is the primary learning phase — it fills the entire "Classic ML" row in STUDY.md, which currently only has a 🔶 from 2004. Depends on the Python simulator from Phase 1b.
 
+**2a. Feature engineering + baselines**
 1. Feature engineering — position, velocity, angle, distance, ammo, health as tabular features
-2. Train decision tree / random forest / linear model agents
-3. Evaluate with tournament harness (agent vs agent, win rates, skill gradient)
-4. Interpretability — SHAP/LIME on decision tree: why did the AI dodge left?
-5. Distill best agent to Z80-compatible format (lookup table or compact decision tree)
-6. Bake into ROM, test on real hardware
+2. PCA on game state — reduce the feature space, visualise which dimensions matter most
+3. k-means clustering on recorded play sessions — discover player behaviour archetypes (aggressive, defensive, evasive)
+4. Use clusters to label training data and seed difficulty tiers
+
+**2b. Classic ML agents (one per algorithm family)**
+5. Linear / logistic regression — simplest agent, baseline for everything else
+6. Decision tree / random forest — interpretable agent, the one most likely to ship to Z80
+7. Gradient boosting (XGBoost or LightGBM) — strongest classic ML agent, benchmark ceiling
+8. SVM — non-linear decision boundaries on the PCA-reduced feature space
+
+**2c. Evaluation + interpretability**
+9. Tournament harness — round-robin: each agent vs every other + random baseline, win rates, Elo-style ranking
+10. SHAP values on the tree/forest agent — why did the AI dodge left? Feature importance per decision
+11. LIME on individual predictions — local explanations for specific game moments
+12. Compare: which algorithm family produces the best pilot? Document the tradeoffs (accuracy vs interpretability vs Z80 size)
+
+**2d. Distillation to Z80**
+13. Distill best agent to Z80-compatible format (lookup table or compact decision tree)
+14. Bake into ROM, test on real hardware
+15. Measure: does the Z80 version play recognisably like the Python original?
 
 **Checkpoint 2 — Can classic ML produce a competent AI pilot?**
-Pass: decision tree agent beats random baseline >70%, and the distilled Z80 version plays recognisably similar. Fail: classic ML can't capture the decision space, or distillation loses too much.
+Pass: at least 3 algorithm families trained and compared; best agent beats random baseline >70%; SHAP/LIME explanations documented; distilled Z80 version plays recognisably similar. Fail: classic ML can't capture the decision space, or distillation loses too much.
 
 ### Phase 3 — Multi-Agent RL
 
@@ -127,10 +143,15 @@ Pass: agents develop recognisable strategies (flanking, retreating, baiting) tha
 
 | Skill | Phase | How |
 |---|---|---|
-| Classic ML (decision trees, random forests, linear models) | Ph 2 | AI pilots trained on tabular game state |
-| Multi-agent / offline RL | Ph 3 | Self-play, co-adaptation, Nash equilibria |
+| Linear / logistic regression | Ph 2b | Baseline agent on tabular game state |
+| Decision trees, random forests | Ph 2b | Interpretable agent, primary distillation candidate |
+| Gradient boosting (XGBoost/LightGBM) | Ph 2b | Benchmark ceiling — strongest classic ML agent |
+| SVM | Ph 2b | Non-linear boundaries on PCA-reduced features |
+| k-means clustering | Ph 2a | Discover player behaviour archetypes from replays |
+| PCA | Ph 2a | Dimensionality reduction on game state features |
+| Interpretability (SHAP, LIME) | Ph 2c | Explain AI pilot decisions per algorithm |
 | Tabular data | Ph 2 | Game state = position/velocity/ammo/health |
-| Interpretability (SHAP, LIME) | Ph 2 | Explain AI pilot decisions |
+| Multi-agent / offline RL | Ph 3 | Self-play, co-adaptation, Nash equilibria |
 | Edge inference / extreme distillation | Ph 2–3 | Train in Python, compress to Z80 (48K, 3.5MHz) |
 | WASM | Ph 0–1 | Rust emulator → WebAssembly, audio, input, canvas |
 | WASM security / IP protection | Ph 4 | ROM inside WASM sandbox, extraction study |
@@ -141,7 +162,7 @@ Pass: agents develop recognisable strategies (flanking, retreating, baiting) tha
 
 | Layer | Tech |
 |---|---|
-| AI training | Python, PyTorch, scikit-learn, SHAP |
+| AI training | Python, PyTorch, scikit-learn, XGBoost/LightGBM, SHAP |
 | Z80 game | z88dk (C cross-compiler) or Z80 assembly |
 | Emulator | rustzx fork (Rust, MIT license) |
 | WASM build | wasm-pack / wasm-bindgen |
