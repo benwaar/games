@@ -114,7 +114,8 @@ AI / ML
 │   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3 + 🔷 foundry
 │   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
 │   ├── Intent → spec → code pipeline ─────────── ✅ incant M6
-│   └── Unified test harness (WASM + Z80) ─────── incant M7
+│   ├── Unified test harness (WASM + Z80) ─────── incant M7
+│   └── ONNX → INT8 → Z80 inference engine ────── incant M10
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
