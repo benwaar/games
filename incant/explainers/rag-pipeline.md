@@ -86,3 +86,44 @@ RAG is the standard pattern for grounding LLM output in domain knowledge — cus
 - **No vector database.** Linear scan over all chunks. Fine for ~100 chunks, won't scale to millions. Production systems use FAISS, pgvector, or Pinecone.
 - **No reranking.** We trust cosine similarity alone. Production systems often rerank the top-k with a cross-encoder for better precision.
 - **Collection filtering.** We separate Z80 and WAT docs into collections so a Z80 query never returns WAT results (and vice versa). Simple but effective.
+
+## Quality in, quality out — where the knowledge came from
+
+RAG only works if the reference material is correct. This sounds obvious, but it's easy to get wrong.
+
+### What happened here
+
+The knowledge docs in `knowledge/z80/` and `knowledge/wat/` were originally written by Claude from training data — not copied from authoritative sources. They were plausible, well-structured, and completely unverified. The assumption was that the model "knows" Z80 and WAT well enough to write accurate reference material.
+
+That assumption was wrong. When we cross-checked against the real specs, we found:
+
+- **ZX Spectrum memory map had system variables at the wrong address** (0x5B00 instead of 0x5C00 — that's actually the printer buffer)
+- **Free RAM was overstated** (~41K vs the real figure after system vars and BASIC workspace)
+- **`wasm-interp` argument syntax was fabricated** (`-- args` instead of the real `-a i32:N` flag) — this would have broken the WAT test runner entirely
+- **WASM type system was described as MVP-only** without noting that multi-value returns have been standard since 2.0
+- **PUSH/POP was missing IX and IY** register pairs
+- **Undocumented Z80 flag bits** had simplified behaviour that's wrong for CP, SCF, CCF instructions
+
+Six errors across ten files. Some subtle (flag bit edge cases), some showstoppers (wrong CLI syntax for the test runner).
+
+### The verification process
+
+We verified against:
+
+- **Z80:** Zilog Z80 CPU User Manual (the original datasheet), ClrHome opcode table, WoS/NVG Spectrum FAQ, speccy-bootcamp system variables reference
+- **WAT:** WebAssembly spec (webassembly.github.io/spec), WABT documentation, MDN WebAssembly reference
+
+Every claim in every file was checked. Corrections were committed, knowledge was re-embedded, and all tests were re-run.
+
+### The lesson
+
+This is the central risk of RAG: **the retrieval mechanism doesn't know whether the documents are correct.** Cosine similarity measures relevance, not truth. If you embed a wrong opcode table, the retrieval will faithfully return wrong opcodes with high confidence scores.
+
+In production RAG systems, this shows up as:
+- **Stale docs** — API reference that describes the v2 endpoint when v3 shipped six months ago
+- **Contradictory sources** — two wiki pages that disagree on how a feature works
+- **Authoritative-looking garbage** — LLM-generated docs that read well but contain hallucinations (which is exactly what we had here)
+
+The fix isn't technical — no amount of reranking or chunk-size tuning compensates for bad source material. The fix is editorial: verify your knowledge base against primary sources, version it alongside your code, and treat it as a first-class artefact that needs review.
+
+> **In practice:** The same principle applies to any retrieval system. A customer support bot grounded in an outdated help centre will confidently give wrong answers. A legal RAG system citing superseded case law will mislead. The embedding model and the retrieval pipeline are plumbing — the quality of the output is bounded by the quality of what you put in.
