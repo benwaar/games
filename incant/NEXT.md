@@ -1,11 +1,11 @@
-# Next: M4 — Multi-sigil orchestration
+# Next: M5 — Docs + integration
 
-M3 is complete — WAT backend generates, assembles, and tests all 3 sigils. Fixed wasm-interp CLI syntax (`-r name -a i32:N` instead of fabricated `-- args`), added signed/unsigned i32 conversion for negative values. memory_swap needed 3 attempts — clarifying the sigil description fixed the LLM's output.
+M4 is complete — multi-sigil orchestration with manifests, stitching, and dependency-aware generation. WAT composed build produces one .wasm with 3 exports where `sum_of_factorials` calls `factorial` and `add`. Z80 basics concatenates 3 programs into one binary.
 
 **What's next:**
-1. Read a sequence of sigils, generate in dependency order
-2. Pass prior outputs as context (later sigils reference earlier functions)
-3. Build a small Z80 program from 5+ sigils
-4. Build a small WASM module from 5+ sigils
+1. Demo script: `bash demo.sh` that runs single + multi sigil examples
+2. Update STUDY.md skills coverage
+3. Update root CLAUDE.md project table
+4. Final explainer review pass
 
-**Gate:** Multi-sigil builds produce working binaries.
+**Gate:** `bash demo.sh` works from cold clone after `bash setup.sh`.

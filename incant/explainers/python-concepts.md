@@ -120,3 +120,33 @@ Key parameters:
 
 > **Coming from C:** Like `popen()` but safer — no shell interpolation. The command is a list of strings, not a single string, so arguments with spaces are handled correctly.
 > **Coming from JS/TS:** Like `child_process.execFileSync()` with `encoding: 'utf8'`. The list form (`["cmd", "arg1"]`) is like `execFile`, not `exec` — no shell, no injection risk.
+
+## Topological sort — dependency ordering
+
+A DFS-based sort that outputs nodes after all their dependencies. Used to order sigils so dependencies are generated before dependents.
+
+```python
+def topological_sort(sigils):
+    visited, in_progress, result = set(), set(), []
+
+    def visit(name):
+        if name in in_progress:
+            raise ValueError(f"Circular dependency: '{name}'")
+        if name in visited:
+            return
+        in_progress.add(name)
+        for dep in by_name[name].dependencies:
+            visit(dep)
+        in_progress.remove(name)
+        visited.add(name)
+        result.append(by_name[name])
+
+    for s in sigils:
+        visit(s.name)
+    return result
+```
+
+The `in_progress` set detects cycles — if we encounter a node we're currently visiting, we've found a loop.
+
+> **Coming from C:** Same algorithm as `make` or `tsort` — the classic Cormen/Leiserson/Rivest DFS topological sort. The recursion is the DFS, and appending after the recursive calls gives a valid ordering.
+> **Coming from JS/TS:** npm uses topological sort for `node_modules` installation order. The algorithm is the same — DFS with cycle detection via a "visiting" set.

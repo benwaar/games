@@ -43,12 +43,15 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ## M4 — Multi-sigil orchestration
 
-- [ ] Read a sequence of sigils, generate in dependency order
-- [ ] Pass prior outputs as context (later sigils reference earlier functions)
-- [ ] Build a small Z80 program from 5+ sigils
-- [ ] Build a small WASM module from 5+ sigils
+- [x] Manifest format: YAML listing sigils + target
+- [x] WAT stitcher: merge modules, dedup functions/memory/exports
+- [x] Z80 stitcher: concatenate asm, strip intermediate halts
+- [x] `multi` CLI subcommand
+- [x] Topological sort + dependency-aware context injection
+- [x] Dependent sigil example: `sum_of_factorials` calls `factorial` + `add`
+- [x] Live run: `wat_math` (2 funcs), `z80_basics` (3 funcs), `wat_composed` (3 funcs with deps)
 
-**Gate:** Multi-sigil builds produce working binaries.
+**Gate:** Multi-sigil builds produce working binaries. WAT composed build has cross-function calls.
 
 ---
 

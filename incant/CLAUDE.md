@@ -31,7 +31,8 @@ sigil.yaml → rag.py (retrieve docs) → gen.py (prompt LLM) → gate.py (assem
 
 ```bash
 bash setup.sh                                              # venv, deps, embed knowledge
-python -m incant cast sigils/examples/z80_add.sigil.yaml   # generate + test
+python -m incant cast sigils/examples/z80_add.sigil.yaml   # generate + test one sigil
+python -m incant multi sigils/programs/wat_composed.manifest.yaml  # multi-sigil build
 python -m incant rag query "add two numbers" --collection z80  # test RAG
 python -m pytest tests/ -v                                 # run tests
 ```
@@ -40,10 +41,12 @@ python -m pytest tests/ -v                                 # run tests
 
 ```
 incant/
-  __main__.py    — CLI entry point
+  __main__.py    — CLI entry point (cast, multi, rag)
   rag.py         — embed + query (Ollama nomic-embed-text, JSONL store)
-  gen.py         — prompt construction + LLM call
-  gate.py        — assemble + run + check
+  gen.py         — prompt construction + LLM call + multi-sigil orchestration
+  manifest.py    — manifest parser + topological sort
+  stitch.py      — WAT module merger + Z80 concatenator
+  sigil.py       — sigil YAML parser
   targets/
     z80.py       — Z80-specific prompt template + gate
     wat.py       — WAT-specific prompt template + gate
