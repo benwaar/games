@@ -3,3 +3,5 @@ output/
 __pycache__/
 *.pyc
 data/embeddings.jsonl
+data/raw/
+data/processed/
