@@ -9,10 +9,10 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 - [x] Create project structure, README, PLAN, NEXT, CLAUDE.md
 - [x] Curate Z80 knowledge: core opcodes, registers, flags, memory map
 - [x] Curate WAT knowledge: S-expression syntax, types, instructions, memory
-- [ ] Embed knowledge into vector store via nomic-embed-text
+- [x] Embed knowledge into vector store via nomic-embed-text
 - [x] Write sigil format parser
 - [x] Write 3 example sigils per target (6 total)
-- [ ] Test: RAG query returns relevant docs
+- [x] Test: RAG query returns relevant docs
 
 **Gate:** `python -m incant rag query "add two numbers" --collection z80` returns relevant chunks.
 
