@@ -20,6 +20,7 @@ Everything is text-based, inspectable, and hackable.
 - [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly 🔨
 - [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
 - [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
+- [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
 - [Artefact: dig](artefact/dig/) — binary art scanner: find hidden sprites in ROM using CV and autoencoders
 - [Artefact: bloom](artefact/bloom/) — pixel art upscaler: super-resolution CNN and GAN
 - [Artefact: dream](artefact/dream/) — LoRA fine-tune a diffusion model on extracted sprites
@@ -54,6 +55,24 @@ A deep learning project — from raw audio to a trained classifier.
 Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
 
 [Project folder](./signal-hunt/)
+
+---
+
+## Incant
+
+Write a plain-English spec, get a working binary — for both WASM and Z80.
+
+An LLM pipeline that reads BDD-format specs, decomposes them into function graphs, generates assembly (WAT or Z80), assembles it, and verifies it against tests. RAG-grounded with instruction set knowledge. Retry loop feeds assembler errors back to the LLM until the gate passes.
+
+```bash
+# BDD spec → WASI binary (WAT)
+bash incant/run_wasm_greet.sh        # "Type a name:" → hello Ben
+
+# Same spec → Z80 machine code (42 bytes)
+bash incant/run_z80_greet.sh         # "Type a name:" → hello Ben
+```
+
+[Project folder](./incant/)
 
 ---
 
