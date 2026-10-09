@@ -10,7 +10,7 @@ from incant.targets.wat import assemble, extract_code, run_test
 
 @pytest.fixture
 def has_wabt():
-    if not shutil.which("wat2wasm"):
+    if not shutil.which("wat2wasm") or not shutil.which("wasm-interp"):
         pytest.skip("wabt not installed")
 
 

@@ -1,5 +1,6 @@
 """WAT target — prompt template, wat2wasm gate, wasm-interp test runner."""
 
+import math
 import subprocess
 import tempfile
 from pathlib import Path
@@ -23,6 +24,9 @@ def build_prompt(sigil: Sigil, rag_context: str) -> str:
     params = ", ".join(
         f"{p.name}: {p.type}" for p in sigil.signature.inputs
     )
+    if not sigil.tests:
+        raise ValueError(f"Sigil '{sigil.name}' has no tests — at least one required for prompt example")
+
     test = sigil.tests[0]
     test_args = ", ".join(str(test.inputs[p.name]) for p in sigil.signature.inputs)
 
@@ -46,10 +50,9 @@ Output ONLY the WAT module. No explanation."""
 
 def assemble(source: str) -> tuple[bool, Path | None, str | None]:
     """Assemble WAT source to .wasm using wat2wasm. Returns (success, wasm_path, error)."""
-    with tempfile.NamedTemporaryFile(suffix=".wat", mode="w", delete=False) as f:
-        f.write(source)
-        wat_path = Path(f.name)
-
+    tmp_dir = tempfile.mkdtemp(prefix="incant_")
+    wat_path = Path(tmp_dir) / "generated.wat"
+    wat_path.write_text(source)
     wasm_path = wat_path.with_suffix(".wasm")
 
     result = subprocess.run(
@@ -58,10 +61,16 @@ def assemble(source: str) -> tuple[bool, Path | None, str | None]:
         text=True,
     )
 
+    wat_path.unlink()
+
     if result.returncode != 0:
         return False, None, result.stderr.strip()
 
     return True, wasm_path, None
+
+
+def _bits_for_type(wasm_type: str) -> int:
+    return 64 if wasm_type in ("i64", "f64") else 32
 
 
 def _to_unsigned(value: int, bits: int = 32) -> int:
@@ -83,7 +92,8 @@ def run_test(wasm_path: Path, test: SigilTest, sigil: Sigil) -> tuple[bool, str]
     cmd = ["wasm-interp", str(wasm_path), "-r", sigil.export]
     for param in sigil.signature.inputs:
         value = test.inputs[param.name]
-        cmd.extend(["-a", f"{param.type}:{_to_unsigned(value)}"])
+        bits = _bits_for_type(param.type)
+        cmd.extend(["-a", f"{param.type}:{_to_unsigned(value, bits)}"])
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -109,10 +119,14 @@ def run_test(wasm_path: Path, test: SigilTest, sigil: Sigil) -> tuple[bool, str]
             return False, f"Could not parse wasm-interp output: {output}"
 
     expected = test.expect
+    out_bits = _bits_for_type(sigil.signature.output_type)
     if isinstance(expected, int) and expected < 0:
-        actual_signed = _to_signed(actual)
+        actual_signed = _to_signed(actual, out_bits)
         if actual_signed != expected:
             return False, f"Expected {expected}, got {actual_signed} (output: {output})"
+    elif isinstance(expected, float) or isinstance(actual, float):
+        if not math.isclose(actual, expected, rel_tol=1e-6):
+            return False, f"Expected {expected}, got {actual} (output: {output})"
     elif actual != expected:
         return False, f"Expected {expected}, got {actual} (output: {output})"
     return True, "pass"
