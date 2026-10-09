@@ -4,7 +4,8 @@ import shutil
 
 import pytest
 
-from incant.targets.wat import assemble, extract_code
+from incant.sigil import Sigil, SigilParam, SigilSignature, SigilTest
+from incant.targets.wat import assemble, extract_code, run_test
 
 
 @pytest.fixture
@@ -60,3 +61,77 @@ Some text after."""
     assert code.startswith("(module")
     assert code.endswith(")")
     assert "Some explanation" not in code
+
+
+ADD_WAT = """(module
+  (func $add (param $a i32) (param $b i32) (result i32)
+    local.get $a
+    local.get $b
+    i32.add
+  )
+  (export "add" (func $add))
+)"""
+
+
+def _make_wat_sigil(inputs, output_type="i32", export="add", tests=None, memory=None):
+    return Sigil(
+        name="test",
+        description="test",
+        target="wat",
+        signature=SigilSignature(
+            inputs=inputs,
+            output_type=output_type,
+        ),
+        tests=tests or [],
+        export=export,
+        memory=memory,
+    )
+
+
+def test_run_test_add(has_wabt):
+    ok, wasm_path, err = assemble(ADD_WAT)
+    assert ok, err
+
+    sigil = _make_wat_sigil(
+        inputs=[
+            SigilParam(name="a", type="i32"),
+            SigilParam(name="b", type="i32"),
+        ],
+        export="add",
+    )
+    test = SigilTest(inputs={"a": 2, "b": 3}, expect=5)
+    passed, msg = run_test(wasm_path, test, sigil)
+    assert passed, msg
+
+
+def test_run_test_negative(has_wabt):
+    ok, wasm_path, err = assemble(ADD_WAT)
+    assert ok, err
+
+    sigil = _make_wat_sigil(
+        inputs=[
+            SigilParam(name="a", type="i32"),
+            SigilParam(name="b", type="i32"),
+        ],
+        export="add",
+    )
+    test = SigilTest(inputs={"a": -1, "b": 1}, expect=0)
+    passed, msg = run_test(wasm_path, test, sigil)
+    assert passed, msg
+
+
+def test_run_test_wrong_result(has_wabt):
+    ok, wasm_path, err = assemble(ADD_WAT)
+    assert ok, err
+
+    sigil = _make_wat_sigil(
+        inputs=[
+            SigilParam(name="a", type="i32"),
+            SigilParam(name="b", type="i32"),
+        ],
+        export="add",
+    )
+    test = SigilTest(inputs={"a": 2, "b": 3}, expect=99)
+    passed, msg = run_test(wasm_path, test, sigil)
+    assert not passed
+    assert "Expected 99" in msg

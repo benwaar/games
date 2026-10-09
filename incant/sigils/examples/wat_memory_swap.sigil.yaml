@@ -1,5 +1,5 @@
 name: memory_swap
-description: Store two i32 values at memory offsets 0 and 4, then swap them. Export a function that takes two values, swaps them in memory, and returns the value originally at offset 0 (now at offset 4).
+description: Store a at memory offset 0 and b at offset 4. Swap the two memory locations. Return the i32 at offset 4 after the swap (which is the original value of a).
 target: wat
 
 signature:

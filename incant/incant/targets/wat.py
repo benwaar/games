@@ -64,41 +64,58 @@ def assemble(source: str) -> tuple[bool, Path | None, str | None]:
     return True, wasm_path, None
 
 
+def _to_unsigned(value: int, bits: int = 32) -> int:
+    """Convert a signed int to unsigned representation for wasm-interp."""
+    if value < 0:
+        return value + (1 << bits)
+    return value
+
+
+def _to_signed(value: int, bits: int = 32) -> int:
+    """Convert unsigned wasm-interp output back to signed if needed."""
+    if value >= (1 << (bits - 1)):
+        return value - (1 << bits)
+    return value
+
+
 def run_test(wasm_path: Path, test: SigilTest, sigil: Sigil) -> tuple[bool, str]:
     """Run a test case using wasm-interp."""
-    args = [str(test.inputs[p.name]) for p in sigil.signature.inputs]
+    cmd = ["wasm-interp", str(wasm_path), "-r", sigil.export]
+    for param in sigil.signature.inputs:
+        value = test.inputs[param.name]
+        cmd.extend(["-a", f"{param.type}:{_to_unsigned(value)}"])
 
-    result = subprocess.run(
-        ["wasm-interp", str(wasm_path), f"--run-export={sigil.export}", "--"] + args,
-        capture_output=True,
-        text=True,
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
         return False, f"wasm-interp failed: {result.stderr.strip()}"
 
     output = result.stdout.strip()
-    # wasm-interp prints: export_name(args) => value
-    # parse the result value
-    if "=>" in output:
-        result_str = output.split("=>")[-1].strip()
+    # wasm-interp prints: func_name(type:val, ...) => type:val
+    if "=>" not in output:
+        return False, f"Unexpected wasm-interp output: {output}"
+
+    result_str = output.split("=>")[-1].strip()
+    # strip type prefix (e.g. "i32:5" → "5")
+    if ":" in result_str:
+        result_str = result_str.split(":")[-1]
+
+    try:
+        actual = int(result_str)
+    except ValueError:
         try:
-            # handle i32:N format
-            if ":" in result_str:
-                result_str = result_str.split(":")[-1]
-            actual = int(result_str)
+            actual = float(result_str)
         except ValueError:
-            try:
-                actual = float(result_str)
-            except ValueError:
-                return False, f"Could not parse wasm-interp output: {output}"
+            return False, f"Could not parse wasm-interp output: {output}"
 
-        expected = test.expect
-        if actual != expected:
-            return False, f"Expected {expected}, got {actual} (output: {output})"
-        return True, "pass"
-
-    return False, f"Unexpected wasm-interp output: {output}"
+    expected = test.expect
+    if isinstance(expected, int) and expected < 0:
+        actual_signed = _to_signed(actual)
+        if actual_signed != expected:
+            return False, f"Expected {expected}, got {actual_signed} (output: {output})"
+    elif actual != expected:
+        return False, f"Expected {expected}, got {actual} (output: {output})"
+    return True, "pass"
 
 
 def extract_code(llm_output: str) -> str:
