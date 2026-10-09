@@ -4,7 +4,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from .gen import cast_sigil
+from .gen import cast_multi, cast_sigil
+from .manifest import parse_manifest
 from .rag import VectorStore
 from .sigil import parse_sigil
 
@@ -26,6 +27,25 @@ def cmd_cast(args):
     if success:
         print(f"  {message}")
         print(f"  Output: {output_dir / sigil.name}.*")
+    else:
+        print(f"  FAILED: {message}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_multi(args):
+    store = VectorStore(STORE_PATH)
+    manifest = parse_manifest(Path(args.manifest))
+    output_dir = Path(args.output) if args.output else PROJECT_ROOT / "output"
+
+    print(f"Multi-cast: {manifest.name} ({len(manifest.sigils)} sigils, target: {manifest.target})")
+
+    success, message = cast_multi(
+        manifest, store, output_dir, verbose=args.verbose
+    )
+
+    if success:
+        print(f"  {message}")
+        print(f"  Output: {output_dir / manifest.name}.*")
     else:
         print(f"  FAILED: {message}", file=sys.stderr)
         sys.exit(1)
@@ -66,6 +86,13 @@ def main():
     cast_parser.add_argument("-o", "--output", help="Output directory")
     cast_parser.add_argument("-v", "--verbose", action="store_true")
     cast_parser.set_defaults(func=cmd_cast)
+
+    # multi
+    multi_parser = subparsers.add_parser("multi", help="Multi-sigil build from manifest")
+    multi_parser.add_argument("manifest", help="Path to manifest YAML file")
+    multi_parser.add_argument("-o", "--output", help="Output directory")
+    multi_parser.add_argument("-v", "--verbose", action="store_true")
+    multi_parser.set_defaults(func=cmd_multi)
 
     # rag
     rag_parser = subparsers.add_parser("rag", help="Manage RAG knowledge base")

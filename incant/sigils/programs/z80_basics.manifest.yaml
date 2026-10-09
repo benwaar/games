@@ -1,0 +1,6 @@
+name: basics
+target: z80
+sigils:
+  - ../examples/z80_add.sigil.yaml
+  - ../examples/z80_counter.sigil.yaml
+  - ../examples/z80_store_load.sigil.yaml
