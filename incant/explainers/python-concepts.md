@@ -81,3 +81,20 @@ re.sub(r"^#+\s+", "", line)     # strip heading markers
 ```
 
 > **Coming from JS/TS:** `re.match` is like `/^pattern/.test(str)` — anchored to start. `re.search` is like `/pattern/.test(str)` — scans anywhere. Python splits these into separate functions; JS uses the `^` anchor.
+
+## setattr / getattr — dynamic property access
+
+Access object attributes by name at runtime. Used in the Z80 gate to read/write registers dynamically:
+
+```python
+# Set register B to 5 on the Z80 machine
+setattr(machine, "b", 5)
+
+# Read register A after execution
+result = getattr(machine, "a")
+```
+
+This lets us map sigil register names to machine properties without a giant switch statement.
+
+> **Coming from C:** No direct equivalent — you'd use a function pointer table or a switch. The closest pattern is accessing struct members via `offsetof` + pointer arithmetic, but that's unsafe and manual.
+> **Coming from JS/TS:** Equivalent to `machine["b"] = 5` and `machine["a"]`. JavaScript's bracket notation does the same thing — access properties by computed string key.

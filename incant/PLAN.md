@@ -20,10 +20,10 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ## M2 — Z80 backend (end-to-end)
 
-- [ ] Implement Z80 prompt template
-- [ ] Implement Z80 gate: assemble with `z80.Asm()`, run on `z80.Z80Machine()`, check registers
-- [ ] Retry loop: feed assembler errors back to LLM (max 3 retries)
-- [ ] Run on 3 example sigils: add, loop counter, memory store/load
+- [x] Implement Z80 prompt template
+- [x] Implement Z80 gate: assemble with `z80.Asm()`, run on `z80.Z80Machine()`, check registers
+- [x] Retry loop: feed assembler errors back to LLM (max 3 retries)
+- [x] Run on 3 example sigils: add, loop counter, memory store/load
 
 **Gate:** All 3 sigils produce assembled code that passes all test cases.
 

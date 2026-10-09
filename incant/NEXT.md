@@ -1,11 +1,11 @@
-# Next: M2 — Z80 backend (end-to-end)
+# Next: M3 — WAT backend (end-to-end)
 
-M1 is complete — project scaffolded, knowledge embedded (33 Z80 + 38 WAT chunks), RAG retrieval verified.
+M2 is complete — Z80 backend generates, assembles, and tests all 3 sigils on the first attempt. Two bugs fixed: assembler requires lowercase mnemonics, and `code.resolve()` must be called before `code.encode()` for label resolution.
 
 **What's next:**
-1. Z80 prompt template — system prompt + sigil-to-prompt formatting
-2. Z80 gate — assemble with `z80.Asm()`, run on `z80.Z80Machine()`, check registers
-3. Retry loop — feed assembler errors back to LLM (max 3 retries)
-4. Run on 3 example sigils: add, loop counter, memory store/load
+1. WAT prompt template — system prompt + sigil-to-prompt formatting
+2. WAT gate — `wat2wasm` to assemble, `wasm-interp --run-all-exports` to test
+3. Parse wasm-interp output to check against sigil expected values
+4. Run on 3 example sigils: add, factorial, memory read/write
 
-**Gate:** All 3 Z80 sigils produce assembled code that passes all test cases.
+**Gate:** All 3 WAT sigils produce .wasm that passes all test cases.
