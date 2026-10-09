@@ -117,15 +117,15 @@ The LLM gets the catalogue as context and picks what it needs. Only generates ne
 
 ### Steps
 
-- [ ] Define BDD `.spec.md` input format
-- [ ] Build library catalogue (reusable sigils with pre-generated code)
-- [ ] Add WASI target support (fd_read, fd_write for stdin/stdout)
-- [ ] `smelt` CLI subcommand: spec.md → sigils + manifest
-- [ ] LLM decomposes BDD scenarios into function graph with deps
-- [ ] Generate test cases from BDD When/Then pairs
-- [ ] Run: write BDD spec, get working binary with no YAML by hand
+- [x] Define BDD `.spec.md` input format
+- [x] Build library catalogue (reusable sigils with pre-generated code)
+- [x] Add WASI target support (fd_read, fd_write for stdin/stdout)
+- [x] `smelt` CLI subcommand: spec.md → sigils + manifest
+- [x] LLM decomposes BDD scenarios into function graph with deps
+- [x] Generate test cases from BDD When/Then pairs
+- [x] Run: write BDD spec, get working binary with no YAML by hand
 
-**Gate:** Write a BDD spec, run `python -m incant smelt greet.spec.md`, get sigils + manifest + working .wasm that passes the scenarios.
+**Gate:** ✅ `python -m incant smelt specs/greet.spec.md -v` produces sigils + manifest + working WASI binary that passes all 3 BDD scenarios.
 
 ---
 

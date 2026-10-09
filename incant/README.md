@@ -9,6 +9,7 @@ A pipeline that reads a sigil (spec file), retrieves relevant instruction set do
 ```
 sigil.yaml → RAG context → LLM → code → assemble → test → binary
 manifest.yaml → toposort → generate each → stitch → assemble → verify → combined binary
+spec.md (BDD) → parse → LLM decompose → sigil YAMLs + manifest → cast_multi → WASI test → binary
 ```
 
 | Target | LLM outputs | Assembler | Test runner |
@@ -36,6 +37,9 @@ python -m incant multi sigils/programs/wat_math.manifest.yaml
 
 # Multi-sigil build with dependencies (sum_of_factorials calls factorial + add)
 python -m incant multi sigils/programs/wat_composed.manifest.yaml
+
+# BDD spec → WASI binary (smelt pipeline)
+python -m incant smelt specs/greet.spec.md -v
 
 # Run all examples end-to-end
 bash demo.sh
@@ -88,6 +92,26 @@ tests:
   - inputs: { a: 3, b: 4 }
     expect: 30
 ```
+
+## Smelt (BDD spec → binary)
+
+Write a plain-English spec in BDD format, and the LLM decomposes it into sigils automatically:
+
+```markdown
+---
+target: wat
+---
+# Greet user
+
+## Scenario: basic greeting
+Given the program starts
+When the user enters "Ben"
+Then output "hello Ben\n"
+```
+
+Run `python -m incant smelt specs/greet.spec.md -v` to parse the spec, decompose it into function specs, generate WASI-compatible WAT code, and test against the BDD scenarios.
+
+WASI sigils use `fd_read`/`fd_write` for stdin/stdout I/O and `_start` as the entry point.
 
 ## Stack
 

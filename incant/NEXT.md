@@ -1,28 +1,24 @@
-# Next: M6 — Smelt: BDD spec → sigils → binary
+# Next: M7 — TAP: Spectrum tape files + disassembly
 
-M5 is complete — demo script passes all 10 steps (6 single sigils + 3 multi-sigil builds + RAG query), docs updated, STUDY.md skills marked complete.
+M6 is complete — smelt pipeline works end-to-end. BDD spec → LLM decomposition → WASI binary with stdin/stdout I/O. All 69 tests pass.
 
 **What's next:**
 
-M6 adds a "smelt" stage: human writes intent as a BDD-format markdown file, the pipeline interprets it, checks a library catalogue of reusable sigils, generates sigils for anything missing, writes a manifest, and runs the existing cast/multi pipeline.
+M7 adds TAP file support: wrap Z80 `.bin` output into loadable `.tap` files, extract code from real Spectrum games, disassemble it, and feed it back into the pipeline as RAG knowledge.
 
 ```
-human writes .spec.md (BDD)
-  → smelt reads spec
-  → LLM checks library catalogue (what already exists?)
-  → LLM generates sigils for missing functions only
-  → LLM writes manifest (new sigils + library sigils)
-  → existing cast/multi pipeline runs
-  → .wasm + .asm output
+sigil → asm → bin → TAP (write)
+TAP → extract → disasm → asm (read)
+disasm → chunk → embed → RAG (knowledge)
 ```
 
 **Steps:**
-1. Define BDD `.spec.md` input format
-2. Build library catalogue (reusable sigils with pre-generated code)
-3. Add WASI target support (fd_read, fd_write for stdin/stdout)
-4. `smelt` CLI subcommand: spec.md → sigils + manifest
-5. LLM decomposes BDD scenarios into function graph with deps
-6. Generate test cases from BDD When/Then pairs
-7. Run: write BDD spec, get working binary with no YAML by hand
+1. TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
+2. Add `--tap` flag to Z80 gate output
+3. TAP reader: parse blocks, extract code bytes
+4. Disassembler: code bytes → Z80 asm (`z80dis`)
+5. `disasm` CLI subcommand: `.tap` → `.asm`
+6. Knowledge pipeline: disassembled code → chunked → embedded into RAG
+7. Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
 
-**Gate:** Write a BDD spec, run `python -m incant smelt greet.spec.md`, get sigils + manifest + working .wasm that passes the scenarios.
+**Gate:** `python -m incant cast sigils/examples/z80_add.sigil.yaml --tap` produces a `.tap` loadable in FUSE. `python -m incant disasm game.tap` extracts annotated Z80 assembly.

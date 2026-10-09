@@ -105,3 +105,16 @@ wasm-interp output.wasm -r add -a i32:2 -a i32:3
 Arguments are unsigned — negative i32 values must be passed as two's complement (e.g. -1 → `i32:4294967295`).
 
 Used in: `incant/targets/wat.py` — running WAT test cases.
+
+### `wasm-interp --wasi`
+
+Runs a WASI-compatible .wasm file with stdin/stdout support. The module must export `_start` and `memory`.
+
+```bash
+echo "Ben" | wasm-interp --wasi output.wasm
+# => hello Ben
+```
+
+Supports `fd_read` (stdin, fd 0) and `fd_write` (stdout, fd 1) from the `wasi_snapshot_preview1` interface.
+
+Used in: `incant/targets/wat.py` — running WASI program tests in the smelt pipeline.

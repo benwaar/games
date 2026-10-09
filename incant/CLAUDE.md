@@ -33,6 +33,7 @@ sigil.yaml → rag.py (retrieve docs) → gen.py (prompt LLM) → gate.py (assem
 bash setup.sh                                              # venv, deps, embed knowledge
 python -m incant cast sigils/examples/z80_add.sigil.yaml   # generate + test one sigil
 python -m incant multi sigils/programs/wat_composed.manifest.yaml  # multi-sigil build
+python -m incant smelt specs/greet.spec.md -v              # BDD spec → WASI binary
 python -m incant rag query "add two numbers" --collection z80  # test RAG
 python -m pytest tests/ -v                                 # run tests
 ```
@@ -41,13 +42,18 @@ python -m pytest tests/ -v                                 # run tests
 
 ```
 incant/
-  __main__.py    — CLI entry point (cast, multi, rag)
+  __main__.py    — CLI entry point (cast, multi, smelt, rag)
   rag.py         — embed + query (Ollama nomic-embed-text, JSONL store)
   gen.py         — prompt construction + LLM call + multi-sigil orchestration
   manifest.py    — manifest parser + topological sort
-  stitch.py      — WAT module merger + Z80 concatenator
+  stitch.py      — WAT module merger + Z80 concatenator (handles WASI imports/memory)
   sigil.py       — sigil YAML parser
+  smelt.py       — BDD spec parser + library catalogue + LLM decomposition
   targets/
     z80.py       — Z80-specific prompt template + gate
-    wat.py       — WAT-specific prompt template + gate
+    wat.py       — WAT-specific prompt template + gate + WASI support
+specs/
+  greet.spec.md  — BDD spec example (stdin → stdout greeting)
+sigils/
+  libs/          — reusable library sigils (catalogue for LLM)
 ```

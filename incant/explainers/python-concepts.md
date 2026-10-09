@@ -150,3 +150,49 @@ The `in_progress` set detects cycles — if we encounter a node we're currently 
 
 > **Coming from C:** Same algorithm as `make` or `tsort` — the classic Cormen/Leiserson/Rivest DFS topological sort. The recursion is the DFS, and appending after the recursive calls gives a valid ordering.
 > **Coming from JS/TS:** npm uses topological sort for `node_modules` installation order. The algorithm is the same — DFS with cycle detection via a "visiting" set.
+
+## YAML frontmatter — metadata in markdown files
+
+Extract structured metadata from the top of a markdown file:
+
+```python
+frontmatter_match = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
+if frontmatter_match:
+    fm = yaml.safe_load(frontmatter_match.group(1))
+    text = text[frontmatter_match.end():]  # strip frontmatter from body
+```
+
+The `re.DOTALL` flag makes `.` match newlines, so `(.*?)` captures everything between the `---` fences. Used in `smelt.py` to extract the target from BDD spec files.
+
+> **Coming from JS/TS:** Same as the `gray-matter` npm package — `---` fenced YAML at the top of markdown. Jekyll, Hugo, and Next.js all use this convention. In Python there's no standard package; a regex does the job.
+
+## dataclass field(default_factory=...)
+
+For mutable defaults in dataclasses, you can't write `given: list[str] = []` — Python would share the same list across all instances. Use `field(default_factory=list)`:
+
+```python
+@dataclass
+class Scenario:
+    name: str
+    given: list[str] = field(default_factory=list)
+    when: list[str] = field(default_factory=list)
+    then: list[str] = field(default_factory=list)
+```
+
+> **Coming from JS/TS:** In a class constructor, `this.given = given ?? []` creates a new array per instance. Python's `field(default_factory=list)` achieves the same — a fresh `list()` call per instance.
+> **Coming from C:** Like a struct initializer that calls `malloc` for each array field — you don't want all instances pointing to the same heap allocation.
+
+## yaml.dump — serialising Python dicts to YAML
+
+The inverse of `yaml.safe_load`. Writes Python dicts/lists as YAML text:
+
+```python
+with open(path, "w") as f:
+    yaml.dump(sigil_dict, f, default_flow_style=False, sort_keys=False)
+```
+
+`default_flow_style=False` forces block style (one item per line). `sort_keys=False` preserves insertion order — important when the YAML will be read by humans.
+
+Used in: `smelt.py` — writing LLM-generated sigil specs to disk.
+
+> **Coming from JS/TS:** Like `JSON.stringify(obj, null, 2)` but for YAML. The `sort_keys=False` is like not calling `.sort()` on `Object.keys()` before serialising.

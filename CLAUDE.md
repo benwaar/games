@@ -70,4 +70,4 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
 | [Void Duel](void-duel/) | Planned |
-| [Incant](incant/) | M1–M4 complete — single + multi-sigil code gen working (WAT + Z80 asm) |
+| [Incant](incant/) | M1–M6 complete — BDD spec → LLM decomposition → WASI binary (WAT + Z80 asm) |
