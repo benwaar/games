@@ -1,0 +1,20 @@
+name: greet
+description: >
+  Concatenate "hello " with a name from the input buffer.
+  Read null-terminated name from INPUT_BUF (0x8000).
+  Write "hello {name}" null-terminated to OUTPUT_BUF (0x9000).
+target: z80
+harness_io: true
+
+signature:
+  inputs: []
+  output:
+    type: string
+
+tests:
+  - inputs: { stdin: "Ben" }
+    expect: "hello Ben"
+  - inputs: { stdin: "" }
+    expect: "hello "
+  - inputs: { stdin: "Bartholomew" }
+    expect: "hello Bartholomew"

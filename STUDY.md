@@ -37,7 +37,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
 | [Artefact: dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites → generate new pixel art in the same ROM style | Planned |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
-| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete |
+| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete, harness_io added — M7 (unified harness) next |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
@@ -49,11 +49,13 @@ Technical reference. ✅ complete · planned (project named) · 🔷 separate pr
 ```
 AI / ML
 │
-├── Classic ML ──────────────────────────────────── 🔶 prior role (ice cream sales, ~2004)
-│   ├── Linear / logistic regression
-│   ├── Decision trees, random forests
-│   ├── Gradient boosting (XGBoost, LightGBM)
-│   └── SVM, k-means, PCA
+├── Classic ML ──────────────────────────────────── 🔶 prior role (~2004) + void-duel Ph 2
+│   ├── Linear / logistic regression ────────────── void-duel Ph 2b
+│   ├── Decision trees, random forests ──────────── void-duel Ph 2b
+│   ├── Gradient boosting (XGBoost, LightGBM) ──── void-duel Ph 2b
+│   ├── SVM ─────────────────────────────────────── void-duel Ph 2b
+│   ├── k-means clustering ──────────────────────── void-duel Ph 2a
+│   └── PCA ─────────────────────────────────────── void-duel Ph 2a
 │
 ├── Deep Learning
 │   │
@@ -87,7 +89,7 @@ AI / ML
 │       ├── Loss curves / overfitting analysis ────── ✅ signal-hunt Ph 2
 │       ├── ROC / AUC ───────────────────────────── artefact/dig
 │       ├── PSNR / SSIM / perceptual loss ────────── artefact/bloom
-│       └── Interpretability (SHAP, LIME) ─────────── void-duel Ph 2
+│       └── Interpretability (SHAP, LIME) ─────────── void-duel Ph 2c
 │
 ├── Domains
 │   ├── Audio / signal processing ───────────────── ✅ signal-hunt
@@ -110,16 +112,29 @@ AI / ML
 │
 ├── Code Generation
 │   ├── Spec → assembly (WAT, Z80) ────────────── ✅ incant M1–M3
-│   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3 + 🔷 foundry
-│   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3 + 🔷 foundry
+│   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3
+│   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3
 │   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
-│   └── Intent → spec → code pipeline ─────────── ✅ incant M6
+│   ├── Intent → spec → code pipeline ─────────── ✅ incant M6
+│   ├── Unified test harness (WASM + Z80) ─────── incant M7
+│   └── ONNX → INT8 → Z80 inference engine ────── incant M10
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
-    ├── ONNX / TFLite / INT8 / edge ────────────── acoustic-odyssey/cast
+    ├── ONNX / TFLite / INT8 / edge ────────────── 🔶 Aerythen demo (ONNX → Flutter) + acoustic-odyssey/cast
     ├── Latency benchmarking ────────────────────── acoustic-odyssey/cast
     ├── Model serving / REST API ────────────────── ⬜
     ├── Model monitoring / drift ────────────────── ⬜
     └── A/B testing models ──────────────────────── ⬜
 ```
+
+---
+
+## External Projects
+
+Work done outside this repo that contributes to the skills coverage above.
+
+| Project | What it covers | Link |
+|---------|---------------|------|
+| TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration, Transformer architecture | Separate repo |
+| Aerythen Demo | ONNX model distilled into Flutter mobile app — on-device inference, edge deployment | [aerythen.com/demo](https://aerythen.com/demo) |

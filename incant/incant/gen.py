@@ -62,11 +62,12 @@ def cast_sigil(
     rag_context = get_rag_context(store, sigil)
     prompt = target.build_prompt(sigil, rag_context)
 
-    # Use WASI prompt for WASI sigils
     system_prompt = target.SYSTEM_PROMPT
     if sigil.wasi and sigil.target == "wat":
         prompt = target.build_wasi_prompt(sigil, rag_context)
         system_prompt = target.WASI_SYSTEM_PROMPT
+    elif sigil.harness_io and sigil.target == "z80":
+        system_prompt = target.HARNESS_IO_PROMPT
 
     if verbose:
         print(f"  RAG context: {len(rag_context)} chars")
@@ -107,6 +108,8 @@ def cast_sigil(
                 stdin_val = test.inputs.get("stdin", "")
                 expected = test.expect if isinstance(test.expect, str) else str(test.expect)
                 passed, msg = target.run_wasi_test(artifact, stdin_val, expected)
+            elif sigil.harness_io and sigil.target == "z80":
+                passed, msg = target.run_harness_io_test(artifact, test)
             else:
                 passed, msg = target.run_test(artifact, test, sigil)
             if verbose:
@@ -188,6 +191,8 @@ def _generate_code(
                 stdin_val = test.inputs.get("stdin", "")
                 expected = test.expect if isinstance(test.expect, str) else str(test.expect)
                 passed, msg = target.run_wasi_test(artifact, stdin_val, expected)
+            elif sigil.harness_io and sigil.target == "z80":
+                passed, msg = target.run_harness_io_test(artifact, test)
             else:
                 passed, msg = target.run_test(artifact, test, sigil)
             if verbose:

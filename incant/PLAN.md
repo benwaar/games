@@ -129,7 +129,53 @@ The LLM gets the catalogue as context and picks what it needs. Only generates ne
 
 ---
 
-## M7 — TAP: Spectrum tape files + disassembly
+## M7 — Test Harness: unified I/O for both targets
+
+A reusable test harness library with the same API for WASM and Z80. Both targets get: load input → run program → read output → compare. The harness is a Python module that the gate, run scripts, and future experiments all import. No more copy-pasting Z80 memory logic into shell scripts.
+
+### What the harness provides
+
+```python
+from incant.harness import WasmHarness, Z80Harness
+
+# Same interface, different backends
+h = Z80Harness("output/greet.bin")
+result = h.run("Ben")          # → "hello Ben"
+
+h = WasmHarness("output/greet_user.wasm")
+result = h.run("Ben")          # → "hello Ben"
+```
+
+Both harnesses:
+- Accept a compiled binary (`.wasm` or `.bin`)
+- Load a string input (stdin for WASM, memory buffer at 0x8000 for Z80)
+- Execute the program
+- Return the string output (stdout for WASM, memory buffer at 0x9000 for Z80)
+- Timeout protection (no infinite loops)
+
+### Why this matters
+
+Right now the test logic is scattered: `run_wasi_test()` in `wat.py`, `run_harness_io_test()` in `z80.py`, inline Python in shell scripts. A unified harness means:
+- Run scripts are one-liners
+- Future experiments (M8 binary protection, M9+ TAP) import the harness
+- Same test pattern for both architectures
+- Easy to add new targets later
+
+### Steps
+
+- [ ] Create `incant/harness.py` — `Z80Harness` and `WasmHarness` classes with shared interface
+- [ ] Refactor `z80.py` `run_harness_io_test()` to use `Z80Harness`
+- [ ] Refactor `wat.py` `run_wasi_test()` to use `WasmHarness`
+- [ ] Simplify run scripts to use the harness module
+- [ ] CLI: `python -m incant run output/greet.bin "Ben"` — run any compiled output
+- [ ] Tests for both harnesses (deterministic, no LLM)
+- [ ] Docs: explainer, update README + CLAUDE.md
+
+**Gate:** `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`. Same command, either target.
+
+---
+
+## M8 — TAP: Spectrum tape files + disassembly
 
 Read and write ZX Spectrum TAP files. Extract machine code from real Spectrum games, disassemble it, and feed it back into the pipeline as knowledge. Closes the loop: sigil → asm → binary → TAP → extract → asm.
 
@@ -159,7 +205,7 @@ Feed disassembled real-world Z80 patterns into RAG — actual Spectrum game code
 
 ---
 
-## M8 — Binary Protection PoC: Self-Verifying Code
+## M9 — Binary Protection PoC: Self-Verifying Code
 
 Explore binary protection techniques from the [explainer](explainers/binary-protection.md) by building a **checksum self-verification** PoC — in both Z80 and WASM. The program computes a hash of its own code at runtime and refuses to run if it's been tampered with.
 
@@ -204,6 +250,55 @@ WASM can't read its own code section directly (Harvard architecture — code and
 
 ---
 
+## M10 — ONNX → Z80 Inference Engine
+
+Take a trained neural network (ONNX) and run it on a Z80. The proof of concept uses KAOS 9's TinyNN — a distilled 80→32→95 ReLU network with 5,727 parameters. Quantised to INT8, that's 5.6 KB of weights — under 10% of Z80 RAM.
+
+### Why this matters
+
+This closes the loop between the ML projects and the code generation pipeline. KAOS 9 trains the model. Incant generates the inference engine. The result runs on real retro hardware. It's the extreme end of edge deployment — if it runs on a 3.5MHz 8-bit CPU with 64KB RAM, it runs anywhere.
+
+### Memory budget (KAOS 9 TinyNN)
+
+```
+fc1.weight:  2,560 params (80×32)
+fc1.bias:       32 params
+fc2.weight:  3,040 params (32×95)
+fc2.bias:       95 params
+─────────────────────────────────
+Total:       5,727 params → 5.6 KB (INT8)
+Buffers:       207 bytes  (input + hidden + output)
+Code:         ~500 bytes  (matmul + ReLU loops)
+─────────────────────────────────
+Total:       ~6.3 KB of 64 KB (9.8%)
+```
+
+### Pipeline
+
+```
+ONNX model (float32)
+  → extract weights + architecture
+  → quantise to INT8 (scale + zero-point per layer)
+  → generate Z80 inference sigil (matmul + ReLU in asm)
+  → pack weights as data block
+  → assemble → test against float32 reference
+```
+
+### Steps
+
+- [ ] ONNX parser: extract layer shapes, weights, biases, activations
+- [ ] INT8 quantisation: per-layer scale/zero-point, clamp to [-128, 127]
+- [ ] Z80 matmul sigil: fixed-point matrix multiply in assembly
+- [ ] Z80 ReLU: clamp negatives to zero (one `cp` + `jr`)
+- [ ] Weight packer: emit weights as Z80 `defb` data blocks
+- [ ] Inference harness: load input → matmul → ReLU → matmul → argmax → output
+- [ ] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
+- [ ] WASM equivalent: same pipeline but targeting WAT (for comparison)
+
+**Gate:** `python -m incant infer models/tiny_nn.onnx --target z80` produces a Z80 binary that takes a game state and returns an action index. INT8 output matches float32 reference on >90% of test inputs.
+
+---
+
 ## Skills this covers
 
 | Skill | Gap filled |
@@ -215,15 +310,20 @@ WASM can't read its own code section directly (Harvard architecture — code and
 | Z80 assembly | ⬜ → ✅ |
 | Multi-step LLM decomposition | ⬜ → ✅ (M6) |
 | Intent → spec → code pipeline | ⬜ → ✅ (M6) |
-| Binary format read/write (TAP) | ⬜ → ✅ (M7) |
-| Disassembly + reverse engineering | ⬜ → ✅ (M7) |
-| Real-world code → RAG knowledge | ⬜ → ✅ (M7) |
-| Binary self-verification (Z80 + WASM) | ⬜ → ✅ (M8) |
-| Protection vs analysis (attacker model) | ⬜ → ✅ (M8) |
+| Unified test harness (WASM + Z80) | ⬜ → ✅ (M7) |
+| Binary format read/write (TAP) | ⬜ → ✅ (M8) |
+| Disassembly + reverse engineering | ⬜ → ✅ (M8) |
+| Real-world code → RAG knowledge | ⬜ → ✅ (M8) |
+| Binary self-verification (Z80 + WASM) | ⬜ → ✅ (M9) |
+| Protection vs analysis (attacker model) | ⬜ → ✅ (M9) |
+| ONNX → INT8 quantisation | ⬜ → ✅ (M10) |
+| Neural net inference on Z80 | ⬜ → ✅ (M10) |
+| Extreme-edge deployment | ⬜ → ✅ (M10) |
 
 ---
 
 ## Feeds into
 
-- [Void Duel](../void-duel/) — Z80 game code generation
+- [Void Duel](../void-duel/) — Z80 game AI: TinyNN inference engine powers the opponent
 - [Acoustic Odyssey: cast](../acoustic-odyssey/cast/) — WASM deployment pipeline patterns
+- [Utala: KAOS 9](../utala/kaos9/) — source of the distilled model that M10 deploys

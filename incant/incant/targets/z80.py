@@ -4,6 +4,9 @@ import z80 as z80lib
 
 from ..sigil import Sigil, SigilTest
 
+INPUT_BUF = 0x8000
+OUTPUT_BUF = 0x9000
+
 SYSTEM_PROMPT = """\
 You are a Z80 assembly programmer. You write clean, correct Z80 assembly code.
 
@@ -16,8 +19,79 @@ Rules:
 - Keep code minimal — do exactly what the spec asks, nothing more.
 """
 
+HARNESS_IO_PROMPT = """\
+You are a Z80 assembly programmer. You write clean, correct Z80 assembly code.
+
+Memory-mapped I/O conventions:
+- Input buffer:  0x8000 (null-terminated string, pre-loaded by test harness)
+- Output buffer: 0x9000 (write your null-terminated output here)
+
+Constants you MUST define at the top:
+  INPUT_BUF  equ 0x8000
+  OUTPUT_BUF equ 0x9000
+
+Rules:
+- Output ONLY valid Z80 assembly. No prose, no markdown fences, no explanation.
+- End every program with HALT.
+- Use lowercase mnemonics (ld, add, sub, jp, jr, halt).
+- Use labels for jumps (not raw addresses).
+- NEVER use character literals like 'h' or "h" — the assembler does not support them.
+  Use hex values instead: 0x68 for 'h', 0x65 for 'e', 0x6c for 'l', 0x6f for 'o', 0x20 for ' '.
+- Read input from INPUT_BUF using HL as a pointer.
+- Write output to OUTPUT_BUF using DE as a pointer.
+- Null-terminate the output string (write a 0x00 byte at the end).
+- Keep code minimal — do exactly what the spec asks, nothing more.
+
+ASCII hex reference: ' '=0x20 'A'=0x41 'B'=0x42 'a'=0x61 'b'=0x62 'e'=0x65 'h'=0x68 'l'=0x6c 'o'=0x6f
+
+Working example — copy "hi " then input to output:
+
+INPUT_BUF  equ 0x8000
+OUTPUT_BUF equ 0x9000
+
+  ld de, OUTPUT_BUF
+  ; write "hi " using hex values
+  ld a, 0x68
+  ld (de), a
+  inc de
+  ld a, 0x69
+  ld (de), a
+  inc de
+  ld a, 0x20
+  ld (de), a
+  inc de
+  ; copy input to output
+  ld hl, INPUT_BUF
+copy:
+  ld a, (hl)
+  or a
+  jr z, done
+  ld (de), a
+  inc hl
+  inc de
+  jr copy
+done:
+  xor a
+  ld (de), a
+  halt
+"""
+
 
 def build_prompt(sigil: Sigil, rag_context: str) -> str:
+    if sigil.harness_io:
+        return f"""{rag_context}
+
+Write Z80 assembly for the following spec:
+
+Name: {sigil.name}
+Description: {sigil.description}
+Input: null-terminated string at INPUT_BUF (0x8000)
+Output: null-terminated string at OUTPUT_BUF (0x9000)
+
+Example test: stdin "{sigil.tests[0].inputs.get('stdin', '')}" → expect "{sigil.tests[0].expect}"
+
+Output ONLY the assembly code. No explanation."""
+
     inputs_desc = ", ".join(
         f"{p.name} in register {p.register} ({p.type})"
         for p in sigil.signature.inputs
@@ -89,6 +163,37 @@ def run_test(data: bytes, test: SigilTest, sigil: Sigil) -> tuple[bool, str]:
         actual = getattr(machine, REGISTER_MAP[out_reg])
         if actual != test.expect:
             return False, f"Register {out_reg.upper()}: expected {test.expect}, got {actual}"
+
+    return True, "pass"
+
+
+def run_harness_io_test(data: bytes, test: SigilTest) -> tuple[bool, str]:
+    """Run a harness_io test: pre-load stdin at INPUT_BUF, check OUTPUT_BUF after."""
+    machine = z80lib.Z80Machine()
+    machine.set_memory_block(0, data)
+    machine.ticks_to_stop = 100000
+
+    stdin_val = test.inputs.get("stdin", "")
+    stdin_bytes = stdin_val.encode("ascii") + b"\x00"
+    machine.set_memory_block(INPUT_BUF, stdin_bytes)
+
+    machine.run()
+
+    if not machine.halted:
+        return False, "Program did not halt within tick limit"
+
+    output_bytes = []
+    for i in range(256):
+        b = machine.memory[OUTPUT_BUF + i]
+        if b == 0:
+            break
+        output_bytes.append(b)
+
+    actual = bytes(output_bytes).decode("ascii", errors="replace")
+    expected = test.expect if isinstance(test.expect, str) else str(test.expect)
+
+    if actual != expected:
+        return False, f"Expected output '{expected}', got '{actual}'"
 
     return True, "pass"
 
