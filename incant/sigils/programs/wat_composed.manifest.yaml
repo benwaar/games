@@ -1,0 +1,6 @@
+name: math_composed
+target: wat
+sigils:
+  - ../examples/wat_add.sigil.yaml
+  - ../examples/wat_factorial.sigil.yaml
+  - ../examples/wat_sum_of_factorials.sigil.yaml

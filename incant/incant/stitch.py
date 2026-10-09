@@ -8,8 +8,11 @@ def stitch_wat(modules: list[str]) -> str:
     """Merge multiple WAT modules into one.
 
     Extracts inner declarations from each (module ...) and combines them.
-    Deduplicates memory declarations (keeps the largest).
+    Deduplicates memory declarations (keeps the largest) and functions
+    (first definition wins — later modules that redefine $add are skipped).
     """
+    seen_funcs: set[str] = set()
+    seen_exports: set[str] = set()
     inner_blocks: list[str] = []
     max_memory_pages = 0
     has_memory = False
@@ -17,19 +20,39 @@ def stitch_wat(modules: list[str]) -> str:
 
     for module in modules:
         inner = _extract_wat_inner(module)
-        lines = []
-        for line in inner.splitlines():
-            stripped = line.strip()
+        declarations = _split_top_level_declarations(inner)
+
+        kept: list[str] = []
+        for decl in declarations:
+            stripped = decl.strip()
+
             mem_pages = _parse_memory_decl(stripped)
             if mem_pages is not None:
                 has_memory = True
                 max_memory_pages = max(max_memory_pages, mem_pages)
                 continue
+
             if _is_memory_export(stripped):
-                memory_exports.append(line)
+                if not memory_exports:
+                    memory_exports.append(decl)
                 continue
-            lines.append(line)
-        inner_blocks.append("\n".join(lines))
+
+            func_name = _extract_func_name(stripped)
+            if func_name:
+                if func_name in seen_funcs:
+                    continue
+                seen_funcs.add(func_name)
+
+            export_name = _extract_export_name(stripped)
+            if export_name:
+                if export_name in seen_exports:
+                    continue
+                seen_exports.add(export_name)
+
+            kept.append(decl)
+
+        if kept:
+            inner_blocks.append("\n".join(kept))
 
     parts = []
     if has_memory:
@@ -43,6 +66,42 @@ def stitch_wat(modules: list[str]) -> str:
             parts.append(block)
 
     return "(module\n" + "\n".join(parts) + "\n)\n"
+
+
+def _split_top_level_declarations(inner: str) -> list[str]:
+    """Split module inner content into top-level S-expression declarations."""
+    declarations = []
+    i = 0
+    text = inner.strip()
+
+    while i < len(text):
+        if text[i] == "(":
+            depth = 1
+            start = i
+            i += 1
+            while i < len(text) and depth > 0:
+                if text[i] == "(":
+                    depth += 1
+                elif text[i] == ")":
+                    depth -= 1
+                i += 1
+            declarations.append(text[start:i])
+        else:
+            i += 1
+
+    return declarations
+
+
+def _extract_func_name(decl: str) -> str | None:
+    """Extract function name from (func $name ...)."""
+    match = re.match(r"\(func\s+(\$\w+)", decl)
+    return match.group(1) if match else None
+
+
+def _extract_export_name(decl: str) -> str | None:
+    """Extract export string from (export "name" ...)."""
+    match = re.match(r'\(export\s+"([^"]+)"', decl)
+    return match.group(1) if match else None
 
 
 def _extract_wat_inner(module: str) -> str:

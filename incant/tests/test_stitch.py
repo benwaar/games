@@ -86,6 +86,24 @@ class TestStitchWat:
         assert "$add" in result
         assert "(module" in result
 
+    def test_dedup_functions(self):
+        """When a dependent module redefines $add, the stitcher keeps only the first."""
+        dependent = """(module
+  (func $add (param $a i32) (param $b i32) (result i32)
+    local.get $a local.get $b i32.add)
+  (func $use_add (param $x i32) (result i32)
+    local.get $x local.get $x call $add)
+  (export "add" (func $add))
+  (export "use_add" (func $use_add))
+)"""
+        result = stitch_wat([ADD_WAT, dependent])
+        # $add func definition should appear exactly once (not in export lines)
+        func_defs = [l.strip() for l in result.splitlines()
+                     if l.strip().startswith("(func $add")]
+        assert len(func_defs) == 1
+        # $use_add should be present
+        assert "$use_add" in result
+
 
 class TestStitchZ80:
     def test_two_sources(self):
