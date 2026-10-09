@@ -13,10 +13,13 @@ def stitch_wat(modules: list[str]) -> str:
     """
     seen_funcs: set[str] = set()
     seen_exports: set[str] = set()
+    seen_imports: set[str] = set()
+    import_blocks: list[str] = []
     inner_blocks: list[str] = []
+    data_blocks: list[str] = []
     max_memory_pages = 0
     has_memory = False
-    memory_exports: list[str] = []
+    export_memory = False
 
     for module in modules:
         inner = _extract_wat_inner(module)
@@ -29,12 +32,23 @@ def stitch_wat(modules: list[str]) -> str:
             mem_pages = _parse_memory_decl(stripped)
             if mem_pages is not None:
                 has_memory = True
+                if "(export" in stripped:
+                    export_memory = True
                 max_memory_pages = max(max_memory_pages, mem_pages)
                 continue
 
             if _is_memory_export(stripped):
-                if not memory_exports:
-                    memory_exports.append(decl)
+                export_memory = True
+                continue
+
+            if _is_import_decl(stripped):
+                if stripped not in seen_imports:
+                    seen_imports.add(stripped)
+                    import_blocks.append(decl)
+                continue
+
+            if stripped.startswith("(data "):
+                data_blocks.append(decl)
                 continue
 
             func_name = _extract_func_name(stripped)
@@ -55,10 +69,17 @@ def stitch_wat(modules: list[str]) -> str:
             inner_blocks.append("\n".join(kept))
 
     parts = []
+    for imp in import_blocks:
+        parts.append(imp.strip())
+
     if has_memory:
-        parts.append(f"  (memory {max_memory_pages})")
-        if memory_exports:
-            parts.append(memory_exports[0])
+        if export_memory:
+            parts.append(f'  (memory (export "memory") {max_memory_pages})')
+        else:
+            parts.append(f"  (memory {max_memory_pages})")
+
+    for data in data_blocks:
+        parts.append(data.strip())
 
     for block in inner_blocks:
         block = block.strip()
@@ -127,15 +148,24 @@ def _extract_wat_inner(module: str) -> str:
 
 
 def _parse_memory_decl(line: str) -> int | None:
-    """Parse (memory N) and return N, or None if not a memory declaration."""
+    """Parse (memory N) or (memory (export "memory") N) and return N."""
     match = re.match(r"^\(memory\s+(\d+)\)$", line)
+    if match:
+        return int(match.group(1))
+    match = re.match(r'^\(memory\s+\(export\s+"[^"]+"\)\s+(\d+)\)$', line)
     if match:
         return int(match.group(1))
     return None
 
 
 def _is_memory_export(line: str) -> bool:
-    return '(export' in line and '(memory' in line
+    """Match standalone memory exports like (export "memory" (memory 0))."""
+    stripped = line.strip()
+    return stripped.startswith('(export') and '(memory' in stripped
+
+
+def _is_import_decl(line: str) -> bool:
+    return line.startswith("(import ")
 
 
 def stitch_z80(sources: list[str], names: list[str]) -> str:

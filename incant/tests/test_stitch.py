@@ -57,11 +57,10 @@ class TestStitchWat:
 
     def test_dedup_memory(self):
         result = stitch_wat([ADD_WAT, MEMORY_WAT])
-        # one memory declaration, one memory export
         lines = [l.strip() for l in result.splitlines()]
         mem_decls = [l for l in lines if l.startswith("(memory")]
         assert len(mem_decls) == 1
-        assert "(memory 1)" in mem_decls[0]
+        assert "1)" in mem_decls[0]
 
     def test_assembled_combined_runs(self, has_wabt):
         combined = stitch_wat([ADD_WAT, DOUBLE_WAT])
@@ -103,6 +102,96 @@ class TestStitchWat:
         assert len(func_defs) == 1
         # $use_add should be present
         assert "$use_add" in result
+
+    def test_wasi_module_preserves_imports(self):
+        wasi_mod = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (data (i32.const 100) "hi\\n")
+  (func (export "_start")
+    (i32.store (i32.const 0) (i32.const 100))
+    (i32.store (i32.const 4) (i32.const 3))
+    (drop (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8)))
+  )
+)"""
+        result = stitch_wat([wasi_mod])
+        assert "wasi_snapshot_preview1" in result
+        assert "(memory" in result
+        assert "_start" in result
+        assert "(data " in result
+
+    def test_wasi_module_memory_pages(self):
+        wasi_mod = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 2)
+  (func (export "_start") unreachable)
+)"""
+        result = stitch_wat([wasi_mod])
+        assert '(memory (export "memory") 2)' in result
+
+    def test_wasi_module_assembles(self, has_wabt):
+        wasi_mod = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (data (i32.const 100) "hi\\n")
+  (func (export "_start")
+    (i32.store (i32.const 0) (i32.const 100))
+    (i32.store (i32.const 4) (i32.const 3))
+    (drop (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8)))
+  )
+)"""
+        combined = stitch_wat([wasi_mod])
+        ok, wasm_path, err = wat_assemble(combined)
+        assert ok, f"WASI assembly failed: {err}"
+
+    def test_dedup_imports(self):
+        mod1 = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (func (export "_start") unreachable)
+)"""
+        mod2 = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (func $helper (result i32) i32.const 42)
+  (export "helper" (func $helper))
+)"""
+        result = stitch_wat([mod1, mod2])
+        import_count = result.count("wasi_snapshot_preview1")
+        assert import_count == 1
+
+    def test_wasi_func_with_memory_ops_not_dropped(self):
+        """Functions containing memory.copy must not be confused for memory exports."""
+        wasi_mod = """(module
+  (import "wasi_snapshot_preview1" "fd_write"
+    (func $fd_write (param i32 i32 i32 i32) (result i32)))
+  (import "wasi_snapshot_preview1" "fd_read"
+    (func $fd_read (param i32 i32 i32 i32) (result i32)))
+  (memory (export "memory") 1)
+  (data (i32.const 100) "hello ")
+  (func (export "_start")
+    (local $nread i32)
+    (i32.store (i32.const 0) (i32.const 200))
+    (i32.store (i32.const 4) (i32.const 100))
+    (drop (call $fd_read (i32.const 0) (i32.const 0) (i32.const 1) (i32.const 8)))
+    (local.set $nread (i32.load (i32.const 8)))
+    (memory.copy (i32.const 300) (i32.const 100) (i32.const 6))
+    (memory.copy (i32.const 306) (i32.const 200) (local.get $nread))
+    (i32.store8 (i32.add (i32.const 306) (local.get $nread)) (i32.const 10))
+    (i32.store (i32.const 0) (i32.const 300))
+    (i32.store (i32.const 4) (i32.add (i32.const 7) (local.get $nread)))
+    (drop (call $fd_write (i32.const 1) (i32.const 0) (i32.const 1) (i32.const 8)))
+  )
+)"""
+        result = stitch_wat([wasi_mod])
+        assert "_start" in result
+        assert "(func" in result
+        assert "memory.copy" in result
 
 
 class TestStitchZ80:

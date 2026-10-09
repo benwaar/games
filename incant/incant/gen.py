@@ -13,6 +13,7 @@ from .targets import wat as wat_target
 
 GEN_MODEL = "qwen3-coder:latest"
 MAX_RETRIES = 3
+MAX_RETRIES_WASI = 5
 
 TARGETS = {
     "z80": z80_target,
@@ -57,6 +58,7 @@ def cast_sigil(
     if not target:
         return False, f"Unknown target: {sigil.target}"
 
+    retries = MAX_RETRIES_WASI if sigil.wasi else MAX_RETRIES
     rag_context = get_rag_context(store, sigil)
     prompt = target.build_prompt(sigil, rag_context)
 
@@ -71,9 +73,9 @@ def cast_sigil(
         print(f"  Prompt: {len(prompt)} chars")
 
     last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
+    for attempt in range(1, retries + 1):
         if verbose:
-            print(f"  Attempt {attempt}/{MAX_RETRIES}...")
+            print(f"  Attempt {attempt}/{retries}...")
 
         if last_error:
             retry_prompt = (
@@ -129,7 +131,7 @@ def cast_sigil(
 
             return True, f"All {len(sigil.tests)} tests passed"
 
-    return False, f"Failed after {MAX_RETRIES} attempts. Last error: {last_error}"
+    return False, f"Failed after {retries} attempts. Last error: {last_error}"
 
 
 def _generate_code(
@@ -154,10 +156,12 @@ def _generate_code(
         prompt = target.build_wasi_prompt(sigil, rag_context)
         system_prompt = target.WASI_SYSTEM_PROMPT
 
+    retries = MAX_RETRIES_WASI if sigil.wasi else MAX_RETRIES
+
     last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
+    for attempt in range(1, retries + 1):
         if verbose:
-            print(f"    Attempt {attempt}/{MAX_RETRIES}...")
+            print(f"    Attempt {attempt}/{retries}...")
 
         if last_error:
             retry_prompt = (
@@ -197,7 +201,7 @@ def _generate_code(
         if all_passed:
             return True, code, None
 
-    return False, "", f"Failed after {MAX_RETRIES} attempts. Last error: {last_error}"
+    return False, "", f"Failed after {retries} attempts. Last error: {last_error}"
 
 
 def cast_multi(
@@ -260,10 +264,18 @@ def cast_multi(
     #      passed during generation — just verify assembly succeeds
     if manifest.target == "wat":
         for sigil in sorted_sigils:
-            for i, test in enumerate(sigil.tests):
-                passed, msg = target.run_test(artifact, test, sigil)
-                if not passed:
-                    return False, f"Combined test failed for '{sigil.name}' test {i + 1}: {msg}"
+            if sigil.wasi:
+                for i, test in enumerate(sigil.tests):
+                    stdin_val = test.inputs.get("stdin", "")
+                    expected = test.expect if isinstance(test.expect, str) else str(test.expect)
+                    passed, msg = target.run_wasi_test(artifact, stdin_val, expected)
+                    if not passed:
+                        return False, f"Combined test failed for '{sigil.name}' test {i + 1}: {msg}"
+            else:
+                for i, test in enumerate(sigil.tests):
+                    passed, msg = target.run_test(artifact, test, sigil)
+                    if not passed:
+                        return False, f"Combined test failed for '{sigil.name}' test {i + 1}: {msg}"
 
     # save output
     output_dir.mkdir(parents=True, exist_ok=True)
