@@ -5,3 +5,4 @@ __pycache__/
 data/embeddings.jsonl
 data/raw/
 data/processed/
+*.tap
