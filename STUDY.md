@@ -110,8 +110,8 @@ AI / ML
 │
 ├── Code Generation
 │   ├── Spec → assembly (WAT, Z80) ────────────── ✅ incant M1–M3
-│   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3 + 🔷 foundry
-│   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3 + 🔷 foundry
+│   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3
+│   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3
 │   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
 │   ├── Intent → spec → code pipeline ─────────── ✅ incant M6
 │   ├── Unified test harness (WASM + Z80) ─────── incant M7
@@ -119,9 +119,20 @@ AI / ML
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
-    ├── ONNX / TFLite / INT8 / edge ────────────── acoustic-odyssey/cast
+    ├── ONNX / TFLite / INT8 / edge ────────────── 🔶 Aerythen demo (ONNX → Flutter) + acoustic-odyssey/cast
     ├── Latency benchmarking ────────────────────── acoustic-odyssey/cast
     ├── Model serving / REST API ────────────────── ⬜
     ├── Model monitoring / drift ────────────────── ⬜
     └── A/B testing models ──────────────────────── ⬜
 ```
+
+---
+
+## External Projects
+
+Work done outside this repo that contributes to the skills coverage above.
+
+| Project | What it covers | Link |
+|---------|---------------|------|
+| TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration, Transformer architecture | Separate repo |
+| Aerythen Demo | ONNX model distilled into Flutter mobile app — on-device inference, edge deployment | [aerythen.com/demo](https://aerythen.com/demo) |
