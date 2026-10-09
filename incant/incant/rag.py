@@ -2,6 +2,7 @@
 
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 import ollama
@@ -16,9 +17,6 @@ class Chunk:
     collection: str
     heading: str
     embedding: list[float]
-
-
-from dataclasses import dataclass
 
 
 def chunk_markdown(path: Path) -> list[tuple[str, str]]:
