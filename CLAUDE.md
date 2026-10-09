@@ -14,6 +14,7 @@ games/
   acoustic-odyssey/    — deployment layer for Signal Hunt: on-device inference + adaptive RL
   artefact/            — pixel art: CV scanner, super-resolution CNN, LoRA diffusion
   void-duel/           — ZX Spectrum shooter: classic ML → multi-agent RL → extreme-edge distil
+  incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
 ```
 
 ---
@@ -69,3 +70,4 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
 | [Void Duel](void-duel/) | Planned |
+| [Incant](incant/) | In progress — spec-driven code gen (WAT + Z80 asm) |
