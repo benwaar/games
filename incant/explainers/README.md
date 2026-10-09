@@ -19,7 +19,8 @@ sigil.yaml → RAG retrieve → LLM prompt → code → assemble → test → bi
 |-----|--------|
 | [RAG Pipeline](rag-pipeline.md) | Chunking, embedding, vector search, prompt injection |
 | [Z80 Backend](z80-backend.md) | Assembly, emulation, gate-driven retry, code extraction |
-| [Python Concepts](python-concepts.md) | dataclass, zip, generators, pathlib, JSONL, regex, setattr/getattr |
+| [WAT Backend](wat-backend.md) | wat2wasm, wasm-interp, signed/unsigned conversion, structured control flow |
+| [Python Concepts](python-concepts.md) | dataclass, zip, generators, pathlib, JSONL, regex, setattr/getattr, subprocess |
 | [Libraries](libraries.md) | ollama, z80, pyyaml, wabt |
 
 For shared concepts (CNNs, training loops, RL), see [../../explainers/](../../explainers/README.md).

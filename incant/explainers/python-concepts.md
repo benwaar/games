@@ -98,3 +98,25 @@ This lets us map sigil register names to machine properties without a giant swit
 
 > **Coming from C:** No direct equivalent — you'd use a function pointer table or a switch. The closest pattern is accessing struct members via `offsetof` + pointer arithmetic, but that's unsafe and manual.
 > **Coming from JS/TS:** Equivalent to `machine["b"] = 5` and `machine["a"]`. JavaScript's bracket notation does the same thing — access properties by computed string key.
+
+## subprocess.run — calling external tools
+
+Runs a command-line tool and captures its output. Used by the WAT backend to call `wat2wasm` and `wasm-interp`:
+
+```python
+result = subprocess.run(
+    ["wat2wasm", str(wat_path), "-o", str(wasm_path)],
+    capture_output=True,  # capture stdout + stderr
+    text=True,            # decode output as UTF-8 strings
+)
+if result.returncode != 0:
+    error = result.stderr.strip()
+```
+
+Key parameters:
+- `capture_output=True` — equivalent to `stdout=PIPE, stderr=PIPE`
+- `text=True` — return strings, not bytes (Python default is bytes)
+- Returns a `CompletedProcess` with `.returncode`, `.stdout`, `.stderr`
+
+> **Coming from C:** Like `popen()` but safer — no shell interpolation. The command is a list of strings, not a single string, so arguments with spaces are handled correctly.
+> **Coming from JS/TS:** Like `child_process.execFileSync()` with `encoding: 'utf8'`. The list form (`["cmd", "arg1"]`) is like `execFile`, not `exec` — no shell, no injection risk.

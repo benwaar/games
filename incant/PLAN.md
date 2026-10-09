@@ -31,10 +31,11 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ## M3 — WAT backend (end-to-end)
 
-- [ ] Implement WAT prompt template
-- [ ] Implement WAT gate: `wat2wasm` to assemble, `wasm-interp --run-all-exports` to test
-- [ ] Parse wasm-interp output to check against sigil expected values
-- [ ] Run on 3 example sigils: add, factorial, memory read/write
+- [x] Implement WAT prompt template
+- [x] Implement WAT gate: `wat2wasm` to assemble, `wasm-interp -r name -a type:val` to test
+- [x] Parse wasm-interp output to check against sigil expected values
+- [x] Handle signed/unsigned i32 conversion (wasm-interp rejects negative args)
+- [x] Run on 3 example sigils: add, factorial, memory swap
 
 **Gate:** All 3 sigils produce .wasm that passes all test cases.
 

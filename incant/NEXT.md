@@ -1,11 +1,11 @@
-# Next: M3 — WAT backend (end-to-end)
+# Next: M4 — Multi-sigil orchestration
 
-M2 is complete — Z80 backend generates, assembles, and tests all 3 sigils on the first attempt. Two bugs fixed: assembler requires lowercase mnemonics, and `code.resolve()` must be called before `code.encode()` for label resolution.
+M3 is complete — WAT backend generates, assembles, and tests all 3 sigils. Fixed wasm-interp CLI syntax (`-r name -a i32:N` instead of fabricated `-- args`), added signed/unsigned i32 conversion for negative values. memory_swap needed 3 attempts — clarifying the sigil description fixed the LLM's output.
 
 **What's next:**
-1. WAT prompt template — system prompt + sigil-to-prompt formatting
-2. WAT gate — `wat2wasm` to assemble, `wasm-interp --run-all-exports` to test
-3. Parse wasm-interp output to check against sigil expected values
-4. Run on 3 example sigils: add, factorial, memory read/write
+1. Read a sequence of sigils, generate in dependency order
+2. Pass prior outputs as context (later sigils reference earlier functions)
+3. Build a small Z80 program from 5+ sigils
+4. Build a small WASM module from 5+ sigils
 
-**Gate:** All 3 WAT sigils produce .wasm that passes all test cases.
+**Gate:** Multi-sigil builds produce working binaries.

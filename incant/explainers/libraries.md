@@ -95,10 +95,13 @@ Used in: `incant/targets/wat.py` — the WAT assembly gate.
 
 ### `wasm-interp`
 
-Interprets a .wasm file. `--run-all-exports` calls every exported function.
+Interprets a .wasm file. Use `-r` to call an exported function and `-a` to pass arguments.
 
 ```bash
-wasm-interp output.wasm --run-all-exports
+wasm-interp output.wasm -r add -a i32:2 -a i32:3
+# => add(i32:2, i32:3) => i32:5
 ```
+
+Arguments are unsigned — negative i32 values must be passed as two's complement (e.g. -1 → `i32:4294967295`).
 
 Used in: `incant/targets/wat.py` — running WAT test cases.
