@@ -1,0 +1,20 @@
+name: store_load
+description: Store value from A into memory address 0x8000, then load it back into A. Proves memory round-trip.
+target: z80
+
+signature:
+  inputs:
+    - name: value
+      register: A
+      type: u8
+  output:
+    register: A
+    type: u8
+
+tests:
+  - inputs: { value: 42 }
+    expect: { a: 42 }
+  - inputs: { value: 0 }
+    expect: { a: 0 }
+  - inputs: { value: 255 }
+    expect: { a: 255 }

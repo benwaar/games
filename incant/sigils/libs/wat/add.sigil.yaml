@@ -1,0 +1,22 @@
+name: add
+description: Add two 32-bit integers.
+target: wat
+
+signature:
+  inputs:
+    - name: a
+      type: i32
+    - name: b
+      type: i32
+  output:
+    type: i32
+
+export: add
+
+tests:
+  - inputs: { a: 2, b: 3 }
+    expect: 5
+  - inputs: { a: 0, b: 0 }
+    expect: 0
+  - inputs: { a: -1, b: 1 }
+    expect: 0

@@ -1,0 +1,5 @@
+name: math
+target: wat
+sigils:
+  - ../examples/wat_add.sigil.yaml
+  - ../examples/wat_factorial.sigil.yaml

@@ -1,0 +1,22 @@
+name: factorial
+description: Compute factorial of n iteratively. Return n! as i32.
+target: wat
+
+signature:
+  inputs:
+    - name: n
+      type: i32
+  output:
+    type: i32
+
+export: factorial
+
+tests:
+  - inputs: { n: 0 }
+    expect: 1
+  - inputs: { n: 1 }
+    expect: 1
+  - inputs: { n: 5 }
+    expect: 120
+  - inputs: { n: 10 }
+    expect: 3628800

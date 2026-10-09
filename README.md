@@ -17,6 +17,7 @@ Everything is text-based, inspectable, and hackable.
 
 - [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation ✅
 - [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
+- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly 🔨
 - [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
 - [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
 - [Artefact: dig](artefact/dig/) — binary art scanner: find hidden sprites in ROM using CV and autoencoders

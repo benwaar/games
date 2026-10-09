@@ -1,0 +1,19 @@
+name: wasi_greet
+description: Read a name from stdin and write "hello {name}" to stdout. Read until newline or EOF, then write "hello " followed by the name and a newline.
+target: wat
+wasi: true
+
+signature:
+  inputs:
+    - name: stdin
+      type: i32
+  output:
+    type: i32
+
+tests:
+  - inputs: { stdin: "Ben" }
+    expect: "hello Ben\n"
+  - inputs: { stdin: "" }
+    expect: "hello \n"
+  - inputs: { stdin: "Alexander" }
+    expect: "hello Alexander\n"

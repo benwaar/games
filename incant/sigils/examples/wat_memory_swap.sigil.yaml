@@ -1,0 +1,23 @@
+name: memory_swap
+description: Store a at memory offset 0 and b at offset 4. Swap the two memory locations. Return the i32 at offset 4 after the swap (which is the original value of a).
+target: wat
+
+signature:
+  inputs:
+    - name: a
+      type: i32
+    - name: b
+      type: i32
+  output:
+    type: i32
+
+export: memory_swap
+memory: 1
+
+tests:
+  - inputs: { a: 10, b: 20 }
+    expect: 10
+  - inputs: { a: 0, b: 99 }
+    expect: 0
+  - inputs: { a: -5, b: 5 }
+    expect: -5

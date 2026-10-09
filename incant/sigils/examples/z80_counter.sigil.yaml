@@ -1,0 +1,20 @@
+name: counter
+description: Loop B times, incrementing A from 0 each iteration. Result in A equals B.
+target: z80
+
+signature:
+  inputs:
+    - name: count
+      register: B
+      type: u8
+  output:
+    register: A
+    type: u8
+
+tests:
+  - inputs: { count: 5 }
+    expect: { a: 5 }
+  - inputs: { count: 0 }
+    expect: { a: 0 }
+  - inputs: { count: 1 }
+    expect: { a: 1 }

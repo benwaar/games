@@ -19,6 +19,8 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | Model extension without retraining | Add new categories to a working classifier without rebuilding it | New fraud type added to existing fraud model; new document category; new language added to existing intent model |
 | Sequence and journey pattern detection | Detect order-dependent patterns — what happened, and in what order | Fraud sequence detection; user journey analysis (which paths precede churn); process mining to find the step order that leads to failure |
 | Production deployment | Take a research model and ship it — compressed, fast, benchmarked, reliable | Any ML prototype that needs to become a product |
+| Spec-driven code generation | LLM pipeline: spec → RAG → generate → assemble → test. Verifiably correct binary output | Automated code generation with quality gates; compliance-checkable output; any pipeline where "compiles and passes tests" replaces "looks right" |
+| Wasm / binary security | Package and verify binary artifacts (SRI hashes, supply chain, size optimisation) | Shipping ML models or Wasm modules with integrity guarantees; sandbox boundaries and JS bridge attack surface |
 
 ---
 
@@ -35,6 +37,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Artefact: bloom](artefact/bloom/) | Pixel art upscaler — super-resolution CNN and GAN for retro game assets | Planned |
 | [Artefact: dream](artefact/dream/) | LoRA fine-tune a diffusion model on extracted sprites → generate new pixel art in the same ROM style | Planned |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
+| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
@@ -104,6 +107,13 @@ AI / ML
 │
 ├── LLM Engineering ─────────────────────────────── 🔷 all covered (TPP)
 │   └── RAG, MCP, skills, evals, agent orchestration
+│
+├── Code Generation
+│   ├── Spec → assembly (WAT, Z80) ────────────── ✅ incant M1–M3
+│   ├── RAG-grounded code gen ──────────────────── ✅ incant M1–M3 + 🔷 foundry
+│   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3 + 🔷 foundry
+│   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
+│   └── Intent → spec → code pipeline ─────────── ✅ incant M6
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2

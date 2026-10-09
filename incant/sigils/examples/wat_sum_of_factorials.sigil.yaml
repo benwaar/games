@@ -1,0 +1,25 @@
+name: sum_of_factorials
+description: Compute factorial(a) + factorial(b). Call the factorial function for each input, then call the add function to sum the results. Return the sum as i32.
+target: wat
+dependencies:
+  - factorial
+  - add
+
+signature:
+  inputs:
+    - name: a
+      type: i32
+    - name: b
+      type: i32
+  output:
+    type: i32
+
+export: sum_of_factorials
+
+tests:
+  - inputs: { a: 3, b: 4 }
+    expect: 30
+  - inputs: { a: 0, b: 5 }
+    expect: 121
+  - inputs: { a: 1, b: 1 }
+    expect: 2

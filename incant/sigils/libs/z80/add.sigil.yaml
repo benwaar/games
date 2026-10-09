@@ -1,0 +1,23 @@
+name: add
+description: Add two 8-bit numbers. Load A and B, result in A.
+target: z80
+
+signature:
+  inputs:
+    - name: a
+      register: A
+      type: u8
+    - name: b
+      register: B
+      type: u8
+  output:
+    register: A
+    type: u8
+
+tests:
+  - inputs: { a: 2, b: 3 }
+    expect: { a: 5 }
+  - inputs: { a: 0, b: 0 }
+    expect: { a: 0 }
+  - inputs: { a: 255, b: 1 }
+    expect: { a: 0 }
