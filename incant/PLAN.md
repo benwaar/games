@@ -66,30 +66,66 @@ Spec-driven code gen: sigil → LLM → WAT/Z80 asm → assemble → test → bi
 
 ---
 
-## M6 — Smelt: natural language → sigils
+## M6 — Smelt: BDD spec → sigils → binary
 
-Human writes intent in plain English. The pipeline generates sigil YAMLs + manifest. Brings in standard library support (WASI for I/O, string ops).
+Human writes intent as a BDD-format markdown file. The pipeline interprets it, checks available libraries, generates sigils for anything missing, and runs the existing pipeline to produce WASM and Z80 binaries.
 
-Example input:
+### Input format (BDD markdown)
+
+```markdown
+# Greet user
+
+## Scenario: basic greeting
+Given the program starts
+When the user enters "Ben"
+Then output "hello Ben"
+
+## Scenario: empty name
+Given the program starts
+When the user enters ""
+Then output "hello "
 ```
-Say hello, ask the user to enter their name, output "hello <name>"
+
+### Pipeline
+
+```
+human writes .spec.md (BDD)
+  → smelt reads spec
+  → LLM checks library catalogue (what already exists?)
+  → LLM generates sigils for missing functions only
+  → LLM writes manifest (new sigils + library sigils)
+  → existing cast/multi pipeline runs
+  → .wasm + .asm output
 ```
 
-Pipeline generates:
-- Sigil: `greet(name: string) -> string` — returns "hello " + name
-- Sigil: `read_name() -> string` — read from stdin
-- Sigil: `main()` — call read_name, pass to greet, print result
-- Manifest: all three, with dependencies
+### Library catalogue
 
-- [ ] Define smelt input format (freeform markdown, like foundry's `human-inputs/`)
+Reusable sigils the LLM can reference without regenerating:
+
+```
+libs/
+  wat/
+    io.sigil.yaml       — read_line, print_string (WASI)
+    string.sigil.yaml   — concat, length
+    math.sigil.yaml     — add, multiply, factorial
+  z80/
+    io.sigil.yaml       — print_char, read_key (Spectrum RST calls)
+    math.sigil.yaml     — add, multiply, divide
+```
+
+The LLM gets the catalogue as context and picks what it needs. Only generates new sigils for logic not in the library.
+
+### Steps
+
+- [ ] Define BDD `.spec.md` input format
+- [ ] Build library catalogue (reusable sigils with pre-generated code)
 - [ ] Add WASI target support (fd_read, fd_write for stdin/stdout)
-- [ ] `smelt` CLI subcommand: intent → structured spec → sigils + manifest
-- [ ] Standard library: reusable sigils for common ops (I/O, string, math)
-- [ ] LLM decomposes intent into function graph with dependencies
-- [ ] Generate test cases from the spec (LLM picks representative inputs)
-- [ ] Run: write intent, get working binary with no YAML by hand
+- [ ] `smelt` CLI subcommand: spec.md → sigils + manifest
+- [ ] LLM decomposes BDD scenarios into function graph with deps
+- [ ] Generate test cases from BDD When/Then pairs
+- [ ] Run: write BDD spec, get working binary with no YAML by hand
 
-**Gate:** `echo "greet the user by name" | python -m incant smelt --target wat` produces sigils + manifest that build a working .wasm.
+**Gate:** Write a BDD spec, run `python -m incant smelt greet.spec.md`, get sigils + manifest + working .wasm that passes the scenarios.
 
 ---
 
