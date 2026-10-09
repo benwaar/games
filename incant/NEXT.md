@@ -1,24 +1,27 @@
-# Next: M7 — TAP: Spectrum tape files + disassembly
+# Next: M7 — Test Harness: unified I/O for both targets
 
-M6 is complete — smelt pipeline works end-to-end. BDD spec → LLM decomposition → WASI binary with stdin/stdout I/O. All 69 tests pass.
+M6 is complete — smelt pipeline works end-to-end. Z80 harness_io added for memory-mapped string I/O. 72 tests pass.
 
 **What's next:**
 
-M7 adds TAP file support: wrap Z80 `.bin` output into loadable `.tap` files, extract code from real Spectrum games, disassemble it, and feed it back into the pipeline as RAG knowledge.
+M7 extracts the test/run logic into a reusable harness library with the same API for both WASM and Z80. One command runs either target.
 
-```
-sigil → asm → bin → TAP (write)
-TAP → extract → disasm → asm (read)
-disasm → chunk → embed → RAG (knowledge)
+```python
+from incant.harness import WasmHarness, Z80Harness
+
+h = Z80Harness("output/greet.bin")
+result = h.run("Ben")          # → "hello Ben"
+
+h = WasmHarness("output/greet_user.wasm")
+result = h.run("Ben")          # → "hello Ben"
 ```
 
 **Steps:**
-1. TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
-2. Add `--tap` flag to Z80 gate output
-3. TAP reader: parse blocks, extract code bytes
-4. Disassembler: code bytes → Z80 asm (`z80dis`)
-5. `disasm` CLI subcommand: `.tap` → `.asm`
-6. Knowledge pipeline: disassembled code → chunked → embedded into RAG
-7. Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
+1. Create `incant/harness.py` — `Z80Harness` and `WasmHarness` with shared interface
+2. Refactor gate test runners to use the harness
+3. Simplify run scripts to one-liners
+4. CLI: `python -m incant run output/greet.bin "Ben"`
+5. Tests for both harnesses
+6. Docs
 
-**Gate:** `python -m incant cast sigils/examples/z80_add.sigil.yaml --tap` produces a `.tap` loadable in FUSE. `python -m incant disasm game.tap` extracts annotated Z80 assembly.
+**Gate:** `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`.
