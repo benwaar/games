@@ -129,6 +129,36 @@ The LLM gets the catalogue as context and picks what it needs. Only generates ne
 
 ---
 
+## M7 — TAP: Spectrum tape files + disassembly
+
+Read and write ZX Spectrum TAP files. Extract machine code from real Spectrum games, disassemble it, and feed it back into the pipeline as knowledge. Closes the loop: sigil → asm → binary → TAP → extract → asm.
+
+### TAP output (write)
+
+Wrap incant's Z80 `.bin` output into loadable `.tap` files. A TAP is two blocks — a 19-byte header (type=3 Code, filename, start address, length) and a data block — each with a length prefix and XOR checksum. Pure Python, no dependencies.
+
+### Disassembly (read)
+
+Extract code blocks from `.tap` files and disassemble to Z80 assembly. Use `z80dis` (pure Python) for programmatic disassembly, with `skoolkit` as an optional path for annotated output from full game ROMs.
+
+### Knowledge extraction
+
+Feed disassembled real-world Z80 patterns into RAG — actual Spectrum game code as grounding context for the LLM.
+
+### Steps
+
+- [ ] TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
+- [ ] Add `--tap` flag to Z80 gate output
+- [ ] TAP reader: parse blocks, extract code bytes
+- [ ] Disassembler: code bytes → Z80 asm (`z80dis`)
+- [ ] `disasm` CLI subcommand: `.tap` → `.asm`
+- [ ] Knowledge pipeline: disassembled code → chunked → embedded into RAG
+- [ ] Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
+
+**Gate:** `python -m incant cast sigils/examples/z80_add.sigil.yaml --tap` produces a `.tap` loadable in FUSE. `python -m incant disasm game.tap` extracts annotated Z80 assembly.
+
+---
+
 ## Skills this covers
 
 | Skill | Gap filled |
@@ -140,6 +170,9 @@ The LLM gets the catalogue as context and picks what it needs. Only generates ne
 | Z80 assembly | ⬜ → ✅ |
 | Multi-step LLM decomposition | ⬜ → ✅ (M6) |
 | Intent → spec → code pipeline | ⬜ → ✅ (M6) |
+| Binary format read/write (TAP) | ⬜ → ✅ (M7) |
+| Disassembly + reverse engineering | ⬜ → ✅ (M7) |
+| Real-world code → RAG knowledge | ⬜ → ✅ (M7) |
 
 ---
 
