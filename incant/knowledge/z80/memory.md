@@ -6,8 +6,9 @@
 0x0000 - 0x3FFF  ROM (16K) — Spectrum BASIC, not writable
 0x4000 - 0x57FF  Screen bitmap (6144 bytes)
 0x5800 - 0x5AFF  Screen attributes / colour (768 bytes)
-0x5B00 - 0x5BFF  System variables
-0x5C00 - 0xFFFF  Free RAM (~41K available for programs)
+0x5B00 - 0x5BFF  Printer buffer (128K models: ROM workspace)
+0x5C00 - 0x5CBF  System variables (~192 bytes)
+0x5CC0 - 0xFFFF  Free RAM (BASIC workspace + user programs)
 ```
 
 ## For incant code generation
@@ -15,7 +16,7 @@
 When generating standalone Z80 code (not a full Spectrum program), use:
 
 - **Code starts at 0x0000** — the Z80 always starts execution at address 0
-- **Stack at 0xFFFE** — set SP to top of memory, grows downward
+- **Stack at 0xFFFE** — for standalone code, set SP to top of memory, grows downward. (On real Spectrum, RAMTOP defaults to 0xFF57.)
 - **Working memory at 0x8000** — safe area for data storage
 - **End with HALT** — stops execution cleanly for the test harness
 

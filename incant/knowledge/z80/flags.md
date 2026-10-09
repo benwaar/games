@@ -8,9 +8,9 @@ The F register holds flags set by arithmetic, logic, and comparison instructions
 |-----|------|--------|----------|
 | 7 | Sign | S | Result is negative (bit 7 is 1) |
 | 6 | Zero | Z | Result is zero |
-| 5 | — | — | Undocumented (copy of bit 5 of result) |
+| 5 | — | — | Undocumented (copy of bit 5 of result for most ALU ops; from operand for CP; from A for SCF/CCF/CPL) |
 | 4 | Half carry | H | Carry from bit 3 to bit 4 (BCD ops) |
-| 3 | — | — | Undocumented (copy of bit 3 of result) |
+| 3 | — | — | Undocumented (copy of bit 3 of result for most ALU ops; from operand for CP; from A for SCF/CCF/CPL) |
 | 2 | Parity/Overflow | P/V | Even parity (logic ops) or overflow (arithmetic ops) |
 | 1 | Subtract | N | Last op was subtract (BCD ops) |
 | 0 | Carry | C | Unsigned overflow: result doesn't fit in 8 bits |

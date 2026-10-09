@@ -62,8 +62,8 @@ Where `r` is any 8-bit register (A, B, C, D, E, H, L) or `(HL)` or immediate `n`
 
 ## Stack
 
-- `PUSH rr` — push 16-bit register pair onto stack (AF, BC, DE, HL)
-- `POP rr` — pop from stack into register pair
+- `PUSH rr` — push 16-bit register pair onto stack (AF, BC, DE, HL, IX, IY)
+- `POP rr` — pop from stack into register pair (AF, BC, DE, HL, IX, IY)
 
 ## Control
 

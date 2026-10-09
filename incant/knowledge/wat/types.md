@@ -4,12 +4,22 @@ WebAssembly has four value types.
 
 ## Value types
 
+### Numeric types (MVP)
+
 | Type | Size | Description |
 |------|------|-------------|
 | `i32` | 32-bit | Integer (signed or unsigned, interpretation depends on the instruction) |
 | `i64` | 64-bit | Integer |
 | `f32` | 32-bit | IEEE 754 float |
 | `f64` | 64-bit | IEEE 754 double |
+
+### Post-MVP types
+
+- `v128` — 128-bit SIMD vector (WASM 2.0+)
+- `funcref` — function reference (WASM 2.0+)
+- `externref` — host reference (WASM 2.0+)
+
+incant targets MVP numeric types only.
 
 There are no smaller types (no i8, i16). Byte-level operations use i32 with masking.
 
@@ -24,7 +34,7 @@ There are no smaller types (no i8, i16). Byte-level operations use i32 with mask
 ```
 
 - `(param $name type)` — named parameter
-- `(result type)` — return type (at most one in MVP WASM)
+- `(result type)` — return type. MVP (1.0) allows at most one result; multi-value (WASM 2.0+) allows multiple.
 - `(local $name type)` — local variable (initialised to 0)
 
 ## Type coercion

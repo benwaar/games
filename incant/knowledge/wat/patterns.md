@@ -98,8 +98,8 @@ After `wat2wasm` produces a .wasm file:
 # Run all exports and print results
 wasm-interp module.wasm --run-all-exports
 
-# Run with specific arguments
-wasm-interp module.wasm --run-export=add -- 2 3
+# Run a specific export with arguments
+wasm-interp module.wasm -r add -a i32:2 -a i32:3
 ```
 
 `wasm-interp` prints the return value of each exported function. The gate parses this output.

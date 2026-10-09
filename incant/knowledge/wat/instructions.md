@@ -68,6 +68,8 @@
 ```
 
 ### If/else
+
+Folded (S-expression) form:
 ```wat
 (if (i32.eqz (local.get $n))
   (then
@@ -77,6 +79,17 @@
     ;; recursive case
   )
 )
+```
+
+Flat (stack) form uses `if`/`else`/`end` without `then`:
+```wat
+local.get $n
+i32.eqz
+if (result i32)
+  i32.const 1
+else
+  ;; recursive case
+end
 ```
 
 ### Branch table
