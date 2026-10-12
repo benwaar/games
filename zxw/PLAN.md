@@ -6,12 +6,12 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M1 — Scaffold + WASM canvas hello world
 
-- [ ] Create `Cargo.toml` (wasm-bindgen, web-sys with Canvas features, js-sys)
-- [ ] Write `setup.sh`: check/install rustup, add `wasm32-unknown-unknown`, install `wasm-pack`
-- [ ] Implement `init(canvas_id)` → fill a 256×192 canvas with a checkerboard pattern
-- [ ] Add `www/index.html` with canvas + module import
-- [ ] Add `Makefile` with `build` (wasm-pack) and `serve` (python3 http.server) targets
-- [ ] README with prereqs, build instructions, project overview
+- [x] Create `Cargo.toml` (wasm-bindgen, web-sys with Canvas features, js-sys)
+- [x] Write `setup.sh`: check/install rustup, add `wasm32-unknown-unknown`, install `wasm-pack`
+- [x] Implement `init(canvas_id)` → fill a 256×192 canvas with a checkerboard pattern
+- [x] Add `www/index.html` with canvas + module import
+- [x] Add `Makefile` with `build` (wasm-pack) and `serve` (python3 http.server) targets
+- [x] README with prereqs, build instructions, project overview
 
 **Gate:** `make build && make serve` → open localhost:8080 → checkerboard renders, no console errors.
 

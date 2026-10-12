@@ -18,6 +18,10 @@ signal-hunt/data/raw/notes/
 signal-hunt/data/raw/chords/
 signal-hunt/data/raw/progressions/
 
+# zxw — generated WASM output and Rust build artifacts
+zxw/www/pkg/
+zxw/target/
+
 # IDE
 .vscode/
 .idea/
