@@ -1,4 +1,5 @@
 use zxw::cpu::{Cpu, FLAG_C, FLAG_Z, FLAG_PV};
+use zxw::io::NullIo;
 use zxw::memory::Memory;
 
 fn run_program(prog: &[u8]) -> (Cpu, Memory) {
@@ -7,7 +8,7 @@ fn run_program(prog: &[u8]) -> (Cpu, Memory) {
     mem.load_ram(0x0000, prog);
     for _ in 0..10_000 {
         if cpu.halted { break; }
-        cpu.step(&mut mem);
+        cpu.step(&mut mem, &mut NullIo);
     }
     (cpu, mem)
 }
@@ -19,7 +20,7 @@ fn run_n(prog: &[u8], max_steps: usize) -> (Cpu, Memory) {
     mem.load_ram(0x0000, prog);
     for _ in 0..max_steps {
         if cpu.halted { break; }
-        cpu.step(&mut mem);
+        cpu.step(&mut mem, &mut NullIo);
     }
     (cpu, mem)
 }
@@ -96,7 +97,7 @@ fn test_ldir_block_copy() {
 
     for _ in 0..100 {
         if cpu.halted { break; }
-        cpu.step(&mut mem);
+        cpu.step(&mut mem, &mut NullIo);
     }
 
     assert_eq!(mem.read_byte(0x2000), 0xAA);
@@ -129,7 +130,7 @@ fn test_call_ret() {
 
     for _ in 0..50 {
         if cpu.halted { break; }
-        cpu.step(&mut mem);
+        cpu.step(&mut mem, &mut NullIo);
     }
 
     assert_eq!(cpu.a, 0x42, "A should be 0x42 from subroutine");
@@ -155,7 +156,7 @@ fn test_bit3_hl() {
 
     for _ in 0..50 {
         if cpu.halted { break; }
-        cpu.step(&mut mem);
+        cpu.step(&mut mem, &mut NullIo);
     }
 
     // Bit 3 of 0x08 is set → Z flag should be CLEAR (bit found)
@@ -168,7 +169,7 @@ fn test_bit3_hl() {
     mem2.load_ram(0x2000, &[0x00]);
     for _ in 0..50 {
         if cpu2.halted { break; }
-        cpu2.step(&mut mem2);
+        cpu2.step(&mut mem2, &mut NullIo);
     }
     assert!(cpu2.flag(FLAG_Z), "Z should be set: bit 3 is clear in memory");
 }

@@ -1,3 +1,4 @@
+use crate::io::IoHandler;
 use crate::memory::Memory;
 
 // Flag bit positions in F register
@@ -73,6 +74,15 @@ impl Cpu {
         self.set_flag(FLAG_S, result & 0x80 != 0);
         self.set_flag(FLAG_Z, result == 0);
         self.set_flag(FLAG_PV, parity(result));
+    }
+
+    /// Set flags after an IN instruction: S, Z, H=0, PV=parity, N=0. C unchanged.
+    fn set_in_flags(&mut self, val: u8) {
+        self.set_flag(FLAG_S, val & 0x80 != 0);
+        self.set_flag(FLAG_Z, val == 0);
+        self.set_flag(FLAG_H, false);
+        self.set_flag(FLAG_PV, parity(val));
+        self.set_flag(FLAG_N, false);
     }
 
     // --- ADD A, val ---
@@ -216,7 +226,7 @@ impl Cpu {
 
     // --- Main fetch-decode-execute ---
 
-    pub fn step(&mut self, mem: &mut Memory) -> u32 {
+    pub fn step(&mut self, mem: &mut Memory, io: &mut impl IoHandler) -> u32 {
         if self.halted {
             return 4;
         }
@@ -540,16 +550,26 @@ impl Cpu {
                 11
             }
 
-            // IN A,(n) — stub, returns 0xFF
-            0xDB => { self.fetch_byte(mem); self.a = 0xFF; 11 }
-            // OUT (n),A — stub, ignore
-            0xD3 => { self.fetch_byte(mem); 11 }
+            // IN A,(n) — read from port (A << 8 | n)
+            0xDB => {
+                let n = self.fetch_byte(mem);
+                let port = ((self.a as u16) << 8) | n as u16;
+                self.a = io.port_read(port);
+                11
+            }
+            // OUT (n),A — write A to port (A << 8 | n)
+            0xD3 => {
+                let n = self.fetch_byte(mem);
+                let port = ((self.a as u16) << 8) | n as u16;
+                io.port_write(port, self.a);
+                11
+            }
 
             // CB prefix
             0xCB => self.step_cb(mem),
 
             // ED prefix
-            0xED => self.step_ed(mem),
+            0xED => self.step_ed(mem, io),
 
             // DD prefix (IX) — not implemented yet; panic with context
             0xDD => {
@@ -700,23 +720,30 @@ impl Cpu {
 
     // --- ED prefix ---
 
-    fn step_ed(&mut self, mem: &mut Memory) -> u32 {
+    fn step_ed(&mut self, mem: &mut Memory, io: &mut impl IoHandler) -> u32 {
         let op = self.fetch_byte(mem);
         self.r = self.r.wrapping_add(1);
 
         match op {
-            // IN r,(C)
-            0x40 => { self.b = 0xFF; 12 }
-            0x48 => { self.c = 0xFF; 12 }
-            0x50 => { self.d = 0xFF; 12 }
-            0x58 => { self.e = 0xFF; 12 }
-            0x60 => { self.h = 0xFF; 12 }
-            0x68 => { self.l = 0xFF; 12 }
-            0x70 => { /* IN F,(C) — flags only, discard */ 12 }
-            0x78 => { self.a = 0xFF; 12 }
+            // IN r,(C) — read from port BC into register; set S,Z,H,PV,N flags
+            0x40 => { self.b = io.port_read(self.bc()); let v = self.b; self.set_in_flags(v); 12 }
+            0x48 => { self.c = io.port_read(self.bc()); let v = self.c; self.set_in_flags(v); 12 }
+            0x50 => { self.d = io.port_read(self.bc()); let v = self.d; self.set_in_flags(v); 12 }
+            0x58 => { self.e = io.port_read(self.bc()); let v = self.e; self.set_in_flags(v); 12 }
+            0x60 => { self.h = io.port_read(self.bc()); let v = self.h; self.set_in_flags(v); 12 }
+            0x68 => { self.l = io.port_read(self.bc()); let v = self.l; self.set_in_flags(v); 12 }
+            0x70 => { let v = io.port_read(self.bc()); self.set_in_flags(v); 12 } // IN F,(C) — flags only
+            0x78 => { self.a = io.port_read(self.bc()); let v = self.a; self.set_in_flags(v); 12 }
 
-            // OUT (C),r — stubs
-            0x41 | 0x49 | 0x51 | 0x59 | 0x61 | 0x69 | 0x71 | 0x79 => { 12 }
+            // OUT (C),r — write register to port BC
+            0x41 => { io.port_write(self.bc(), self.b); 12 }
+            0x49 => { io.port_write(self.bc(), self.c); 12 }
+            0x51 => { io.port_write(self.bc(), self.d); 12 }
+            0x59 => { io.port_write(self.bc(), self.e); 12 }
+            0x61 => { io.port_write(self.bc(), self.h); 12 }
+            0x69 => { io.port_write(self.bc(), self.l); 12 }
+            0x71 => { io.port_write(self.bc(), 0);      12 } // OUT (C),0 undocumented
+            0x79 => { io.port_write(self.bc(), self.a); 12 }
 
             // SBC HL, rr
             0x42 => { let v = self.bc(); self.sbc_hl(v); 15 }

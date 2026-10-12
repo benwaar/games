@@ -46,11 +46,11 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M4 — ROM + TAP loading
 
-- [ ] ROM loader: read 16K binary into 0x0000–0x3FFF, enforce read-only
-- [ ] TAP parser in Rust: block lengths, flags, headers, data payloads, XOR checksums
-- [ ] Instant-load trap: intercept ROM's LD_BYTES (0x0556), inject TAP data directly, set carry flag
-- [ ] Expose `load_tap(data)` + `load_rom(data)` via wasm-bindgen
-- [ ] File input in HTML: drag-and-drop / `<input type="file">` for .tap and .rom
+- [x] ROM loader: read 16K binary into 0x0000–0x3FFF, enforce read-only
+- [x] TAP parser in Rust: block lengths, flags, headers, data payloads, XOR checksums
+- [x] Instant-load trap: intercept ROM's LD_BYTES (0x0556), inject TAP data directly, set carry flag
+- [x] Expose `load_tap(data)` + `load_rom(data)` via wasm-bindgen
+- [x] File input in HTML: drag-and-drop / `<input type="file">` for .tap and .rom
 
 **Gate:** Load Spectrum ROM + a test TAP (simple program that writes to screen memory and halts) → character appears on canvas.
 
@@ -58,11 +58,11 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M5 — Keyboard input
 
-- [ ] Keyboard port matrix: 8 half-rows, 5 bits each via IN port 0xFE
-- [ ] Map browser keydown/keyup → Spectrum key matrix via JS events
-- [ ] Wire into IN instruction handler (port 0xFE, address line selection)
-- [ ] Kempston joystick (port 0x1F) as alternative
-- [ ] Test program: poll keys in loop, change border colour per key
+- [x] Keyboard port matrix: 8 half-rows, 5 bits each via IN port 0xFE
+- [x] Map browser keydown/keyup → Spectrum key matrix via JS events
+- [x] Wire into IN instruction handler (port 0xFE, address line selection)
+- [x] Kempston joystick (port 0x1F) as alternative
+- [x] Test program: poll keys in loop, change border colour per key
 
 **Gate:** Load keyboard test program → pressing keys changes border colour in real time.
 
