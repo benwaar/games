@@ -19,13 +19,13 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M2 — Z80 CPU core (foundational opcodes)
 
-- [ ] CPU state struct: AF/BC/DE/HL/IX/IY/SP/PC + alternates + I/R/IFF/IM/halted
-- [ ] Memory trait + SpectrumMemory: 16K ROM (read-only) + 48K RAM
-- [ ] Fetch-decode-execute: `step(&mut self, mem) -> u32` returns T-states
-- [ ] Unprefixed opcodes: LD r,r / LD r,n / LD r,(HL) / arithmetic / logic / JP/JR/CALL/RET / DJNZ / PUSH/POP / EX / LDIR / HALT / NOP / EI/DI / IN/OUT stubs
-- [ ] CB prefix: BIT/SET/RES / rotates and shifts
-- [ ] ED prefix subset: LD A,I / LD A,R / IM modes / LDIR/LDDR/CPIR / NEG / RETI
-- [ ] Unit tests: ADD, DJNZ loop, LDIR block copy, CALL+RET, bit test
+- [x] CPU state struct: AF/BC/DE/HL/IX/IY/SP/PC + alternates + I/R/IFF/IM/halted
+- [x] Memory trait + SpectrumMemory: 16K ROM (read-only) + 48K RAM
+- [x] Fetch-decode-execute: `step(&mut self, mem) -> u32` returns T-states
+- [x] Unprefixed opcodes: LD r,r / LD r,n / LD r,(HL) / arithmetic / logic / JP/JR/CALL/RET / DJNZ / PUSH/POP / EX / LDIR / HALT / NOP / EI/DI / IN/OUT stubs
+- [x] CB prefix: BIT/SET/RES / rotates and shifts
+- [x] ED prefix subset: LD A,I / LD A,R / IM modes / LDIR/LDDR/CPIR / NEG / RETI
+- [x] Unit tests: ADD, DJNZ loop, LDIR block copy, CALL+RET, bit test
 
 **Gate:** `cargo test` — all CPU unit tests pass. A test program (load regs, arithmetic, halt) produces expected register state.
 

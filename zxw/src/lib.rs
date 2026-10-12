@@ -1,3 +1,6 @@
+pub mod cpu;
+pub mod memory;
+
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlCanvasElement, ImageData};
 use wasm_bindgen::Clamped;
