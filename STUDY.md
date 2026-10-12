@@ -40,8 +40,8 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [Artefact: dream](artefact/dream/) | Generative chip-tunes — fine-tune sequence model on VGM/SID data, constraint-aware generation | Planned |
 | [Artefact: drift](artefact/drift/) | Diffusion chip-tune generator — DDPM/DDIM on spectrograms, head-to-head with dream | Planned (after dream) |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
-| [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | Planned |
-| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly | M1–M6 complete, harness_io added — M7 (unified harness) next |
+| [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | ✅ M1–M7 complete |
+| [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly, ONNX → Z80 inference, binary protection PoC | ✅ M1–M10 complete |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
 
 ---
@@ -126,15 +126,17 @@ AI / ML
 │   ├── Gate-driven iteration ──────────────────── ✅ incant M2–M3
 │   ├── Multi-sigil orchestration ──────────────── ✅ incant M4
 │   ├── Intent → spec → code pipeline ─────────── ✅ incant M6
-│   ├── Unified test harness (WASM + Z80) ─────── incant M7
-│   └── ONNX → INT8 → Z80 inference engine ────── incant M10
+│   ├── Unified test harness (WASM + Z80) ─────── ✅ incant M7
+│   ├── Binary format read/write (TAP) ────────── ✅ incant M8
+│   ├── Binary self-verification (Z80 + WASM) ─── ✅ incant M9
+│   └── ONNX → INT8 → Z80 inference engine ────── ✅ incant M10
 │
 ├── Systems / Emulation
-│   ├── Z80 CPU emulation ──────────────────────── zxw M2, M6
-│   ├── Rust → WASM compilation ────────────────── zxw M1–M7
-│   ├── Browser/WASM interop (wasm-bindgen) ────── zxw M1, M3–M5
-│   ├── CDP / browser debug protocol ──────────── zxw M7
-│   └── Emulator architecture ──────────────────── zxw M2–M6
+│   ├── Z80 CPU emulation ──────────────────────── ✅ zxw M2, M6
+│   ├── Rust → WASM compilation ────────────────── ✅ zxw M1–M7
+│   ├── Browser/WASM interop (wasm-bindgen) ────── ✅ zxw M1, M3–M5
+│   ├── CDP / browser debug protocol ──────────── ✅ zxw M7
+│   └── Emulator architecture ──────────────────── ✅ zxw M2–M6
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2

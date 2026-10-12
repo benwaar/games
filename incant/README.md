@@ -130,7 +130,6 @@ WASI sigils use `fd_read`/`fd_write` for stdin/stdout I/O and `_start` as the en
 
 ## Learn
 
-- Project plan and milestones: [PLAN.md](PLAN.md)
-- Current milestone: [NEXT.md](NEXT.md)
+- Milestone log: [LOG.md](LOG.md)
 - Explainers: [explainers/](explainers/)
 - Shared concept explainers: [../explainers/](../explainers/README.md)

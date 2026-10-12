@@ -32,4 +32,4 @@ produces a working binary.
 
 - incant project: `incant/`
 - Previous milestone: M8 — TAP read/write + disassembly pipeline
-- Incant PLAN.md: `incant/PLAN.md`
+- Incant LOG: `incant/LOG.md`

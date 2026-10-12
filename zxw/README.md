@@ -35,7 +35,7 @@ make serve           # start dev server at localhost:8080
 
 ## Status
 
-See [PLAN.md](PLAN.md) for milestones. M1–M7 complete.
+See [LOG.md](LOG.md) for milestones. M1–M7 complete.
 
 ## Debug API (M7)
 
