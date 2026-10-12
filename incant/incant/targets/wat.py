@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ..harness import WasmHarness
 from ..sigil import Sigil, SigilTest
 
 SYSTEM_PROMPT = """\
@@ -239,24 +240,15 @@ def run_wasi_test(
     wasm_path: Path, stdin_input: str, expected_stdout: str,
 ) -> tuple[bool, str]:
     """Run a WASI program with stdin input and check stdout."""
+    harness = WasmHarness(wasm_path)
     try:
-        result = subprocess.run(
-            ["wasm-interp", "--wasi", str(wasm_path)],
-            capture_output=True,
-            text=True,
-            input=stdin_input,
-            timeout=30,
-        )
-    except subprocess.TimeoutExpired:
-        return False, "wasm-interp --wasi timed out (possible infinite loop)"
-
-    if result.returncode != 0:
-        return False, f"wasm-interp --wasi failed: {result.stderr.strip()}"
-
-    actual = result.stdout
+        actual = harness.run(stdin_input)
+    except TimeoutError as e:
+        return False, str(e)
+    except RuntimeError as e:
+        return False, str(e)
     if actual == expected_stdout:
         return True, "pass"
-
     return False, f"Expected stdout {expected_stdout!r}, got {actual!r}"
 
 

@@ -38,6 +38,10 @@ python -m incant multi sigils/programs/wat_math.manifest.yaml
 # Multi-sigil build with dependencies (sum_of_factorials calls factorial + add)
 python -m incant multi sigils/programs/wat_composed.manifest.yaml
 
+# Run any compiled binary with string input
+python -m incant run output/greet.bin "Ben"
+python -m incant run output/greet_user.wasm "Ben"
+
 # BDD spec → WASI binary (smelt pipeline)
 python -m incant smelt specs/greet.spec.md -v
 

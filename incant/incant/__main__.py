@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .gen import cast_multi, cast_sigil
+from .harness import WasmHarness, Z80Harness
 from .manifest import parse_manifest
 from .rag import VectorStore
 from .sigil import parse_sigil
@@ -19,6 +20,29 @@ from .targets import wat as wat_target
 
 PROJECT_ROOT = Path(__file__).parent.parent
 STORE_PATH = PROJECT_ROOT / "data" / "embeddings.jsonl"
+
+
+def cmd_run(args):
+    path = Path(args.binary)
+    if not path.exists():
+        print(f"Error: {path} not found", file=sys.stderr)
+        sys.exit(1)
+
+    if path.suffix == ".wasm":
+        harness = WasmHarness(path)
+    elif path.suffix == ".bin":
+        harness = Z80Harness(path)
+    else:
+        print(f"Error: unsupported binary type '{path.suffix}' — use .wasm or .bin", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        output = harness.run(args.input)
+    except (TimeoutError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(output, end="")
 
 
 def cmd_cast(args):
@@ -211,6 +235,12 @@ def main():
     query_parser.add_argument("-k", "--top-k", type=int, default=5)
 
     rag_parser.set_defaults(func=cmd_rag)
+
+    # run
+    run_parser = subparsers.add_parser("run", help="Run a compiled binary with string input")
+    run_parser.add_argument("binary", help="Path to .wasm or .bin file")
+    run_parser.add_argument("input", help="String to pass as input")
+    run_parser.set_defaults(func=cmd_run)
 
     args = parser.parse_args()
     if not args.command:

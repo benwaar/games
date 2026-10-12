@@ -163,15 +163,15 @@ Right now the test logic is scattered: `run_wasi_test()` in `wat.py`, `run_harne
 
 ### Steps
 
-- [ ] Create `incant/harness.py` — `Z80Harness` and `WasmHarness` classes with shared interface
-- [ ] Refactor `z80.py` `run_harness_io_test()` to use `Z80Harness`
-- [ ] Refactor `wat.py` `run_wasi_test()` to use `WasmHarness`
-- [ ] Simplify run scripts to use the harness module
-- [ ] CLI: `python -m incant run output/greet.bin "Ben"` — run any compiled output
-- [ ] Tests for both harnesses (deterministic, no LLM)
-- [ ] Docs: explainer, update README + CLAUDE.md
+- [x] Create `incant/harness.py` — `Z80Harness` and `WasmHarness` classes with shared interface
+- [x] Refactor `z80.py` `run_harness_io_test()` to use `Z80Harness`
+- [x] Refactor `wat.py` `run_wasi_test()` to use `WasmHarness`
+- [x] Simplify run scripts to use the harness module
+- [x] CLI: `python -m incant run output/greet.bin "Ben"` — run any compiled output
+- [x] Tests for both harnesses (deterministic, no LLM)
+- [x] Docs: explainer, update README + CLAUDE.md
 
-**Gate:** `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`. Same command, either target.
+**Gate:** ✅ `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`. Same command, either target.
 
 ---
 

@@ -2,6 +2,7 @@
 
 import z80 as z80lib
 
+from ..harness import Z80Harness
 from ..sigil import Sigil, SigilTest
 
 INPUT_BUF = 0x8000
@@ -168,33 +169,27 @@ def run_test(data: bytes, test: SigilTest, sigil: Sigil) -> tuple[bool, str]:
 
 
 def run_harness_io_test(data: bytes, test: SigilTest) -> tuple[bool, str]:
-    """Run a harness_io test: pre-load stdin at INPUT_BUF, check OUTPUT_BUF after."""
-    machine = z80lib.Z80Machine()
-    machine.set_memory_block(0, data)
-    machine.ticks_to_stop = 100000
+    """Run a harness_io test using Z80Harness."""
+    import tempfile
+    from pathlib import Path
 
-    stdin_val = test.inputs.get("stdin", "")
-    stdin_bytes = stdin_val.encode("ascii") + b"\x00"
-    machine.set_memory_block(INPUT_BUF, stdin_bytes)
+    with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+        f.write(data)
+        tmp_path = Path(f.name)
 
-    machine.run()
+    try:
+        harness = Z80Harness(tmp_path)
+        stdin_val = test.inputs.get("stdin", "")
+        try:
+            actual = harness.run(stdin_val)
+        except TimeoutError as e:
+            return False, str(e)
+    finally:
+        tmp_path.unlink(missing_ok=True)
 
-    if not machine.halted:
-        return False, "Program did not halt within tick limit"
-
-    output_bytes = []
-    for i in range(256):
-        b = machine.memory[OUTPUT_BUF + i]
-        if b == 0:
-            break
-        output_bytes.append(b)
-
-    actual = bytes(output_bytes).decode("ascii", errors="replace")
     expected = test.expect if isinstance(test.expect, str) else str(test.expect)
-
     if actual != expected:
         return False, f"Expected output '{expected}', got '{actual}'"
-
     return True, "pass"
 
 

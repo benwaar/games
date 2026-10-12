@@ -34,6 +34,8 @@ bash setup.sh                                              # venv, deps, embed k
 python -m incant cast sigils/examples/z80_add.sigil.yaml   # generate + test one sigil
 python -m incant multi sigils/programs/wat_composed.manifest.yaml  # multi-sigil build
 python -m incant smelt specs/greet.spec.md -v              # BDD spec → WASI binary
+python -m incant run output/greet.bin "Ben"                # run Z80 binary
+python -m incant run output/greet_user.wasm "Ben"          # run WASM binary
 python -m incant rag query "add two numbers" --collection z80  # test RAG
 python -m pytest tests/ -v                                 # run tests
 ```
