@@ -14,6 +14,10 @@ from incant.tap import (
     read_tap,
     extract_code_blocks,
     disassemble,
+    write_spectrum_tap,
+    _int5,
+    _basic_line,
+    _make_basic_loader,
 )
 
 
@@ -262,3 +266,184 @@ def test_write_tap_creates_file():
     finally:
         if Path(path).exists():
             os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# 5-byte integer encoding
+# ---------------------------------------------------------------------------
+
+def test_int5_positive():
+    result = _int5(32768)
+    assert len(result) == 5
+    assert result[0] == 0x00  # marker
+    assert result[1] == 0x00  # sign (positive)
+    assert result[2] == 0x00  # lo byte of 32768
+    assert result[3] == 0x80  # hi byte of 32768
+    assert result[4] == 0x00  # terminator
+
+
+def test_int5_small():
+    result = _int5(10)
+    assert result == bytes([0x00, 0x00, 10, 0x00, 0x00])
+
+
+def test_int5_zero():
+    result = _int5(0)
+    assert result == bytes([0x00, 0x00, 0x00, 0x00, 0x00])
+
+
+def test_int5_negative():
+    result = _int5(-1)
+    assert result[1] == 0xFF  # sign byte for negative
+
+
+def test_int5_boundary():
+    result = _int5(32767)
+    assert result == bytes([0x00, 0x00, 0xFF, 0x7F, 0x00])
+
+
+# ---------------------------------------------------------------------------
+# BASIC line encoding
+# ---------------------------------------------------------------------------
+
+def test_basic_line_structure():
+    body = bytes([0xF9, 0xC0])  # RANDOMIZE USR
+    line = _basic_line(10, body)
+    assert line[0:2] == (10).to_bytes(2, "big")  # line number big-endian
+    length = int.from_bytes(line[2:4], "little")
+    assert length == len(body) + 1  # body + CR
+    assert line[-1] == 0x0D  # CR terminator
+
+
+def test_basic_line_ten():
+    body = bytes([0xEF, 0x22, 0x22])  # LOAD ""
+    line = _basic_line(10, body)
+    assert line[0] == 0x00
+    assert line[1] == 0x0A  # line 10
+
+
+# ---------------------------------------------------------------------------
+# BASIC auto-loader
+# ---------------------------------------------------------------------------
+
+def test_basic_loader_contains_tokens():
+    loader = _make_basic_loader(32768)
+    assert 0xFD in loader  # CLEAR
+    assert 0xEF in loader  # LOAD
+    assert 0xAF in loader  # CODE
+    assert 0xF9 in loader  # RANDOMIZE
+    assert 0xC0 in loader  # USR
+
+
+def test_basic_loader_contains_addresses():
+    loader = _make_basic_loader(32768)
+    # Should contain "32767" (CLEAR addr-1) and "32768" (USR addr) as ASCII
+    assert b"32767" in loader
+    assert b"32768" in loader
+
+
+def test_basic_loader_ends_with_cr():
+    loader = _make_basic_loader(32768)
+    assert loader[-1] == 0x0D
+
+
+def test_basic_loader_is_line_10():
+    loader = _make_basic_loader(32768)
+    assert loader[0:2] == (10).to_bytes(2, "big")
+
+
+def test_basic_loader_has_int5_markers():
+    loader = _make_basic_loader(32768)
+    # 0x0E marks the start of a 5-byte integer literal
+    count = loader.count(0x0E)
+    assert count == 2  # one for CLEAR value, one for USR value
+
+
+# ---------------------------------------------------------------------------
+# write_spectrum_tap — full TAP with BASIC loader + CODE
+# ---------------------------------------------------------------------------
+
+def make_temp_spectrum_tap(
+    binary_data: bytes, filename: str = "test", start_addr: int = 0x8000
+) -> str:
+    fd, path = tempfile.mkstemp(suffix=".tap")
+    os.close(fd)
+    write_spectrum_tap(binary_data, filename, start_addr, path)
+    return path
+
+
+def test_spectrum_tap_four_blocks():
+    path = make_temp_spectrum_tap(b"\x3E\x42\x76")
+    try:
+        blocks = read_tap(path)
+        assert len(blocks) == 4
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_block_types():
+    path = make_temp_spectrum_tap(b"\x3E\x42\x76")
+    try:
+        blocks = read_tap(path)
+        assert blocks[0]["flag"] == 0x00  # BASIC header
+        assert blocks[0]["type"] == 0     # Program
+        assert blocks[1]["flag"] == 0xFF  # BASIC data
+        assert blocks[2]["flag"] == 0x00  # CODE header
+        assert blocks[2]["type"] == 3     # Code
+        assert blocks[3]["flag"] == 0xFF  # CODE data
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_autostart_line():
+    path = make_temp_spectrum_tap(b"\x00")
+    try:
+        blocks = read_tap(path)
+        assert blocks[0]["param1"] == 10  # autostart line 10
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_code_address():
+    path = make_temp_spectrum_tap(b"\x76", start_addr=0xC000)
+    try:
+        blocks = read_tap(path)
+        assert blocks[2]["param1"] == 0xC000
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_code_data_roundtrip():
+    code = bytes(range(64))
+    path = make_temp_spectrum_tap(code, start_addr=0x8000)
+    try:
+        code_blocks = extract_code_blocks(path)
+        assert len(code_blocks) == 1
+        assert code_blocks[0]["data"] == code
+        assert code_blocks[0]["start_addr"] == 0x8000
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_all_checksums_valid():
+    path = make_temp_spectrum_tap(b"\x3E\x42\x76")
+    try:
+        blocks = read_tap(path)
+        assert all(b["valid"] for b in blocks)
+    finally:
+        os.unlink(path)
+
+
+def test_spectrum_tap_basic_is_parseable():
+    """The BASIC data block should contain valid tokenised BASIC."""
+    path = make_temp_spectrum_tap(b"\x76", start_addr=0x8000)
+    try:
+        blocks = read_tap(path)
+        basic_data = blocks[1]["payload"]
+        # Should start with line number 0x00 0x0A (line 10, big-endian)
+        assert basic_data[0] == 0x00
+        assert basic_data[1] == 0x0A
+        # Should end with 0x0D (CR)
+        assert basic_data[-1] == 0x0D
+    finally:
+        os.unlink(path)
