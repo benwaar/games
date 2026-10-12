@@ -1,18 +1,22 @@
-# bloom — Pixel Art Upscaler
+# bloom — 8-Bit Audio Restoration
 
-Take a low-resolution pixel art sprite — 8×8, 16×16, 32×32 — and scale it to HD
-without blurring, without interpolating, preserving the crisp pixel aesthetic.
+Take degraded, lo-fi chip audio — noisy samples, bit-crushed waveforms, low-bitrate
+tracker modules — and restore them to clean hi-fi. Audio super-resolution and denoising
+for retro game sound.
 
 ---
 
 ## The idea
 
-Standard upscaling (NEAREST, BILINEAR, LANCZOS) either stays blocky or blurs edges.
-Neither looks right. A CNN trained on pixel art learns the style — when to keep a hard
-edge, when to anti-alias, what a diagonal pixel boundary should look like at 4×.
+8-bit audio has character, but it's also constrained: low sample rates, quantisation noise,
+hardware noise floors, and lossy compression in tracker formats. Standard resampling
+(NEAREST, LINEAR) either keeps the crunch or introduces artifacts.
 
-bloom takes the sprites dig finds and makes them usable — for game remasters,
-Aerythen assets, or anything else built from retro source material.
+A trained encoder-decoder learns what clean audio looks like in spectrogram space and
+reconstructs it from the degraded input — similar to how speech enhancement and audio
+source separation models work.
+
+bloom takes whatever dig finds and restores it to usable quality.
 
 ---
 
@@ -20,87 +24,86 @@ Aerythen assets, or anything else built from retro source material.
 
 ### M1 — Dataset
 
-- [ ] Collect public-domain pixel art sprites: ZX Spectrum, C64, NES, Game Boy
-  (many available via OpenGameArt, LibreSprite, public-domain ROM rips)
-- [ ] Generate pairs: original sprite at 1× (ground truth), downscaled version (model input)
-  — train the model to reconstruct the original from the downscaled version
-- [ ] Augment: random crops, flips, palette swaps
+- [ ] Collect paired audio: clean reference recordings of chip music (emulated at high quality)
+  alongside degraded versions (low sample rate, added noise, hardware-accurate artifacts)
+- [ ] Sources: VGM archives rendered at multiple quality levels, HVSC SID collection,
+  tracker modules (.mod, .xm) at original vs upsampled rates
+- [ ] Generate training pairs: clean → degraded (downsample, add noise, quantise)
+- [ ] Represent as Mel-spectrograms or STFT magnitude/phase
 
-**Gate:** DataLoader yields `(low_res, high_res)` pairs. Both normalised. Shapes correct.
+**Gate:** DataLoader yields `(degraded_spectrogram, clean_spectrogram)` pairs. Shapes correct.
 
 **Docs:**
-- [ ] Explainer: super-resolution as a reconstruction task — why pairs beat single images
+- [ ] Explainer: audio super-resolution as a reconstruction task — why paired data matters
 
 ---
 
 ### M2 — Baselines
 
-- [ ] Implement NEAREST, BILINEAR, LANCZOS upscaling
-- [ ] Score each with PSNR (peak signal-to-noise ratio) and SSIM (structural similarity)
-- [ ] Visualise side-by-side — these are the bar the model must beat
+- [ ] Implement standard resampling: nearest-neighbour, linear interpolation, sinc resampling
+- [ ] Score each with STFT-based metrics: spectral convergence, log-spectral distance
+- [ ] Listen test: compare side-by-side — these are the bar the model must beat
 
-**Gate:** Baseline scores documented. Visual comparison saved to `images/`.
+**Gate:** Baseline scores documented. Audio comparisons saved.
 
 **Docs:**
-- [ ] Explainer: PSNR and SSIM — why pixel-level metrics aren't the whole story
+- [ ] Explainer: audio quality metrics — STFT loss, spectral convergence, why SNR alone misleads
 
 ---
 
-### M3 — CNN upscaler (MSE loss)
+### M3 — U-Net encoder-decoder (MSE loss)
 
-- [ ] Build a U-Net style encoder-decoder: compress → reconstruct at higher resolution
-- [ ] Train with MSE loss (pixel-level difference)
-- [ ] Compare PSNR/SSIM against baselines
+- [ ] Build a U-Net style encoder-decoder operating on spectrograms
+- [ ] Train with MSE loss on spectrogram reconstruction
+- [ ] Compare metrics against baselines
+- [ ] Griffin-Lim or learned vocoder for spectrogram → waveform
 
-**Gate:** CNN beats BILINEAR on PSNR. Outputs don't blur hard edges.
+**Gate:** Model beats linear resampling on spectral metrics. Output sounds cleaner.
 
 **Docs:**
-- [ ] Explainer: U-Net / encoder-decoder for spatial tasks
-- [ ] Note: why MSE produces blurry outputs (averages over uncertainty)
+- [ ] Explainer: U-Net / encoder-decoder for audio — skip connections preserve detail
+- [ ] Note: why MSE on spectrograms produces "average" reconstructions
 
 ---
 
-### M4 — Perceptual loss
+### M4 — Perceptual / STFT loss
 
-- [ ] Replace MSE with perceptual loss: compare feature maps from a pretrained VGG,
-  not raw pixel values
-- [ ] Perceptual loss preserves sharpness and texture; MSE averages it away
-- [ ] Compare outputs: MSE vs perceptual — visible difference in edge quality
+- [ ] Replace MSE with multi-resolution STFT loss: compare spectral content at multiple
+  time-frequency resolutions simultaneously
+- [ ] Perceptual loss preserves transients, harmonics, and texture that MSE smooths away
+- [ ] Compare outputs: MSE vs STFT loss — audible difference in clarity
 
-**Gate:** Perceptual loss output visually sharper than MSE. Documented with side-by-side images.
+**Gate:** STFT-loss output audibly sharper than MSE. Documented with before/after spectrograms.
 
 **Docs:**
-- [ ] Explainer: perceptual loss — why feature-space distance beats pixel-space distance
-  for image quality
+- [ ] Explainer: perceptual audio loss — why frequency-domain distance beats time-domain MSE
+  for audio quality
 
 ---
 
 ### M5 — GAN (stretch)
 
-- [ ] Add a discriminator: "does this upscaled sprite look like real pixel art at scale?"
-- [ ] Generator (the upscaler) vs discriminator — adversarial training
-- [ ] Compare GAN output against perceptual loss output
+- [ ] Add a discriminator: "does this restored audio sound like real clean chip music?"
+- [ ] Generator (the restorer) vs discriminator — adversarial training
+- [ ] Compare GAN output against STFT-loss output
 
-**Gate:** GAN output passes a visual test — looks like hand-drawn HD pixel art, not a
-scaled photo.
+**Gate:** GAN output passes a listening test — sounds like clean chip audio, not filtered noise.
 
 **Docs:**
-- [ ] Explainer: GANs — generator vs discriminator, why adversarial training produces
-  sharper outputs than reconstruction loss alone
+- [ ] Explainer: audio GANs — generator vs discriminator for audio enhancement
 
 ---
 
 ### M6 — CLI tool + pipeline
 
-- [ ] `python -m bloom scale sprite.png --scale 4` → `sprite_4x.png`
-- [ ] `python -m bloom scale candidates/ --scale 4` → processes a folder (output from dig)
-- [ ] Demo: run bloom on sprites found by dig from a real game file
+- [ ] `python -m bloom restore sample.wav --quality high`
+- [ ] `python -m bloom restore candidates/ --quality high` → processes folder from dig
+- [ ] Demo: run bloom on audio found by dig from a real game file
 
-**Gate:** Full pipeline works: `python -m dig scan game.tap | python -m bloom scale`
-(or equivalent). Output sprites are visually clean at 4×.
+**Gate:** Full pipeline works: `dig scan` → `bloom restore`. Output audio is audibly cleaner.
 
 **Docs:**
-- [ ] README: usage, scale factors, how to feed from dig
+- [ ] README: usage, quality settings, how to feed from dig
 
 ---
 
@@ -108,8 +111,8 @@ scaled photo.
 
 | Skill | Gap filled |
 |-------|-----------|
-| Computer vision on real images | ⬜ → ✅ (image-to-image, not just classification) |
-| Perceptual loss / image quality metrics | ⬜ → ✅ |
+| Audio restoration / enhancement | ⬜ → ✅ |
+| STFT-based perceptual loss | ⬜ → ✅ |
 | GAN (stretch) | ⬜ → ✅ |
 | Encoder-decoder / U-Net architecture | ⬜ → ✅ |
 
@@ -117,4 +120,8 @@ scaled photo.
 
 ## Feeds from
 
-[dig](../dig/) — pass candidate PNGs from dig scan directly into bloom scale.
+[dig](../dig/) — pass candidate audio from dig scan directly into bloom restore.
+
+## Feeds into
+
+[dream](../dream/) — cleaned audio serves as higher-quality training data for style learning.

@@ -1,20 +1,21 @@
-# dig — Binary Art Scanner
+# dig — ROM Audio Scanner
 
-Scan a game binary, render every byte window as pixels, and score each one:
-*is this intentional art, or noise?*
+Scan a game ROM or memory dump for hidden music data, sound effects, and unindexed
+PCM samples. Score every region: *is this structured audio data, or noise?*
 
-Automates what BinViewer does by hand.
+Automates what manual ROM reverse-engineering does by hand.
 
 ---
 
 ## The idea
 
-A ZX Spectrum `.tap` or `.z80` memory dump is just bytes. Sprites, fonts, and tile sets
-live somewhere in there with no headers or addresses — the developer knew where they were,
-and nobody wrote it down. The only way to find them is to render every region and look.
+A ZX Spectrum `.tap`, `.z80`, a C64 `.sid`, or a raw memory dump contains music packed as
+chip register streams, tracker patterns, or PCM samples — with no headers, no index, no
+documentation. The developer knew the memory layout; nobody wrote it down.
 
-dig trains a classifier on known sprite data, then scans unknown binaries scoring every
-window. High score = probably art. Output: ranked list of candidate windows, ready for bloom.
+dig trains an unsupervised model on known chip audio data, then scans unknown binaries
+scoring every region. High reconstruction confidence = probably music or SFX data.
+Output: ranked list of candidate regions, ready for bloom.
 
 ---
 
@@ -22,84 +23,71 @@ window. High score = probably art. Output: ranked list of candidate windows, rea
 
 ### M1 — Data pipeline
 
-- [ ] Parse `.tap` and `.z80` files → extract raw bytes
-- [ ] Render byte windows as 1bpp images (8×8, 16×16, 32×8 grids)
-- [ ] Build labelled dataset: known sprites from public-domain ZX games (art=1) vs random
-  code/data regions (noise=0)
-- [ ] Use BinViewer as ground truth source for known-art addresses
+- [ ] Parse ROM formats: `.tap`, `.z80`, `.sid`, `.vgm`, raw memory dumps
+- [ ] Extract byte windows at multiple sizes (matching common sound data block sizes)
+- [ ] Build reference dataset: known music data from public-domain game files
+  (VGM archives, HVSC SID collection, AY chip dumps)
+- [ ] Convert reference audio data to spectrogram / feature representation
 
-**Gate:** DataLoader yields `(image, label)` pairs. Images are `(1, H, W)` tensors. Labels balanced.
+**Gate:** DataLoader yields `(feature_tensor, label)` pairs. Reference data covers multiple chip types.
 
 **Docs:**
-- [ ] Explainer: ZX Spectrum memory layout and display file format
-- [ ] Explainer: 1bpp pixel rendering — how bytes become pixels
+- [ ] Explainer: 8-bit sound chip architectures — AY-3-8910, SID, YM2149, register layout
+- [ ] Explainer: VGM / SID file formats — how music is stored as register streams
 
 ---
 
-### M2 — Classical ML baseline
+### M2 — Feature extraction
 
-- [ ] Extract features per window: entropy, byte value distribution, run-length stats,
-  checkerboard score (alternating bytes = probable pixel pattern)
-- [ ] Train a gradient boosting classifier (XGBoost / sklearn) on those features
-- [ ] Evaluate with ROC/AUC — sets the bar the CNN must beat
+- [ ] Extract per-window features: byte entropy, register-pattern frequency,
+  spectral characteristics of rendered audio, periodicity detection
+- [ ] Classical ML baseline: gradient boosting classifier on hand-crafted features
+- [ ] Evaluate with ROC/AUC — sets the bar the autoencoder must beat
 
-**Gate:** ROC/AUC above 0.7 on held-out windows. Baseline documented.
+**Gate:** ROC/AUC above 0.7 on held-out data. Baseline documented.
 
 **Docs:**
-- [ ] Explainer: feature engineering for binary data — what makes a byte window look structured
+- [ ] Explainer: feature engineering for binary audio data — what makes a byte window look like music
 - [ ] Explainer: ROC/AUC — what it measures, why accuracy alone misleads on imbalanced data
 
 ---
 
-### M3 — CNN classifier
+### M3 — Autoencoder (unsupervised)
 
-- [ ] Train a small CNN on rendered window images (binary classification: art / noise)
-- [ ] Compare ROC/AUC against M2 baseline — does visual learning beat hand-crafted features?
-- [ ] Evaluate: precision, recall, F1, confusion matrix
+- [ ] Train a convolutional autoencoder on known chip audio feature representations only
+- [ ] At scan time: low reconstruction error = structured audio data; high = noise/code
+- [ ] Compare: supervised baseline (M2) vs unsupervised autoencoder (M3)
+  — which works better when you have no labels for the target ROM?
 
-**Gate:** CNN ROC/AUC beats baseline. Precision/recall tradeoff understood.
+**Gate:** Autoencoder reconstruction error correlates with audio data presence on held-out ROMs.
 
 **Docs:**
-- [ ] Update evaluation explainer with ROC/AUC from real results
+- [ ] Explainer: autoencoders — encode to latent space, decode, use reconstruction error as anomaly score
+- [ ] Explainer: self-supervised learning — why the audio data itself is the only label needed
 
 ---
 
 ### M4 — Sliding window scanner
 
-- [ ] Scan a full binary with overlapping windows at multiple sizes
-- [ ] Score each window with the trained CNN
-- [ ] Output: ranked list of windows sorted by art probability
-- [ ] Visualise: render top-N candidates as a contact sheet
+- [ ] Scan a full binary with overlapping windows at multiple block sizes
+- [ ] Score each window with the trained autoencoder
+- [ ] Output: ranked list of regions sorted by audio-data probability
+- [ ] Render top-N candidates as spectrograms + playable audio previews
 
-**Gate:** Running on a known game surfaces actual sprites in the top-20 results.
+**Gate:** Running on a known game surfaces actual music data in the top-20 results.
 
 **Docs:**
-- [ ] Explainer: sliding window detection — the spatial scanning pattern
+- [ ] Explainer: sliding window detection applied to binary audio scanning
 
 ---
 
-### M5 — Autoencoder approach (unsupervised)
+### M5 — CLI tool + demo
 
-- [ ] Train a convolutional autoencoder on known sprites only (no noise needed)
-- [ ] At scan time: high reconstruction error = probably not art
-- [ ] Compare: supervised CNN (M3) vs unsupervised autoencoder (M5)
-  — which is more useful when you have no labels for the target game?
+- [ ] `python -m dig scan game.tap` → outputs `candidates/` folder of ranked audio regions
+- [ ] `python -m dig scan game.z80 --top 20 --chip ay`
+- [ ] Demo: run against a known public-domain game, show music data found
 
-**Gate:** Autoencoder reconstruction error correlates with art probability on held-out games.
-
-**Docs:**
-- [ ] Explainer: autoencoders — encode to latent space, decode, use reconstruction error as anomaly score
-- [ ] Explainer: self-supervised learning — why the sprites themselves are the only label needed
-
----
-
-### M6 — CLI tool + demo
-
-- [ ] `python -m dig scan game.tap` → outputs `candidates/` folder of ranked PNGs
-- [ ] `python -m dig scan game.z80 --top 20 --size 16x16`
-- [ ] Demo: run against a known public-domain ZX game, show sprites found
-
-**Gate:** CLI works on a fresh clone. Demo output contains recognisable sprites.
+**Gate:** CLI works on a fresh clone. Demo output contains recognisable music/SFX data.
 
 **Docs:**
 - [ ] README: usage, how to interpret output, how to pass results to bloom
@@ -110,15 +98,16 @@ window. High score = probably art. Output: ranked list of candidate windows, rea
 
 | Skill | Gap filled |
 |-------|-----------|
-| Computer vision on real images | ⬜ → ✅ |
+| Unsupervised structure detection | ⬜ → ✅ |
 | ROC / AUC | ⬜ → ✅ |
 | Sliding window / detection pattern | ⬜ → ✅ |
 | Classic ML baseline (gradient boosting) | ⬜ → ✅ |
 | Autoencoder | ⬜ → ✅ |
 | Self-supervised learning | ⬜ → ✅ |
+| Binary / ROM data domain | ⬜ → ✅ |
 
 ---
 
 ## Feeds into
 
-[bloom](../bloom/) — pass candidate PNGs from dig directly into bloom for HD scaling.
+[bloom](../bloom/) — pass candidate audio regions from dig directly into bloom for restoration.

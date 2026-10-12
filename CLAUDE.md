@@ -12,7 +12,7 @@ games/
   signal-hunt/         — audio classifier: data pipelines → CNN → transfer learning → chords
   utala/kaos9/         — card game AI: TD learning → deep RL → distillation
   acoustic-odyssey/    — deployment layer for Signal Hunt: on-device inference + adaptive RL
-  artefact/            — pixel art: CV scanner, super-resolution CNN, LoRA diffusion
+  artefact/            — 8-bit audio: ROM scanner, restoration, generative chip-tunes + diffusion
   void-duel/           — ZX Spectrum shooter: classic ML → multi-agent RL → extreme-edge distil
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
 ```
