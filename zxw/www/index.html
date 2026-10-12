@@ -4,16 +4,79 @@
   <meta charset="UTF-8" />
   <title>zxw — ZX Spectrum 48K</title>
   <style>
-    body { background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    canvas { image-rendering: pixelated; border: 4px solid #444; }
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      gap: 16px;
+    }
+    canvas {
+      image-rendering: pixelated;
+      border: 4px solid #444;
+      width: 512px;
+      height: 384px;
+    }
+    .controls {
+      color: #ccc;
+      font-family: monospace;
+      font-size: 13px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    label.btn {
+      cursor: pointer;
+      background: #333;
+      padding: 6px 14px;
+      border: 1px solid #666;
+      border-radius: 3px;
+    }
+    label.btn:hover { background: #444; }
+    #status { color: #888; }
   </style>
 </head>
 <body>
-  <canvas id="screen"></canvas>
+  <canvas id="screen" width="256" height="192"></canvas>
+  <div class="controls">
+    <label class="btn">
+      Load .scr
+      <input type="file" id="scr-input" accept=".scr" style="display:none" />
+    </label>
+    <span id="status">M1: checkerboard — load a .scr to test screen rendering</span>
+  </div>
+
   <script type="module">
-    import init, { init as zxwInit } from './pkg/zxw.js';
+    import init, { init as zxwInit, Emulator } from './pkg/zxw.js';
+
     await init();
+
+    // M1 gate: checkerboard confirms scaffold still works
     zxwInit('screen');
+
+    // M3: Emulator instance (no render until .scr is loaded)
+    const emulator = new Emulator('screen');
+    const status = document.getElementById('status');
+
+    document.getElementById('scr-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const buf = await file.arrayBuffer();
+      const data = new Uint8Array(buf);
+
+      if (data.length < 6912) {
+        status.textContent = `Error: expected ≥6912 bytes, got ${data.length}`;
+        return;
+      }
+
+      emulator.load_screen(data.subarray(0, 6912));
+      emulator.render_frame();
+      status.textContent = `Loaded: ${file.name} (${data.length} bytes)`;
+    });
   </script>
 </body>
 </html>

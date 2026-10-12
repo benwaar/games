@@ -1,37 +1,38 @@
-# Next: M3 — ULA screen rendering
+# Next: M4 — ROM + TAP loading
 
-Decode the ZX Spectrum's interleaved screen layout and attribute memory into an RGBA pixel buffer, then blit it to the canvas via wasm-bindgen.
+Wire up the Spectrum ROM (16K binary) and a TAP file loader so real programs can boot and run.
 
 ## What to do
 
-1. `src/screen.rs` — `render_frame(mem: &Memory) -> Vec<u8>`:
-   - Screen pixels at 0x4000–0x57FF — 192 rows of 256 pixels (1 bit each), stored in thirds (lines 0–63, 64–127, 128–191) with a non-linear row order within each third.
-   - Attributes at 0x5800–0x5AFF — one byte per 8×8 cell: `FBPPPIII` (FLASH / BRIGHT / PAPER×3 / INK×3).
-   - For each pixel: look up INK (foreground) or PAPER (background) colour from attribute cell, apply BRIGHT, emit as RGBA.
-   - Spectrum palette: 8 base colours × 2 brightness levels = 16 entries.
+1. `src/lib.rs` — expose `load_rom(data: &[u8])` and `load_tap(data: &[u8])` via wasm-bindgen on `Emulator`.
 
-2. Address calculation — row `y` (0–191) maps to pixel address:
-   - Third: `t = y / 64`
-   - Line within third: `l = y % 64` → `row_in_char = l / 8`, `char_line = l % 8`
-   - Pixel addr: `0x4000 | (t << 11) | (char_line << 8) | (row_in_char << 5)`
-   - Each byte covers 8 horizontal pixels; x byte = `x / 8`, bit = `7 - (x % 8)`.
+2. ROM loader — `Memory::load_rom` already exists; just plumb it through `Emulator::load_rom`.
 
-3. `src/lib.rs` — expose `render_frame` via wasm-bindgen; return `Vec<u8>` as `Uint8Array` to JS.
+3. TAP parser in Rust (`src/tap.rs`):
+   - Block structure: 2-byte length LE + `length` bytes (flag + data + checksum).
+   - Parse into `Vec<TapBlock>` where each block has `flag: u8` and `data: Vec<u8>`.
+   - Validate XOR checksum on each block.
 
-4. `www/index.html` — update JS to call `render_frame()` on each `requestAnimationFrame`.
+4. Instant-load trap (`src/spectrum.rs`):
+   - Before each `cpu.step`, check if PC == 0x0556 (LD_BYTES entry in the standard ROM).
+   - If so, find the matching TAP block (type from IX register, length from DE), copy data to (IX), set carry flag, set PC to the return address on the stack, and return.
+   - This skips the ROM's tape-reading loop entirely — programs load in zero time.
 
-5. `tests/screen_tests.rs` — unit tests:
-   - Solid INK colour: fill attribute mem with `0x07` (white ink, black paper), fill pixel mem with `0xFF` → all pixels white.
-   - Solid PAPER colour: attribute `0x00`, pixel `0x00` → all pixels black.
-   - BRIGHT flag doubles intensity (e.g. red `0x02` vs bright red `0x42`).
-   - Attribute cell boundary check: pixel at (0,0) uses attribute (0,0), pixel at (8,8) uses attribute (1,1).
+5. `src/lib.rs` — `Emulator::load_tap(data: &[u8])` stores the parsed TAP, ready for the trap.
+
+6. `www/index.html` — add file inputs for `.rom` and `.tap` files. On load: call `load_rom` / `load_tap`, then `step_frame` in a RAF loop.
+
+7. Tests (`tests/tap_tests.rs`):
+   - Parse a hand-crafted 2-block TAP (header + data) and verify block count, flags, payload bytes.
+   - Checksum mismatch returns an error.
+   - Instant-load trap: build a minimal TAP + ROM stub, step CPU, verify data landed in memory.
 
 ## Gate
 
-Load the Jetpac loading screen (6912 bytes: 6144 pixel + 768 attribute) directly into memory at 0x4000 → `render_frame()` produces correct RGBA output verifiable by inspecting a known pixel coordinate's colour.
+Load `48.rom` + `jetpac_fixed.tap` → CPU runs → title screen appears on canvas without manual screen injection.
 
 ## Reference
 
-- Screen memory map: Sean Young's Z80 Undocumented, Section 5; Spectrum ROM Disassembly.
-- Attribute byte: bit 7 = FLASH, bit 6 = BRIGHT, bits 5–3 = PAPER, bits 2–0 = INK.
-- Spectrum colours: Black=0, Blue=1, Red=2, Magenta=3, Green=4, Cyan=5, Yellow=6, White=7. Normal brightness ≈ 0xD7 (215); bright = 0xFF.
+- TAP format: WoS FAQ; each block is `u16 length` + `length` bytes.
+- LD_BYTES ROM address: 0x0556 (48K ROM).
+- At LD_BYTES entry: IX = destination, DE = byte count, A′ = flag (0 = header, 0xFF = data).

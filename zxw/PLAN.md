@@ -33,12 +33,12 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M3 — ULA screen rendering
 
-- [ ] Spectrum screen address calculation (interleaved thirds layout)
-- [ ] Attribute decoding: INK/PAPER/BRIGHT/FLASH per 8×8 cell
-- [ ] `render_frame(memory) -> Vec<u8>` → RGBA pixel buffer (256×192×4)
-- [ ] Spectrum palette (16 colours: 8 normal + 8 bright)
-- [ ] Expose to JS via wasm-bindgen, blit with `ImageData` + `putImageData`
-- [ ] `requestAnimationFrame` loop: step CPU ~69888 T-states per frame, then render
+- [x] Spectrum screen address calculation (interleaved thirds layout)
+- [x] Attribute decoding: INK/PAPER/BRIGHT/FLASH per 8×8 cell
+- [x] `render_frame(memory) -> Vec<u8>` → RGBA pixel buffer (256×192×4)
+- [x] Spectrum palette (16 colours: 8 normal + 8 bright)
+- [x] Expose to JS via wasm-bindgen, blit with `ImageData` + `putImageData`
+- [x] `requestAnimationFrame` loop: step CPU ~69888 T-states per frame, then render
 
 **Gate:** Load the Jetpac loading screen (6912 bytes extracted from TAP) directly into memory at 0x4000 → loading screen renders correctly with proper colours.
 
