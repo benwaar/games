@@ -498,8 +498,125 @@ This doesn't mean WASM is wrong for UI — it means the architecture decision ma
 
 The question isn't "is WASM secure?" — it's "how much of your application's security-sensitive logic lives in a flat, inspectable, patchable address space?" The less, the better. The Spectrum taught this in 1983.
 
+## Building it: Z80 self-verifying binary (M9 PoC)
+
+The theory above describes checksum self-verification. Here's the working implementation — a 26-byte prefix that protects any Z80 binary.
+
+### The verifier prefix
+
+```z80
+; 26 bytes — prepended to any payload binary
+  LD HL, payload_start   ; 21 lo hi   — start of protected region
+  LD BC, payload_len     ; 01 lo hi   — bytes to check
+  LD E, 0                ; 1E 00      — XOR accumulator
+loop:
+  LD A, (HL)             ; 7E         — load next byte
+  XOR E                  ; AB         — accumulate
+  LD E, A                ; 5F         — store back
+  INC HL                 ; 23
+  DEC BC                 ; 0B
+  LD A, B                ; 78         — check BC == 0
+  OR C                   ; B1
+  JR NZ, loop            ; 20 F7      — keep going
+  LD A, E                ; 7B         — get final checksum
+  CP expected            ; FE xx      — compare to patched value
+  JP NZ, crash           ; C2 lo hi   — tampered → halt
+  JP payload_start       ; C3 lo hi   — intact → run
+```
+
+The trick: the `expected` byte (offset 19) is patched **after** the payload is assembled. The gate computes `XOR` of all payload bytes, writes that value into the prefix, and the binary is ready.
+
+### Memory layout
+
+```
+load_addr:
+  +0   .. +25     verifier prefix (26 bytes)
+  +26  .. +26+N-1 payload (N bytes — the real program)
+  +26+N           HALT (crash target — verifier jumps here on tamper)
+```
+
+### What the gate does
+
+```python
+from incant.protect import wrap_z80_checksum
+
+payload = bytes([0x3E, 0x42, 0x76])  # LD A, 0x42; HALT
+protected = wrap_z80_checksum(payload, load_addr=0x8000)
+# protected is 30 bytes: 26-byte prefix + 3-byte payload + 1 crash HALT
+# The checksum byte at offset 19 is automatically correct
+```
+
+### Test results
+
+| Scenario | Result |
+|----------|--------|
+| Unmodified binary | Verifier passes → payload runs → A = 0x42 |
+| Flip any payload byte | Checksum mismatch → JP to crash HALT |
+| Flip every byte individually | All detected — zero false negatives |
+
+### Attacker bypasses (Z80)
+
+**Bypass 1 — NOP the branch:** replace `JP NZ, crash` (3 bytes at offset 20) with three NOPs. The verifier still runs but the branch never fires. Cost: find the JP NZ opcode (0xC2) in the prefix, write 0x00 0x00 0x00.
+
+**Bypass 2 — Fix the checksum:** after patching the payload, recompute the XOR and write it to offset 19. The verifier passes because the checksum matches the tampered code. Cost: know the checksum algorithm (XOR is trivial to reverse).
+
+**Why XOR is weak:** XOR checksum is linear — `XOR(a) ⊕ XOR(b) = XOR(a ⊕ b)`. An attacker who flips byte X can flip another byte to compensate, keeping the same checksum. A cryptographic hash (SHA, CRC-32) would be stronger but costs more Z80 cycles.
+
+---
+
+## Building it: WASM self-verifying module (M9 PoC)
+
+WASM can't read its own code section — the bytecode is separate from linear memory (Harvard architecture). So the protection technique is different: store a known-good copy of critical data in a `(data ...)` segment, then hash that region at startup.
+
+### The WAT module
+
+```wat
+(module
+  (memory (export "memory") 1)
+  (data (i32.const 1024) "\de\ad\be\ef")  ;; known-good payload
+
+  (func $verify (result i32)
+    (local $i i32) (local $end i32) (local $acc i32)
+    (local.set $i (i32.const 1024))
+    (local.set $end (i32.const 1028))
+    (local.set $acc (i32.const 0))
+    (block $done
+      (loop $loop
+        (br_if $done (i32.ge_u (local.get $i) (local.get $end)))
+        (local.set $acc
+          (i32.xor (local.get $acc) (i32.load8_u (local.get $i))))
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (br $loop)))
+    (local.get $acc))
+
+  (func (export "run") (result i32)
+    (if (result i32) (i32.ne (call $verify) (i32.const 97))
+      (then (unreachable))          ;; tampered → trap
+      (else (i32.const 42)))))      ;; intact → return 42
+```
+
+### The Harvard constraint
+
+On Z80, code and data share the same 64K — the verifier reads its own bytes with `LD A, (HL)`. In WASM, the code section is immutable and inaccessible from linear memory. You can only verify data segments, not the compiled functions themselves.
+
+This means WASM self-verification protects **data integrity** (weights, keys, configuration), not **code integrity**. An attacker who modifies the WASM bytecode (function bodies, control flow) isn't caught by a data-segment hash.
+
+### Attacker bypasses (WASM)
+
+**Bypass 1 — Patch the comparison constant:** find the `i32.const 97` (the expected checksum) in the compiled WASM binary and change it to match the tampered data. In the binary, `i32.const` is opcode `0x41` followed by an LEB128-encoded value.
+
+**Bypass 2 — Intercept at load time:** replace the `.wasm` binary before the browser loads it (CDP `Network.setRequestInterception`). The module never sees its original checksums.
+
+**Bypass 3 — Patch linear memory via CDP:** after the module loads, write directly to the memory region the verifier checked. The check already passed; the data changes afterward.
+
+### The real lesson
+
+Data-segment verification catches accidental corruption and naive patching. It does NOT stop a motivated attacker who controls the runtime. The same conclusion as the Z80 case — but WASM's Harvard split makes it even weaker, because you can't verify the code at all.
+
 ## Key takeaway
 
 The Spectrum is a perfect lab for this because the entire system fits in your head. 64K of memory, a few hundred opcodes, no OS. You can understand every byte. The protection techniques are the same as modern ones — just without the complexity of a browser runtime, an OS, and a network stack on top.
+
+The M9 PoC (`incant/protect.py`) makes this concrete: the same XOR checksum technique, implemented on both Z80 and WASM, with working bypass code for each. The Z80 version is stronger (verifies actual code bytes); the WASM version is weaker (can only verify data segments). Both are trivially broken by someone who understands the algorithm.
 
 The defensive insight: understanding the attack surface is the only way to protect against it. Every technique in this document — from Jetpac's ERR_SP hijack to CDP memory patching — exists because the defender didn't account for what the attacker could reach. The Spectrum teaches this in miniature. WASM and CDP are the same lesson at production scale.

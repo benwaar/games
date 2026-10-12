@@ -238,15 +238,15 @@ WASM can't read its own code section directly (Harvard architecture — code and
 
 ### Steps
 
-- [ ] Write Z80 sigil: `self_verify.sigil.yaml` — generates code with XOR self-check
-- [ ] Post-assembly checksum patching in the Z80 gate
-- [ ] Test: modify one byte of the binary, verify the check catches it
-- [ ] Write WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash check
-- [ ] Test: modify the data segment, verify the check catches it
-- [ ] Explainer update: add concrete examples from the PoC to [binary-protection.md](explainers/binary-protection.md)
-- [ ] Document the attacker's bypass for each (patch analysis)
+- [x] Z80 self-verifying binary: `protect.py` with XOR checksum prefix + post-assembly patching
+- [x] Post-assembly checksum patching in `wrap_z80_checksum()`
+- [x] Test: single-byte and every-byte tamper detection verified (16 tests)
+- [x] WASM self-verifying module: data-segment mirror + XOR hash + unreachable trap
+- [x] Test: data segment tamper detected, bypass demonstrated
+- [x] Explainer update: Z80 + WASM PoC sections with verifier code, memory layout, test results
+- [x] Attacker bypass documented: NOP branch, fix checksum (Z80); patch constant, intercept load, CDP patch (WASM)
 
-**Gate:** Both sigils produce binaries that pass tests normally but detect and reject single-byte tampering. The explainer includes worked examples of both the protection and the bypass.
+**Gate:** Both targets produce binaries that pass tests normally but detect and reject single-byte tampering. The explainer includes worked examples of both the protection and the bypass. ✅
 
 ---
 

@@ -1,40 +1,23 @@
-# Next: M9 — Binary Protection PoC, OR M10 WASM Extension
+# Next: All milestones complete
 
-M10 (ONNX → Z80 Inference Engine) is complete. The gate passes: 100% argmax agreement on 100 random inputs.
+M9 (Binary Protection PoC) is complete. All incant milestones (M1–M10) are done.
 
-**What was built:**
+**What M9 built:**
 
-New modules:
-- `incant/onnx_parser.py` — parse ONNX Gemm/Relu graphs → {layers, weights, biases}
-- `incant/quantise.py` — per-layer symmetric INT8 quantisation with correct >>8 scale propagation
-- `incant/z80_infer.py` — deterministic Z80 asm generator: signed_mul (shift-add), matmul_layer, relu_buf, argmax_buf (signed comparison via overflow flag)
+- `incant/protect.py` — self-verifying binary wrappers for Z80 and WASM
+  - `wrap_z80_checksum()` — 26-byte XOR verifier prefix with post-assembly patching
+  - `generate_self_verify_wat()` — data-segment mirror + hash check WAT module
+  - Bypass helpers: `bypass_nop_branch()`, `bypass_fix_checksum()`, `tamper_wasm_data_segment()`
+- 16 new tests in `tests/test_protect.py` — intact runs, tamper detection, every-byte sweep, attacker bypasses
+- Explainer update: `explainers/binary-protection.md` now has worked PoC sections for both targets
 
-New CLI:
+149 tests pass.
 
-```bash
-python -m incant infer tests/test_model.onnx --target z80
-python -m incant infer tests/test_model.onnx --target z80 --accuracy
-```
+**Gate:** Both Z80 and WASM binaries detect single-byte tampering. Attacker bypasses demonstrated and documented.
 
-Test model fixture: `tests/test_model.onnx` (4→3→2 ReLU, deterministic seed 42).
+**What's next:**
 
-114 tests pass.
-
-**Two parallel paths forward:**
-
-**M9 — Binary Protection PoC:**
-Z80 self-verifying binary (XOR checksum) + WASM data-segment mirror. Uses the existing LLM pipeline (sigils). Good learning on binary analysis.
-
-**M10 WASM extension:**
-Same INT8 → WASM pipeline (WAT instead of Z80). Generates WAT `i32.add`, `i32.mul_s` for the dot product. Natural next step for M10.
-
-**What's next: M9** — it's been queued since M8, and M10 is the only gap in the sequence.
-
-**Steps:**
-1. Z80 sigil: `self_verify.sigil.yaml` — XOR self-check over code region
-2. Post-assembly checksum patching in Z80 gate
-3. Test: modify one byte, verify check catches it
-4. WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash check
-5. Test: modify data segment, verify check catches it
-6. Explainer: worked examples in `explainers/binary-protection.md`
-7. Document attacker bypass for each
+The incant pipeline is feature-complete. Possible extensions:
+- **WASM inference engine** — same INT8 quantised model, but generating WAT instead of Z80
+- **More protection techniques** — anti-debug timing checks, multi-stage loading, obfuscation
+- **Integration with zxw** — run protected Z80 binaries in the emulator, demonstrate CDP bypass live
