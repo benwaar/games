@@ -297,7 +297,7 @@ impl Spectrum {
     /// At entry to 0x0556 the Z80 calling convention has:
     ///   IX  = destination address in RAM
     ///   DE  = number of bytes to load
-    ///   A'  = expected flag byte (0x00 = header, 0xFF = data)
+    ///   A   = expected flag byte (0x00 = header, 0xFF = data)
     ///
     /// We pop the front block off the queue that matches the expected flag, copy
     /// its data to memory at IX, set the carry flag (success), then return via the

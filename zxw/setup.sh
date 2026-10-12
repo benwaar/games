@@ -57,7 +57,9 @@ download_rom() {
   local actual_sha
   actual_sha=$(shasum -a 256 "$ROM_DIR/$filename" | cut -d' ' -f1)
   if [ "$actual_sha" != "$expected_sha" ]; then
-    echo "  [WARN] $filename checksum mismatch — expected $expected_sha, got $actual_sha"
+    echo "  [FAIL] $filename checksum mismatch — expected $expected_sha, got $actual_sha"
+    rm -f "$ROM_DIR/$filename"
+    exit 1
   else
     echo "  [OK] $filename (verified)"
   fi
