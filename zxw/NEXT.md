@@ -1,21 +1,26 @@
-# Next: M1 — Scaffold + WASM canvas hello world
+# Next: M2 — Z80 CPU core (foundational opcodes)
 
-Set up the Rust project, WASM build pipeline, and a minimal module that renders a checkerboard to an HTML canvas.
+Build the Z80 CPU struct and a fetch-decode-execute loop covering the opcodes needed for basic programs.
 
 ## What to do
 
-1. Create `Cargo.toml` — lib crate with `cdylib` target, dependencies: `wasm-bindgen`, `web-sys` (Canvas features), `js-sys`
-2. Write `setup.sh` — check/install rustup, add `wasm32-unknown-unknown` target, install `wasm-pack`
-3. Implement `src/lib.rs` — `#[wasm_bindgen] pub fn init(canvas_id: &str)` that gets a canvas context and draws a 256×192 checkerboard
-4. Add `www/index.html` — `<canvas>` element + `<script type="module">` that imports and calls `init()`
-5. Add `Makefile` — `build` (wasm-pack build --target web) and `serve` (python3 -m http.server) targets
+1. `src/cpu.rs` — `Cpu` struct: AF/BC/DE/HL/IX/IY/SP/PC + alternates + I/R/IFF1/IFF2/IM/halted. Flag register helpers (S/Z/H/P/N/C).
+2. `src/memory.rs` — `Memory` struct: 64K flat array, read/write. `load_rom(data)` writes to 0x0000–0x3FFF with read-only guard. `load_ram(addr, data)` writes anywhere in RAM.
+3. `src/cpu.rs` — `step(&mut self, mem: &mut Memory) -> u32` (returns T-states):
+   - Fetch opcode at PC, decode, execute, advance PC
+   - Unprefixed: LD r,r / LD r,n / LD r,(HL) / LD (HL),r / LD A,(nn) / LD (nn),A / ADD/ADC/SUB/SBC/AND/OR/XOR/CP A,r / INC/DEC r / JP/JR/CALL/RET / DJNZ / PUSH/POP / EX AF,AF' / EXX / LDIR / HALT / NOP / EI/DI / IN/OUT stubs
+   - CB prefix: BIT/SET/RES b,r / RLC/RRC/RL/RR/SLA/SRA/SRL r
+   - ED prefix subset: LD A,I / LD A,R / IM 0/1/2 / LDIR/LDDR/CPIR/CPDR / NEG / RETI / RETN
+4. `src/lib.rs` — expose `Cpu` and `Memory` via wasm-bindgen (or keep internal for now; just needs to compile)
+5. `tests/cpu_tests.rs` — unit tests: ADD A,n accumulator; DJNZ countdown loop; LDIR block copy; CALL + RET stack round-trip; BIT 3,(HL) flag check
 
 ## Gate
 
-`make build && make serve` → open localhost:8080 → checkerboard renders on the canvas, no errors in browser console.
+`cargo test` — all CPU unit tests pass. A synthetic test program (load regs, arithmetic, halt) produces the expected register state.
 
 ## Reference
 
-- Spectrum screen dimensions: 256×192 pixels
-- wasm-pack target: `--target web` (ES module output)
-- web-sys features needed: `HtmlCanvasElement`, `CanvasRenderingContext2d`, `ImageData`, `Document`, `Window`
+- Z80 flag register: bit 7=S, 6=Z, 5=X, 4=H, 3=X, 2=P/V, 1=N, 0=C
+- T-states per opcode: NOP=4, LD r,r=4, LD r,n=7, LDIR=21(match)/16(no match), DJNZ=13(branch)/8(no branch)
+- CB prefix: fetch opcode at PC+1, all 256 encodings follow the r/b encoding table
+- ED prefix: not all 256 slots defined — undefined ED xx = NOP (4 T-states)
