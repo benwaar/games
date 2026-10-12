@@ -17,6 +17,7 @@ Everything is text-based, inspectable, and hackable.
 
 - [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation ✅
 - [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
+- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration, for exploring ASM security, AI model deployment and more ✅
 - [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly ✅
 - [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
 - [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
@@ -25,7 +26,7 @@ Everything is text-based, inspectable, and hackable.
 - [Artefact: dream](artefact/dream/) — generative chip-tunes: sequence model fine-tuned on VGM/SID data
 - [Artefact: drift](artefact/drift/) — diffusion chip-tune generator: DDPM/DDIM on spectrograms, head-to-head with dream
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
-- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration ✅
+
 
 ---
 
@@ -74,6 +75,16 @@ bash incant/run_z80_greet.sh         # "Type a name:" → hello Ben
 ```
 
 [Project folder](./incant/)
+
+---
+
+## zxw
+
+A ZX Spectrum 48K emulator written in Rust, compiled to WebAssembly. Built from scratch — small enough to understand completely.
+
+A platform for exploring binary protection (patching live memory via the Chrome DevTools Protocol debug API), deploying trained AI models onto retro hardware, and understanding what computation actually costs when you strip away modern abstractions. The KAOS 9 card game AI (5,727 parameters, INT8 quantised) runs inference on it — 6M T-states for what WASM does in microseconds.
+
+[Project folder](./zxw/)
 
 ---
 

@@ -37,25 +37,22 @@ def _numpy() -> Any:
 # INT8 Z80 matmul: shift-and-add signed multiplication
 # ---------------------------------------------------------------------------
 
-# We use a subroutine for signed 8×8→16 multiply.
-# Z80 has no MUL instruction, so we implement via repeated addition.
-# For speed on the test harness (not cycle-counting here), we use a simple
-# approach: convert to unsigned, multiply unsigned with a shift-add loop,
-# negate if signs differ.
+# Signed 8×8→16 multiply via shift-and-add (8 iterations, not N).
+# Convert to unsigned magnitudes, multiply with a bit-scan loop,
+# negate result if signs differ.
 
 _SIGNED_MUL_SUB = """\
 ; signed_mul: multiply A * B -> HL (signed 16-bit result)
+; Uses shift-and-add: always 8 iterations regardless of value.
 ; Inputs: A = multiplicand (int8), B = multiplier (int8)
 ; Output: HL = product (int16)
 ; Clobbers: A, B, C, D, E, H, L, F
 signed_mul:
     ld hl, 0x0000
-    ; save sign: D = sign_a XOR sign_b
     ld d, a
     xor b
     and 0x80
-    ld e, a
-    ; take absolute values
+    push af
     ld a, d
     bit 7, a
     jr z, mul_a_pos
@@ -67,24 +64,19 @@ mul_a_pos:
     jr z, mul_b_pos
     neg
 mul_b_pos:
-    ld d, a
-    ld a, c
-    or a
-    jr z, mul_done
+    ld d, 0
+    ld e, c
+    ld b, 8
 mul_loop:
-    ld a, l
-    add a, d
-    ld l, a
+    add hl, hl
+    rlca
     jr nc, mul_nc
-    inc h
+    add hl, de
 mul_nc:
-    dec c
-    jr nz, mul_loop
-mul_done:
-    ld a, e
+    djnz mul_loop
+    pop af
     or a
     ret z
-    ; negate HL (two's complement)
     ld a, h
     cpl
     ld h, a
@@ -135,18 +127,18 @@ matmul_inner:
     push de
     push hl
     call signed_mul
-    ; add 16-bit product into 32-bit accumulator
+    ; sign-extend 16-bit product to 32-bit before accumulating
+    ld a, h
+    rlca
+    sbc a, a
+    ld d, a
+    ; add 32-bit sign:sign:H:L into accumulator
     ld a, (acc_b0)
     add a, l
     ld (acc_b0), a
     ld a, (acc_b1)
     adc a, h
     ld (acc_b1), a
-    ; sign-extend the 16-bit product into bits 16..31
-    ld a, h
-    rlca
-    sbc a, a
-    ld d, a
     ld a, (acc_b2)
     adc a, d
     ld (acc_b2), a
@@ -463,7 +455,8 @@ def run_z80_inference(
     Args:
         quantised:    output of quantise_model.
         x_int8_bytes: input as raw INT8 bytes (length == in_dim).
-        ticks:        Z80 tick budget (default 10M — enough for small models).
+        ticks:        T-state budget. The z80 emulator runs in ~70K-tick
+                      frames, so we loop over frames until halt or budget.
 
     Returns:
         Argmax index from the Z80 output buffer.
@@ -490,11 +483,17 @@ def run_z80_inference(
     machine = z80lib.Z80Machine()
     machine.set_memory_block(0, binary)
     machine.set_memory_block(input_buf, x_int8_bytes)
-    machine.ticks_to_stop = ticks
-    machine.run()
+
+    frame_ticks = 69888
+    elapsed = 0
+    while elapsed < ticks:
+        machine.ticks_to_stop = frame_ticks
+        machine.run()
+        elapsed += frame_ticks
+        if machine.halted:
+            break
 
     if not machine.halted:
         raise TimeoutError(f"Z80 inference did not halt within {ticks} ticks")
 
-    # Read result byte
     return int(machine.memory[result_addr])

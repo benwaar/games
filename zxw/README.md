@@ -2,7 +2,7 @@
 
 A minimal ZX Spectrum 48K emulator written in Rust, compiled to WebAssembly, with Chrome DevTools Protocol (CDP) debug integration.
 
-Built from scratch — small enough to understand completely. The primary target is running Jetpac in the browser with full memory inspection via CDP.
+Built from scratch — small enough to understand completely. A platform for binary protection research, AI model deployment on retro hardware, and understanding what computation costs without modern abstractions.
 
 ## Why
 
