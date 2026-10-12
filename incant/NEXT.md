@@ -1,49 +1,40 @@
-# Next: M9 — Binary Protection PoC: Self-Verifying Code
+# Next: M9 — Binary Protection PoC, OR M10 WASM Extension
 
-M8 complete — TAP writer, reader, disassembler, and RAG knowledge pipeline in place. 90 tests pass.
+M10 (ONNX → Z80 Inference Engine) is complete. The gate passes: 100% argmax agreement on 100 random inputs.
 
 **What was built:**
 
-`incant/tap.py` exports:
+New modules:
+- `incant/onnx_parser.py` — parse ONNX Gemm/Relu graphs → {layers, weights, biases}
+- `incant/quantise.py` — per-layer symmetric INT8 quantisation with correct >>8 scale propagation
+- `incant/z80_infer.py` — deterministic Z80 asm generator: signed_mul (shift-add), matmul_layer, relu_buf, argmax_buf (signed comparison via overflow flag)
 
-```python
-from incant.tap import write_tap, read_tap, extract_code_blocks, disassemble
-
-# Write a TAP file from assembled Z80 bytes
-write_tap(binary_data, "myprog", start_addr=0x8000, output_path="output/myprog.tap")
-
-# Parse a TAP file into blocks
-blocks = read_tap("game.tap")  # [{flag, payload, valid, type, name, param1, ...}]
-
-# Extract typed Code blocks
-code_blocks = extract_code_blocks("game.tap")  # [{name, start_addr, data}]
-
-# Disassemble Z80 bytes to annotated assembly (uses z80dis)
-asm = disassemble(code_bytes, start_addr=0x8000)
-```
-
-New CLI subcommands:
+New CLI:
 
 ```bash
-# Cast Z80 sigil and also produce a .tap
-python -m incant cast sigils/examples/z80_add.sigil.yaml --tap
-
-# Disassemble all Code blocks from a TAP
-python -m incant disasm game.tap
-
-# Disassemble and embed into RAG z80 collection
-python -m incant disasm game.tap --embed
+python -m incant infer tests/test_model.onnx --target z80
+python -m incant infer tests/test_model.onnx --target z80 --accuracy
 ```
 
-**What's next:**
+Test model fixture: `tests/test_model.onnx` (4→3→2 ReLU, deterministic seed 42).
 
-M9 builds self-verifying binaries — code that checks its own integrity at runtime and refuses to run if tampered with. Two targets: Z80 (XOR checksum over own code region) and WASM (data-segment mirror + hash check).
+114 tests pass.
+
+**Two parallel paths forward:**
+
+**M9 — Binary Protection PoC:**
+Z80 self-verifying binary (XOR checksum) + WASM data-segment mirror. Uses the existing LLM pipeline (sigils). Good learning on binary analysis.
+
+**M10 WASM extension:**
+Same INT8 → WASM pipeline (WAT instead of Z80). Generates WAT `i32.add`, `i32.mul_s` for the dot product. Natural next step for M10.
+
+**What's next: M9** — it's been queued since M8, and M10 is the only gap in the sequence.
 
 **Steps:**
 1. Z80 sigil: `self_verify.sigil.yaml` — XOR self-check over code region
-2. Post-assembly checksum patching in the Z80 gate
+2. Post-assembly checksum patching in Z80 gate
 3. Test: modify one byte, verify check catches it
-4. WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash
+4. WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash check
 5. Test: modify data segment, verify check catches it
-6. Explainer update: add worked examples to `explainers/binary-protection.md`
+6. Explainer: worked examples in `explainers/binary-protection.md`
 7. Document attacker bypass for each

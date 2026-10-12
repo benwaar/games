@@ -286,13 +286,13 @@ ONNX model (float32)
 
 ### Steps
 
-- [ ] ONNX parser: extract layer shapes, weights, biases, activations
-- [ ] INT8 quantisation: per-layer scale/zero-point, clamp to [-128, 127]
-- [ ] Z80 matmul sigil: fixed-point matrix multiply in assembly
-- [ ] Z80 ReLU: clamp negatives to zero (one `cp` + `jr`)
-- [ ] Weight packer: emit weights as Z80 `defb` data blocks
-- [ ] Inference harness: load input → matmul → ReLU → matmul → argmax → output
-- [ ] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
+- [x] ONNX parser: extract layer shapes, weights, biases, activations
+- [x] INT8 quantisation: per-layer scale/zero-point, clamp to [-128, 127]
+- [x] Z80 matmul sigil: fixed-point matrix multiply in assembly
+- [x] Z80 ReLU: clamp negatives to zero (one `cp` + `jr`)
+- [x] Weight packer: emit weights as Z80 `db` data blocks
+- [x] Inference harness: load input → matmul → ReLU → matmul → argmax → output
+- [x] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
 - [ ] WASM equivalent: same pipeline but targeting WAT (for comparison)
 
 **Gate:** `python -m incant infer models/tiny_nn.onnx --target z80` produces a Z80 binary that takes a game state and returns an action index. INT8 output matches float32 reference on >90% of test inputs.

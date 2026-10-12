@@ -19,6 +19,95 @@ from .smelt import (
 from .tap import disassemble, extract_code_blocks, read_tap
 from .targets import wat as wat_target
 
+
+def cmd_infer(args):
+    """ONNX → INT8 → Z80 inference engine."""
+    try:
+        import numpy as np
+    except ImportError:
+        print("Error: numpy required — pip install numpy", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        from .onnx_parser import architecture_summary, parse_onnx
+        from .quantise import compare_accuracy, quantise_model
+        from .z80_infer import generate_z80_inference, run_z80_inference
+        from .targets.z80 import assemble as z80_assemble
+    except ImportError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    model_path = Path(args.model)
+    if not model_path.exists():
+        print(f"Error: {model_path} not found", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Parsing {model_path} ...")
+    parsed = parse_onnx(str(model_path))
+    print(f"  Architecture: {architecture_summary(parsed)}")
+
+    print("Quantising to INT8 ...")
+    quantised = quantise_model(parsed)
+    linear_layers = [l for l in quantised["layers"] if l["type"] == "linear"]
+    for i, layer in enumerate(linear_layers):
+        print(f"  FC{i+1}: {layer['in']}x{layer['out']}, scale_w={layer['scale_w']:.5f}")
+
+    print("Generating Z80 assembly ...")
+    asm_source = generate_z80_inference(quantised)
+
+    # Assemble
+    ok, binary, err = z80_assemble(asm_source)
+    if not ok:
+        print(f"  FAILED to assemble: {err}", file=sys.stderr)
+        sys.exit(1)
+    print(f"  Assembled: {len(binary)} bytes")
+
+    # Write output
+    output_dir = Path(args.output) if args.output else PROJECT_ROOT / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = model_path.stem
+    asm_out = output_dir / f"{stem}_z80_infer.asm"
+    bin_out = output_dir / f"{stem}_z80_infer.bin"
+    asm_out.write_text(asm_source)
+    bin_out.write_bytes(binary)
+    print(f"  ASM: {asm_out}")
+    print(f"  BIN: {bin_out}")
+
+    # Accuracy test
+    if getattr(args, "accuracy", False):
+        print("Running accuracy test (100 samples) ...")
+        try:
+            result = compare_accuracy(parsed, quantised, str(model_path), n_samples=100)
+            print(f"  Argmax agreement (INT8 ref vs float32): {result['argmax_agreement']:.0%}")
+            print(f"  Mean L1 error: {result['mean_l1_error']:.4f}")
+        except ImportError as e:
+            print(f"  Skipped (missing dep): {e}")
+
+        # Z80 accuracy
+        print("Running Z80 accuracy test (20 samples) ...")
+        try:
+            import onnxruntime as ort
+
+            in_dim = parsed["input_shape"][-1] if parsed["input_shape"] else None
+            if in_dim and in_dim > 0:
+                sess = ort.InferenceSession(str(model_path))
+                in_name = sess.get_inputs()[0].name
+                rng = np.random.default_rng(0)
+                agree = 0
+                n = 20
+                for _ in range(n):
+                    x = rng.uniform(-1.0, 1.0, size=(1, in_dim)).astype(np.float32)
+                    ref_am = int(np.argmax(sess.run(None, {in_name: x})[0].flatten()))
+                    x_int8 = np.clip(np.round(x.flatten() * 127.0), -128, 127).astype(np.int8)
+                    x_bytes = bytes([b & 0xFF for b in x_int8.tolist()])
+                    z80_am = run_z80_inference(quantised, x_bytes, ticks=10_000_000)
+                    agree += int(z80_am == ref_am)
+                print(f"  Z80 argmax agreement: {agree}/{n} = {agree/n:.0%}")
+        except ImportError as e:
+            print(f"  Skipped (missing dep): {e}")
+        except Exception as e:
+            print(f"  Z80 accuracy test failed: {e}")
+
 PROJECT_ROOT = Path(__file__).parent.parent
 STORE_PATH = PROJECT_ROOT / "data" / "embeddings.jsonl"
 
@@ -312,6 +401,18 @@ def main():
     run_parser.add_argument("binary", help="Path to .wasm or .bin file")
     run_parser.add_argument("input", help="String to pass as input")
     run_parser.set_defaults(func=cmd_run)
+
+    # infer
+    infer_parser = subparsers.add_parser("infer", help="ONNX → INT8 → Z80 inference engine")
+    infer_parser.add_argument("model", help="Path to .onnx model file")
+    infer_parser.add_argument(
+        "--target", choices=["z80"], default="z80", help="Target architecture (default: z80)"
+    )
+    infer_parser.add_argument(
+        "--accuracy", action="store_true", help="Run accuracy test against float32 reference"
+    )
+    infer_parser.add_argument("-o", "--output", help="Output directory")
+    infer_parser.set_defaults(func=cmd_infer)
 
     args = parser.parse_args()
     if not args.command:

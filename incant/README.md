@@ -45,6 +45,10 @@ python -m incant run output/greet_user.wasm "Ben"
 # BDD spec → WASI binary (smelt pipeline)
 python -m incant smelt specs/greet.spec.md -v
 
+# ONNX → INT8 → Z80 inference engine (M10)
+python -m incant infer tests/test_model.onnx --target z80
+python -m incant infer tests/test_model.onnx --target z80 --accuracy
+
 # Run all examples end-to-end
 bash demo.sh
 ```
