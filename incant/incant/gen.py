@@ -52,6 +52,7 @@ def cast_sigil(
     store: VectorStore,
     output_dir: Path,
     verbose: bool = False,
+    write_tap: bool = False,
 ) -> tuple[bool, str]:
     """Generate code for a sigil. Returns (success, message)."""
     target = TARGETS.get(sigil.target)
@@ -130,6 +131,10 @@ def cast_sigil(
             if sigil.target == "z80":
                 bin_path = output_dir / f"{sigil.name}.bin"
                 bin_path.write_bytes(artifact)
+                if write_tap:
+                    tap_path = z80_target.write_tap_output(artifact, sigil.name, output_dir)
+                    if verbose:
+                        print(f"  TAP: {tap_path}")
             # for WAT, the .wasm is already at artifact path
 
             return True, f"All {len(sigil.tests)} tests passed"

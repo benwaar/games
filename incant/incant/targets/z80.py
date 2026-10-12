@@ -4,6 +4,7 @@ import z80 as z80lib
 
 from ..harness import Z80Harness
 from ..sigil import Sigil, SigilTest
+from ..tap import write_tap
 
 INPUT_BUF = 0x8000
 OUTPUT_BUF = 0x9000
@@ -210,3 +211,27 @@ def extract_code(llm_output: str) -> str:
         return "\n".join(code_lines)
 
     return llm_output.strip()
+
+
+def write_tap_output(
+    binary_data: bytes,
+    name: str,
+    output_dir,
+    start_addr: int = 0x8000,
+) -> str:
+    """Write a .tap file alongside the .bin for the given binary.
+
+    Args:
+        binary_data: Assembled Z80 machine code.
+        name:        Base name (used as filename in TAP and for the .tap path).
+        output_dir:  Directory to write into (Path or str).
+        start_addr:  Load address (default 0x8000).
+
+    Returns:
+        Absolute path of the written .tap file.
+    """
+    from pathlib import Path
+
+    out_path = Path(output_dir) / f"{name}.tap"
+    write_tap(binary_data, name[:10], start_addr, str(out_path))
+    return str(out_path)

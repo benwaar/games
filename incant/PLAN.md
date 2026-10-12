@@ -193,13 +193,13 @@ Feed disassembled real-world Z80 patterns into RAG — actual Spectrum game code
 
 ### Steps
 
-- [ ] TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
-- [ ] Add `--tap` flag to Z80 gate output
-- [ ] TAP reader: parse blocks, extract code bytes
-- [ ] Disassembler: code bytes → Z80 asm (`z80dis`)
-- [ ] `disasm` CLI subcommand: `.tap` → `.asm`
-- [ ] Knowledge pipeline: disassembled code → chunked → embedded into RAG
-- [ ] Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
+- [x] TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
+- [x] Add `--tap` flag to Z80 gate output
+- [x] TAP reader: parse blocks, extract code bytes
+- [x] Disassembler: code bytes → Z80 asm (`z80dis`)
+- [x] `disasm` CLI subcommand: `.tap` → `.asm`
+- [x] Knowledge pipeline: disassembled code → chunked → embedded into RAG
+- [x] Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
 
 **Gate:** `python -m incant cast sigils/examples/z80_add.sigil.yaml --tap` produces a `.tap` loadable in FUSE. `python -m incant disasm game.tap` extracts annotated Z80 assembly.
 

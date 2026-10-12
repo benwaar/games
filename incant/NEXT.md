@@ -1,43 +1,49 @@
-# Next: M8 — TAP: Spectrum tape files + disassembly
+# Next: M9 — Binary Protection PoC: Self-Verifying Code
 
-M7 complete — unified harness library in place. Both targets use the same `.run(input)` interface. 33 tests pass.
+M8 complete — TAP writer, reader, disassembler, and RAG knowledge pipeline in place. 90 tests pass.
 
 **What was built:**
 
-`incant/harness.py` exports `Z80Harness` and `WasmHarness`:
+`incant/tap.py` exports:
 
 ```python
-from incant.harness import WasmHarness, Z80Harness
+from incant.tap import write_tap, read_tap, extract_code_blocks, disassemble
 
-h = Z80Harness("output/greet.bin")
-result = h.run("Ben")          # → "hello Ben"
+# Write a TAP file from assembled Z80 bytes
+write_tap(binary_data, "myprog", start_addr=0x8000, output_path="output/myprog.tap")
 
-h = WasmHarness("output/greet_user.wasm")
-result = h.run("Ben")          # → "hello Ben"
+# Parse a TAP file into blocks
+blocks = read_tap("game.tap")  # [{flag, payload, valid, type, name, param1, ...}]
+
+# Extract typed Code blocks
+code_blocks = extract_code_blocks("game.tap")  # [{name, start_addr, data}]
+
+# Disassemble Z80 bytes to annotated assembly (uses z80dis)
+asm = disassemble(code_bytes, start_addr=0x8000)
 ```
 
-Both harnesses accept a compiled binary, load string input, execute, return string output, and raise `TimeoutError` on runaway programs.
-
-The `run` CLI subcommand uses the harness:
+New CLI subcommands:
 
 ```bash
-python -m incant run output/greet.bin "Ben"
-python -m incant run output/greet_user.wasm "Ben"
+# Cast Z80 sigil and also produce a .tap
+python -m incant cast sigils/examples/z80_add.sigil.yaml --tap
+
+# Disassemble all Code blocks from a TAP
+python -m incant disasm game.tap
+
+# Disassemble and embed into RAG z80 collection
+python -m incant disasm game.tap --embed
 ```
 
 **What's next:**
 
-M8 reads and writes ZX Spectrum TAP files. Two directions:
-
-1. **TAP output (write):** wrap incant's Z80 `.bin` output into loadable `.tap` files (header + data block, XOR checksum).
-2. **Disassembly (read):** parse `.tap` files, extract code bytes, disassemble with `z80dis`.
-3. **Knowledge extraction:** feed disassembled real-world patterns into RAG.
+M9 builds self-verifying binaries — code that checks its own integrity at runtime and refuses to run if tampered with. Two targets: Z80 (XOR checksum over own code region) and WASM (data-segment mirror + hash check).
 
 **Steps:**
-1. TAP writer: `.bin` → `.tap` (header + data blocks, checksums)
-2. Add `--tap` flag to Z80 gate output
-3. TAP reader: parse blocks, extract code bytes
-4. Disassembler: code bytes → Z80 asm (`z80dis`)
-5. `disasm` CLI subcommand: `.tap` → `.asm`
-6. Knowledge pipeline: disassembled code → embedded into RAG
-7. Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
+1. Z80 sigil: `self_verify.sigil.yaml` — XOR self-check over code region
+2. Post-assembly checksum patching in the Z80 gate
+3. Test: modify one byte, verify check catches it
+4. WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash
+5. Test: modify data segment, verify check catches it
+6. Explainer update: add worked examples to `explainers/binary-protection.md`
+7. Document attacker bypass for each

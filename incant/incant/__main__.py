@@ -16,6 +16,7 @@ from .smelt import (
     parse_spec,
     write_sigils_and_manifest,
 )
+from .tap import disassemble, extract_code_blocks, read_tap
 from .targets import wat as wat_target
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -53,7 +54,8 @@ def cmd_cast(args):
     print(f"Casting sigil: {sigil.name} (target: {sigil.target})")
 
     success, message = cast_sigil(
-        sigil, store, output_dir, verbose=args.verbose
+        sigil, store, output_dir, verbose=args.verbose,
+        write_tap=getattr(args, "tap", False),
     )
 
     if success:
@@ -171,6 +173,64 @@ def cmd_smelt(args):
     print(f"  Output: {output_dir / manifest_dict.get('name', 'program')}.*")
 
 
+def cmd_disasm(args):
+    tap_path = Path(args.tap)
+    if not tap_path.exists():
+        print(f"Error: {tap_path} not found", file=sys.stderr)
+        sys.exit(1)
+
+    embed = getattr(args, "embed", False)
+    store = VectorStore(STORE_PATH) if embed else None
+
+    code_blocks = extract_code_blocks(str(tap_path))
+    if not code_blocks:
+        # No typed header found — try raw blocks as data
+        blocks = read_tap(str(tap_path))
+        data_blocks = [b for b in blocks if b["flag"] == 0xFF]
+        if not data_blocks:
+            print("No code or data blocks found in TAP file.", file=sys.stderr)
+            sys.exit(1)
+        code_blocks = [
+            {"name": f"block_{i}", "start_addr": 0x8000, "data": b["payload"]}
+            for i, b in enumerate(data_blocks)
+        ]
+
+    all_asm_lines = []
+    for block in code_blocks:
+        name = block["name"]
+        addr = block["start_addr"]
+        asm = disassemble(block["data"], addr)
+        header = f"; --- {name} (load addr: 0x{addr:04X}, {len(block['data'])} bytes) ---"
+        block_text = f"{header}\n{asm}"
+        print(block_text)
+        print()
+        all_asm_lines.append(block_text)
+
+    if embed and store is not None:
+        _embed_disasm(store, str(tap_path), all_asm_lines)
+        print(f"Embedded {len(all_asm_lines)} block(s) into z80 collection.")
+
+
+def _embed_disasm(store: "VectorStore", tap_path: str, asm_blocks: list[str]) -> None:
+    """Chunk disassembled blocks and embed into the z80 RAG collection."""
+    from .rag import Chunk, embed_text
+
+    source_name = Path(tap_path).stem
+    for i, block_text in enumerate(asm_blocks):
+        lines = block_text.splitlines()
+        heading = lines[0].lstrip("; ").strip() if lines else f"block_{i}"
+        embedding = embed_text(f"{heading}\n{block_text}")
+        chunk = Chunk(
+            source=f"{source_name}.tap",
+            collection="z80",
+            heading=heading,
+            text=block_text,
+            embedding=embedding,
+        )
+        store.chunks.append(chunk)
+    store._save()
+
+
 def cmd_rag(args):
     store = VectorStore(STORE_PATH)
 
@@ -205,6 +265,7 @@ def main():
     cast_parser.add_argument("sigil", help="Path to sigil YAML file")
     cast_parser.add_argument("-o", "--output", help="Output directory")
     cast_parser.add_argument("-v", "--verbose", action="store_true")
+    cast_parser.add_argument("--tap", action="store_true", help="Also write .tap for Z80 targets")
     cast_parser.set_defaults(func=cmd_cast)
 
     # multi
@@ -220,6 +281,16 @@ def main():
     smelt_parser.add_argument("-o", "--output", help="Output directory")
     smelt_parser.add_argument("-v", "--verbose", action="store_true")
     smelt_parser.set_defaults(func=cmd_smelt)
+
+    # disasm
+    disasm_parser = subparsers.add_parser("disasm", help="Disassemble Z80 code from a TAP file")
+    disasm_parser.add_argument("tap", help="Path to .tap file")
+    disasm_parser.add_argument(
+        "--embed",
+        action="store_true",
+        help="Embed disassembled output into the z80 RAG collection",
+    )
+    disasm_parser.set_defaults(func=cmd_disasm)
 
     # rag
     rag_parser = subparsers.add_parser("rag", help="Manage RAG knowledge base")
