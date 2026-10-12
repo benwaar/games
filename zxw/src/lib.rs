@@ -11,6 +11,12 @@ use web_sys::{HtmlCanvasElement, CanvasRenderingContext2d, ImageData};
 use wasm_bindgen::Clamped;
 use spectrum::Spectrum;
 
+macro_rules! log {
+    ($($t:tt)*) => {
+        web_sys::console::log_1(&format!("[zxw] {}", format!($($t)*)).into())
+    };
+}
+
 const SCREEN_W: u32 = 256;
 const SCREEN_H: u32 = 192;
 const CELL: u32 = 8;
@@ -60,15 +66,32 @@ impl Emulator {
 
     /// Load a 16K ROM binary into 0x0000–0x3FFF and mark it read-only.
     pub fn load_rom(&mut self, data: &[u8]) {
+        log!("load_rom: {} bytes", data.len());
         self.spectrum.memory.load_rom(data);
+        self.spectrum.detect_ld_bytes();
+    }
+
+    /// Hard reset: clear CPU + RAM, keep ROM and TAP queue. Like pressing the reset button.
+    pub fn reset(&mut self) {
+        log!("reset");
+        self.spectrum.reset();
     }
 
     /// Parse a TAP file and queue its blocks for instant loading.
     ///
     /// Returns an error string on parse failure (surfaced as a JS exception).
     pub fn load_tap(&mut self, data: &[u8]) -> Result<(), JsValue> {
+        log!("load_tap: {} bytes", data.len());
         let blocks = tap::parse_tap(data)
             .map_err(|e| JsValue::from_str(&e))?;
+        for (i, b) in blocks.iter().enumerate() {
+            log!(
+                "  block {}: flag=0x{:02X} len={} {}",
+                i, b.flag, b.data.len(),
+                if b.flag == 0x00 { "HEADER" } else { "DATA" }
+            );
+        }
+        log!("{} blocks queued for instant load", blocks.len());
         self.spectrum.queue_tap(blocks);
         Ok(())
     }

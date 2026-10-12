@@ -22,6 +22,12 @@ signal-hunt/data/raw/progressions/
 zxw/www/pkg/
 zxw/target/
 
+# zxw — binary assets (ROMs are copyrighted, TAPs/SCRs are generated or user-provided)
+zxw/www/rom/
+zxw/www/tap/
+zxw/www/scr/
+zxw/www/assets.json
+
 # IDE
 .vscode/
 .idea/

@@ -57,6 +57,11 @@ impl Memory {
         self.rom_loaded = true;
     }
 
+    /// Zero all RAM (0x4000–0xFFFF). ROM is preserved.
+    pub fn clear_ram(&mut self) {
+        self.data[0x4000..].fill(0);
+    }
+
     /// Load arbitrary data into RAM (0x4000+).
     pub fn load_ram(&mut self, addr: u16, data: &[u8]) {
         for (i, &b) in data.iter().enumerate() {

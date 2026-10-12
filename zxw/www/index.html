@@ -2,17 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23D7D7D7'/><text x='2' y='13' font-family='monospace' font-size='14' font-weight='bold' fill='%230022C7'>Z</text></svg>" />
   <title>zxw — ZX Spectrum 48K</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       background: #1a1a1a;
       display: flex;
-      flex-direction: column;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       min-height: 100vh;
       margin: 0;
+      padding: 24px;
       gap: 16px;
+      font-family: monospace;
+      color: #ccc;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
     canvas {
       image-rendering: pixelated;
@@ -21,147 +31,252 @@
       height: 384px;
     }
     .controls {
-      color: #ccc;
-      font-family: monospace;
       font-size: 13px;
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       flex-wrap: wrap;
       justify-content: center;
     }
-    label.btn {
+    label.btn, button.btn {
       cursor: pointer;
       background: #333;
-      padding: 6px 14px;
-      border: 1px solid #666;
-      border-radius: 3px;
-    }
-    label.btn:hover { background: #444; }
-    button.btn {
-      cursor: pointer;
-      background: #1a3a1a;
       color: #ccc;
       font-family: monospace;
       font-size: 13px;
-      padding: 6px 14px;
-      border: 1px solid #2a6a2a;
+      padding: 5px 12px;
+      border: 1px solid #666;
       border-radius: 3px;
     }
-    button.btn:hover { background: #2a4a2a; }
+    label.btn:hover, button.btn:hover { background: #444; }
+    button.run {
+      background: #1a3a1a;
+      border-color: #2a6a2a;
+    }
+    button.run:hover { background: #2a4a2a; }
     button.btn:disabled { opacity: 0.4; cursor: default; }
-    #status { color: #888; }
+    #status { color: #888; font-size: 12px; }
+
+    /* Sidebar */
+    .sidebar {
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 4px;
+      width: 200px;
+      font-size: 12px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .sidebar h3 {
+      margin: 0;
+      padding: 8px 10px 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      border-bottom: 1px solid #333;
+    }
+    .sidebar ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar li {
+      padding: 5px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #2a2a2a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar li:hover { background: #333; }
+    .sidebar li.active { background: #2a3a2a; color: #8f8; }
+    .sidebar li.loading { color: #ff8; }
+    .sidebar .empty { color: #555; padding: 5px 10px; font-style: italic; }
+    .section { margin-bottom: 4px; }
   </style>
 </head>
 <body>
-  <canvas id="screen" width="256" height="192"></canvas>
-  <div class="controls">
-    <label class="btn">
-      Load .scr
-      <input type="file" id="scr-input" accept=".scr" style="display:none" />
-    </label>
-    <label class="btn">
-      Load .rom
-      <input type="file" id="rom-input" accept=".rom" style="display:none" />
-    </label>
-    <label class="btn">
-      Load .tap
-      <input type="file" id="tap-input" accept=".tap" style="display:none" />
-    </label>
-    <button class="btn" id="run-btn" disabled>Load &amp; Run</button>
-    <span id="status">M1: checkerboard — load a .scr, or load ROM + TAP to run a program</span>
+  <div class="main">
+    <canvas id="screen" width="256" height="192"></canvas>
+    <div class="controls">
+      <label class="btn">
+        Load .scr
+        <input type="file" id="scr-input" accept=".scr" style="display:none" />
+      </label>
+      <label class="btn">
+        Load .rom
+        <input type="file" id="rom-input" accept=".rom" style="display:none" />
+      </label>
+      <label class="btn">
+        Load .tap
+        <input type="file" id="tap-input" accept=".tap" style="display:none" />
+      </label>
+      <button class="btn" id="boot-btn" disabled>Boot</button>
+      <button class="btn" id="load-btn" disabled>LOAD ""</button>
+      <button class="btn run" id="run-btn" disabled>Load &amp; Run</button>
+    </div>
+    <span id="status">load a .scr, or load ROM + TAP to run a program</span>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="section" id="rom-section"></div>
+    <div class="section" id="tap-section"></div>
+    <div class="section" id="scr-section"></div>
   </div>
 
   <script type="module">
     import init, { init as zxwInit, Emulator } from './pkg/zxw.js';
 
     await init();
-
-    // M1 gate: checkerboard confirms scaffold still works
     zxwInit('screen');
 
-    // M3/M4: Emulator instance
     const emulator = new Emulator('screen');
     const status = document.getElementById('status');
     const runBtn = document.getElementById('run-btn');
+    const bootBtn = document.getElementById('boot-btn');
+    const loadBtn = document.getElementById('load-btn');
 
     let romLoaded = false;
     let tapLoaded = false;
+    let running = false;
     let rafId = null;
 
-    // -----------------------------------------------------------------------
-    // M7: Debug API — window.zxw.* for Chrome DevTools / CDP access
-    // -----------------------------------------------------------------------
+    // -- Sidebar: load assets.json and populate -------------------------
+
+    async function loadAssets() {
+      try {
+        const res = await fetch('./assets.json');
+        const assets = await res.json();
+        buildSection('rom-section', 'ROM', assets.rom || [], loadRomFromUrl);
+        buildSection('tap-section', 'TAP', assets.tap || [], loadTapFromUrl);
+        buildSection('scr-section', 'SCR', assets.scr || [], loadScrFromUrl);
+      } catch (e) {
+        document.getElementById('sidebar').innerHTML =
+          '<div class="empty">No assets.json — run make build</div>';
+      }
+    }
+
+    function buildSection(id, title, files, handler) {
+      const section = document.getElementById(id);
+      let html = `<h3>${title}</h3>`;
+      if (files.length === 0) {
+        html += '<div class="empty">none</div>';
+      } else {
+        html += '<ul>';
+        for (const f of files) {
+          html += `<li data-file="${title.toLowerCase()}/${f}">${f}</li>`;
+        }
+        html += '</ul>';
+      }
+      section.innerHTML = html;
+      section.querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => handler(li));
+      });
+    }
+
+    async function fetchFile(li) {
+      li.classList.add('loading');
+      const path = li.dataset.file;
+      const res = await fetch(`./${path}`);
+      const buf = await res.arrayBuffer();
+      li.classList.remove('loading');
+      return new Uint8Array(buf);
+    }
+
+    function setActive(li) {
+      li.closest('ul').querySelectorAll('li').forEach(l => l.classList.remove('active'));
+      li.classList.add('active');
+    }
+
+    async function loadRomFromUrl(li) {
+      const data = await fetchFile(li);
+      emulator.load_rom(data);
+      romLoaded = true;
+      setActive(li);
+      console.log(`[zxw] ROM loaded: ${li.textContent} (${data.length} bytes)`);
+      status.textContent = `ROM: ${li.textContent} (${data.length} bytes)`;
+      updateButtons();
+    }
+
+    async function loadTapFromUrl(li) {
+      const data = await fetchFile(li);
+      try {
+        emulator.load_tap(data);
+        tapLoaded = true;
+        setActive(li);
+        console.log(`[zxw] TAP loaded: ${li.textContent} (${data.length} bytes)`);
+        status.textContent = `TAP: ${li.textContent} (${data.length} bytes)`;
+      } catch (err) {
+        console.error('[zxw] TAP error:', err);
+        status.textContent = `TAP error: ${err}`;
+        tapLoaded = false;
+      }
+      updateButtons();
+    }
+
+    async function loadScrFromUrl(li) {
+      const data = await fetchFile(li);
+      if (data.length < 6912) {
+        status.textContent = `SCR error: expected ≥6912 bytes, got ${data.length}`;
+        return;
+      }
+      emulator.load_screen(data.subarray(0, 6912));
+      emulator.render_frame();
+      setActive(li);
+      status.textContent = `SCR: ${li.textContent}`;
+    }
+
+    loadAssets();
+
+    // -- Debug API ------------------------------------------------------
+
     window.zxw = {
-      // Read len bytes from addr (default 16)
       mem:        (addr, len)     => emulator.read_memory(addr, len || 16),
-      // Write bytes to addr: poke(0x4000, 0x38, 0x00, ...)
       poke:       (addr, ...bytes)=> emulator.write_memory(addr, new Uint8Array(bytes)),
-      // All Z80 registers as a plain object
       regs:       ()              => emulator.read_registers(),
-      // Breakpoints
       bp:         (addr)          => emulator.set_breakpoint(addr),
       clearBp:    (addr)          => emulator.clear_breakpoint(addr),
       clearAllBp: ()              => emulator.clear_all_breakpoints(),
-      // Execution control
       pause:      ()              => emulator.pause(),
       resume:     ()              => emulator.resume(),
       step:       ()              => emulator.step_single(),
-      // Convenience: full screen memory (0x4000, 6912 bytes)
       screen:     ()              => emulator.read_memory(0x4000, 6912),
-      // Watchpoints
       watch:      (addr)          => emulator.add_watchpoint(addr),
       unwatch:    (addr)          => emulator.remove_watchpoint(addr),
       hits:       ()              => emulator.get_watchpoint_hits(),
     };
-    console.log('[zxw] debug API available at window.zxw — try zxw.regs(), zxw.mem(0x4000, 16)');
+    console.log('[zxw] debug API: window.zxw — try zxw.regs(), zxw.mem(0x4000, 16)');
 
-    // -----------------------------------------------------------------------
-    // M3: .scr loading (kept for backwards compat)
-    // -----------------------------------------------------------------------
+    // -- File input handlers (manual) -----------------------------------
+
     document.getElementById('scr-input').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
-      const buf = await file.arrayBuffer();
-      const data = new Uint8Array(buf);
-
+      const data = new Uint8Array(await file.arrayBuffer());
       if (data.length < 6912) {
         status.textContent = `Error: expected ≥6912 bytes, got ${data.length}`;
         return;
       }
-
       emulator.load_screen(data.subarray(0, 6912));
       emulator.render_frame();
       status.textContent = `Loaded: ${file.name} (${data.length} bytes)`;
     });
 
-    // -----------------------------------------------------------------------
-    // M4: ROM loading
-    // -----------------------------------------------------------------------
     document.getElementById('rom-input').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
-      const buf = await file.arrayBuffer();
-      const data = new Uint8Array(buf);
-
+      const data = new Uint8Array(await file.arrayBuffer());
       emulator.load_rom(data);
       romLoaded = true;
       status.textContent = `ROM loaded: ${file.name} (${data.length} bytes)`;
-      updateRunBtn();
+      updateButtons();
     });
 
-    // -----------------------------------------------------------------------
-    // M4: TAP loading
-    // -----------------------------------------------------------------------
     document.getElementById('tap-input').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
-      const buf = await file.arrayBuffer();
-      const data = new Uint8Array(buf);
-
+      const data = new Uint8Array(await file.arrayBuffer());
       try {
         emulator.load_tap(data);
         tapLoaded = true;
@@ -170,90 +285,124 @@
         status.textContent = `TAP error: ${err}`;
         tapLoaded = false;
       }
-      updateRunBtn();
+      updateButtons();
     });
 
-    // -----------------------------------------------------------------------
-    // Load & Run — starts the RAF loop once both ROM + TAP are ready
-    // -----------------------------------------------------------------------
-    runBtn.addEventListener('click', () => {
-      if (!romLoaded || !tapLoaded) return;
+    // -- Boot / LOAD / Run ------------------------------------------------
 
-      // Cancel any existing loop.
+    bootBtn.addEventListener('click', boot);
+    loadBtn.addEventListener('click', () => autoTypeLOAD());
+    runBtn.addEventListener('click', () => { boot(); autoTypeLOAD(); });
+
+    function boot() {
+      if (!romLoaded) return;
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-
-      status.textContent = 'Running…';
-
+      emulator.reset();
+      running = true;
+      console.log('[zxw] booting ROM');
+      status.textContent = 'Booting ROM…';
       function frame() {
         try {
-          // When paused (breakpoint hit or zxw.pause()) skip the CPU step but
-          // still render so the display stays live while the debugger inspects.
           if (emulator.is_paused()) {
             emulator.render_frame();
           } else {
             emulator.step_frame();
           }
         } catch (err) {
+          console.error('[zxw] frame error:', err);
           status.textContent = `Error: ${err}`;
+          running = false;
+          updateButtons();
           return;
         }
         rafId = requestAnimationFrame(frame);
       }
-
       rafId = requestAnimationFrame(frame);
-    });
+      updateButtons();
+      setTimeout(() => { status.textContent = 'Running'; }, 2000);
+    }
 
-    function updateRunBtn() {
+    async function autoTypeLOAD() {
+      const delay = ms => new Promise(r => setTimeout(r, ms));
+      const press = async (row, bit, ms = 80) => {
+        emulator.key_down(row, bit);
+        await delay(ms);
+        emulator.key_up(row, bit);
+        await delay(60);
+      };
+
+      if (!running) {
+        boot();
+      }
+
+      // Wait for ROM init to complete before typing
+      console.log('[zxw] waiting for ROM boot before typing LOAD ""');
+      await delay(3000);
+
+      status.textContent = 'Typing LOAD ""…';
+
+      // J key → LOAD keyword (row 6, bit 3) — K-mode keyword entry
+      console.log('[zxw] auto-type: J (LOAD)');
+      await press(6, 3);
+      await delay(100);
+
+      // Symbol Shift (row 7, bit 1) + P (row 5, bit 0) → "
+      console.log('[zxw] auto-type: Sym+P (")');
+      emulator.key_down(7, 1);
+      await delay(20);
+      await press(5, 0);
+      emulator.key_up(7, 1);
+      await delay(100);
+
+      // Symbol Shift + P → "
+      console.log('[zxw] auto-type: Sym+P (")');
+      emulator.key_down(7, 1);
+      await delay(20);
+      await press(5, 0);
+      emulator.key_up(7, 1);
+      await delay(100);
+
+      // ENTER (row 6, bit 0)
+      console.log('[zxw] auto-type: ENTER');
+      await press(6, 0);
+
+      status.textContent = 'Running…';
+      console.log('[zxw] LOAD "" sent — tape loading should begin');
+    }
+
+    function updateButtons() {
+      bootBtn.disabled = !romLoaded;
+      loadBtn.disabled = !running;
       runBtn.disabled = !(romLoaded && tapLoaded);
-      if (romLoaded && tapLoaded) {
-        status.textContent = 'ROM + TAP ready — click Load & Run';
+      if (!running && romLoaded && tapLoaded) {
+        status.textContent = 'ROM + TAP ready — Boot, then LOAD "", or Load & Run';
+      } else if (!running && romLoaded) {
+        status.textContent = 'ROM ready — click Boot, or load a TAP first';
       }
     }
 
-    // -----------------------------------------------------------------------
-    // M5: Keyboard input — Spectrum key matrix + Kempston joystick
-    //
-    // Spectrum half-row layout (row, bit):
-    //   Row 0: SHIFT(0) Z(1) X(2) C(3) V(4)
-    //   Row 1: A(0)     S(1) D(2) F(3) G(4)
-    //   Row 2: Q(0)     W(1) E(2) R(3) T(4)
-    //   Row 3: 1(0)     2(1) 3(2) 4(3) 5(4)
-    //   Row 4: 0(0)     9(1) 8(2) 7(3) 6(4)
-    //   Row 5: P(0)     O(1) I(2) U(3) Y(4)
-    //   Row 6: ENTER(0) L(1) K(2) J(3) H(4)
-    //   Row 7: SPACE(0) SYM(1) M(2) N(3) B(4)
-    //
-    // Kempston bits: 0=right, 1=left, 2=down, 3=up, 4=fire
-    // -----------------------------------------------------------------------
+    // -- Keyboard -------------------------------------------------------
 
-    // Map browser key codes to Spectrum [row, bit] pairs.
-    // Chosen to be sensible for Jetpac: Q=up, A=down, O=left, P=right, Space=fire.
     const spectrumKeyMap = {
-      // Letters — direct Spectrum key positions
-      'KeyQ':     [2, 0], 'KeyW': [2, 1], 'KeyE': [2, 2], 'KeyR': [2, 3], 'KeyT': [2, 4],
-      'KeyA':     [1, 0], 'KeyS': [1, 1], 'KeyD': [1, 2], 'KeyF': [1, 3], 'KeyG': [1, 4],
-      'KeyZ':     [0, 1], 'KeyX': [0, 2], 'KeyC': [0, 3], 'KeyV': [0, 4],
-      'KeyY':     [5, 4], 'KeyU': [5, 3], 'KeyI': [5, 2], 'KeyO': [5, 1], 'KeyP': [5, 0],
-      'KeyH':     [6, 4], 'KeyJ': [6, 3], 'KeyK': [6, 2], 'KeyL': [6, 1],
-      'KeyB':     [7, 4], 'KeyN': [7, 3], 'KeyM': [7, 2],
-      // Digits row
-      'Digit1':   [3, 0], 'Digit2': [3, 1], 'Digit3': [3, 2], 'Digit4': [3, 3], 'Digit5': [3, 4],
-      'Digit6':   [4, 4], 'Digit7': [4, 3], 'Digit8': [4, 2], 'Digit9': [4, 1], 'Digit0': [4, 0],
-      // Special keys
-      'Space':    [7, 0],
-      'Enter':    [6, 0],
-      'ShiftLeft':  [0, 0], 'ShiftRight': [0, 0],
+      'KeyQ': [2,0], 'KeyW': [2,1], 'KeyE': [2,2], 'KeyR': [2,3], 'KeyT': [2,4],
+      'KeyA': [1,0], 'KeyS': [1,1], 'KeyD': [1,2], 'KeyF': [1,3], 'KeyG': [1,4],
+      'KeyZ': [0,1], 'KeyX': [0,2], 'KeyC': [0,3], 'KeyV': [0,4],
+      'KeyY': [5,4], 'KeyU': [5,3], 'KeyI': [5,2], 'KeyO': [5,1], 'KeyP': [5,0],
+      'KeyH': [6,4], 'KeyJ': [6,3], 'KeyK': [6,2], 'KeyL': [6,1],
+      'KeyB': [7,4], 'KeyN': [7,3], 'KeyM': [7,2],
+      'Digit1': [3,0], 'Digit2': [3,1], 'Digit3': [3,2], 'Digit4': [3,3], 'Digit5': [3,4],
+      'Digit6': [4,4], 'Digit7': [4,3], 'Digit8': [4,2], 'Digit9': [4,1], 'Digit0': [4,0],
+      'Space': [7,0], 'Enter': [6,0],
+      'ShiftLeft': [0,0], 'ShiftRight': [0,0],
     };
 
-    // Keys that should call preventDefault to avoid browser scrolling/navigation.
     const preventDefaultKeys = new Set([
       'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
     ]);
 
-    // Kempston joystick: arrow keys + Z = fire
     const kempstonKeyMap = {
       'ArrowRight': 0, 'ArrowLeft': 1, 'ArrowDown': 2, 'ArrowUp': 3, 'KeyZ': 4,
     };
@@ -273,7 +422,6 @@
       if (kemp !== undefined) emulator.kempston_up(kemp);
     });
 
-    // Release all keys if the window loses focus, to avoid stuck keys.
     window.addEventListener('blur', () => {
       emulator.keyboard_reset();
     });

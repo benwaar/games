@@ -81,6 +81,82 @@ def write_tap(
     Path(output_path).write_bytes(bytes(tap))
 
 
+def _int5(value: int) -> bytes:
+    """Spectrum 5-byte integer: 0x00 + sign + lo + hi + 0x00."""
+    sign = 0xFF if value < 0 else 0x00
+    unsigned = value & 0xFFFF
+    return bytes([0x00, sign, unsigned & 0xFF, (unsigned >> 8) & 0xFF, 0x00])
+
+
+def _basic_line(line_num: int, body: bytes) -> bytes:
+    """Wrap a tokenised BASIC line body with number + length + CR."""
+    terminated = body + bytes([0x0D])
+    return (
+        line_num.to_bytes(2, "big")
+        + len(terminated).to_bytes(2, "little")
+        + terminated
+    )
+
+
+def _make_basic_loader(start_addr: int) -> bytes:
+    """Build tokenised BASIC auto-loader:
+        10 CLEAR <addr-1>: LOAD ""CODE: RANDOMIZE USR <addr>
+
+    Spectrum BASIC tokens: CLEAR=0xFD, LOAD=0xEF, CODE=0xAF,
+    RANDOMIZE=0xF9, USR=0xC0, colon=0x3A, quote=0x22.
+    Number literal = ASCII digits + 0x0E + 5-byte integer.
+    """
+    clear_val = start_addr - 1
+    clear_str = str(clear_val).encode("ascii")
+    addr_str = str(start_addr).encode("ascii")
+
+    body = bytearray()
+    # CLEAR <addr-1>
+    body += bytes([0xFD])
+    body += clear_str + bytes([0x0E]) + _int5(clear_val)
+    # : LOAD ""CODE
+    body += bytes([0x3A, 0xEF, 0x22, 0x22, 0xAF])
+    # : RANDOMIZE USR <addr>
+    body += bytes([0x3A, 0xF9, 0xC0])
+    body += addr_str + bytes([0x0E]) + _int5(start_addr)
+
+    return _basic_line(10, bytes(body))
+
+
+def write_spectrum_tap(
+    binary_data: bytes,
+    filename: str,
+    start_addr: int,
+    output_path: str,
+) -> None:
+    """Write a full Spectrum TAP: BASIC auto-loader + CODE block.
+
+    Produces four blocks:
+      1. Header (type=0 Program): BASIC loader, autostart line 10
+      2. Data: tokenised BASIC — 10 RANDOMIZE USR <start_addr>
+      3. Header (type=3 Code): machine code at start_addr
+      4. Data: raw binary_data
+
+    The ROM auto-runs line 10, which calls USR to jump into the code.
+
+    Args:
+        binary_data: The machine code bytes.
+        filename:    TAP filename (truncated/padded to 10 chars).
+        start_addr:  Load address for the CODE block (e.g. 32768).
+        output_path: Path to write the .tap file.
+    """
+    basic = _make_basic_loader(start_addr)
+
+    tap = bytearray()
+    # Block 1+2: BASIC program — type=0, param1=autostart line (10), param2=length
+    tap += _make_header_block(0, filename, len(basic), 10, len(basic))
+    tap += _make_data_block(basic)
+    # Block 3+4: CODE block
+    tap += _make_header_block(3, filename, len(binary_data), start_addr, 0x8000)
+    tap += _make_data_block(binary_data)
+    Path(output_path).write_bytes(bytes(tap))
+
+
 # ---------------------------------------------------------------------------
 # TAP reader
 # ---------------------------------------------------------------------------
