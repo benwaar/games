@@ -18,6 +18,16 @@ signal-hunt/data/raw/notes/
 signal-hunt/data/raw/chords/
 signal-hunt/data/raw/progressions/
 
+# zxw — generated WASM output and Rust build artifacts
+zxw/www/pkg/
+zxw/target/
+
+# zxw — binary assets (ROMs are copyrighted, TAPs/SCRs are generated or user-provided)
+zxw/www/rom/
+zxw/www/tap/
+zxw/www/scr/
+zxw/www/assets.json
+
 # IDE
 .vscode/
 .idea/

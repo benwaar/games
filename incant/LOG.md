@@ -163,15 +163,15 @@ Right now the test logic is scattered: `run_wasi_test()` in `wat.py`, `run_harne
 
 ### Steps
 
-- [ ] Create `incant/harness.py` — `Z80Harness` and `WasmHarness` classes with shared interface
-- [ ] Refactor `z80.py` `run_harness_io_test()` to use `Z80Harness`
-- [ ] Refactor `wat.py` `run_wasi_test()` to use `WasmHarness`
-- [ ] Simplify run scripts to use the harness module
-- [ ] CLI: `python -m incant run output/greet.bin "Ben"` — run any compiled output
-- [ ] Tests for both harnesses (deterministic, no LLM)
-- [ ] Docs: explainer, update README + CLAUDE.md
+- [x] Create `incant/harness.py` — `Z80Harness` and `WasmHarness` classes with shared interface
+- [x] Refactor `z80.py` `run_harness_io_test()` to use `Z80Harness`
+- [x] Refactor `wat.py` `run_wasi_test()` to use `WasmHarness`
+- [x] Simplify run scripts to use the harness module
+- [x] CLI: `python -m incant run output/greet.bin "Ben"` — run any compiled output
+- [x] Tests for both harnesses (deterministic, no LLM)
+- [x] Docs: explainer, update README + CLAUDE.md
 
-**Gate:** `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`. Same command, either target.
+**Gate:** ✅ `python -m incant run output/greet.bin "Ben"` and `python -m incant run output/greet_user.wasm "Ben"` both print `hello Ben`. Same command, either target.
 
 ---
 
@@ -193,13 +193,13 @@ Feed disassembled real-world Z80 patterns into RAG — actual Spectrum game code
 
 ### Steps
 
-- [ ] TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
-- [ ] Add `--tap` flag to Z80 gate output
-- [ ] TAP reader: parse blocks, extract code bytes
-- [ ] Disassembler: code bytes → Z80 asm (`z80dis`)
-- [ ] `disasm` CLI subcommand: `.tap` → `.asm`
-- [ ] Knowledge pipeline: disassembled code → chunked → embedded into RAG
-- [ ] Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
+- [x] TAP writer: wrap `.bin` → `.tap` (header + data blocks, checksums)
+- [x] Add `--tap` flag to Z80 gate output
+- [x] TAP reader: parse blocks, extract code bytes
+- [x] Disassembler: code bytes → Z80 asm (`z80dis`)
+- [x] `disasm` CLI subcommand: `.tap` → `.asm`
+- [x] Knowledge pipeline: disassembled code → chunked → embedded into RAG
+- [x] Round-trip test: sigil → asm → bin → tap → extract → disasm → compare
 
 **Gate:** `python -m incant cast sigils/examples/z80_add.sigil.yaml --tap` produces a `.tap` loadable in FUSE. `python -m incant disasm game.tap` extracts annotated Z80 assembly.
 
@@ -238,15 +238,15 @@ WASM can't read its own code section directly (Harvard architecture — code and
 
 ### Steps
 
-- [ ] Write Z80 sigil: `self_verify.sigil.yaml` — generates code with XOR self-check
-- [ ] Post-assembly checksum patching in the Z80 gate
-- [ ] Test: modify one byte of the binary, verify the check catches it
-- [ ] Write WAT sigil: `self_verify_wasm.sigil.yaml` — data-segment mirror + hash check
-- [ ] Test: modify the data segment, verify the check catches it
-- [ ] Explainer update: add concrete examples from the PoC to [binary-protection.md](explainers/binary-protection.md)
-- [ ] Document the attacker's bypass for each (patch analysis)
+- [x] Z80 self-verifying binary: `protect.py` with XOR checksum prefix + post-assembly patching
+- [x] Post-assembly checksum patching in `wrap_z80_checksum()`
+- [x] Test: single-byte and every-byte tamper detection verified (16 tests)
+- [x] WASM self-verifying module: data-segment mirror + XOR hash + unreachable trap
+- [x] Test: data segment tamper detected, bypass demonstrated
+- [x] Explainer update: Z80 + WASM PoC sections with verifier code, memory layout, test results
+- [x] Attacker bypass documented: NOP branch, fix checksum (Z80); patch constant, intercept load, CDP patch (WASM)
 
-**Gate:** Both sigils produce binaries that pass tests normally but detect and reject single-byte tampering. The explainer includes worked examples of both the protection and the bypass.
+**Gate:** Both targets produce binaries that pass tests normally but detect and reject single-byte tampering. The explainer includes worked examples of both the protection and the bypass. ✅
 
 ---
 
@@ -286,13 +286,13 @@ ONNX model (float32)
 
 ### Steps
 
-- [ ] ONNX parser: extract layer shapes, weights, biases, activations
-- [ ] INT8 quantisation: per-layer scale/zero-point, clamp to [-128, 127]
-- [ ] Z80 matmul sigil: fixed-point matrix multiply in assembly
-- [ ] Z80 ReLU: clamp negatives to zero (one `cp` + `jr`)
-- [ ] Weight packer: emit weights as Z80 `defb` data blocks
-- [ ] Inference harness: load input → matmul → ReLU → matmul → argmax → output
-- [ ] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
+- [x] ONNX parser: extract layer shapes, weights, biases, activations
+- [x] INT8 quantisation: per-layer scale/zero-point, clamp to [-128, 127]
+- [x] Z80 matmul sigil: fixed-point matrix multiply in assembly
+- [x] Z80 ReLU: clamp negatives to zero (one `cp` + `jr`)
+- [x] Weight packer: emit weights as Z80 `db` data blocks
+- [x] Inference harness: load input → matmul → ReLU → matmul → argmax → output
+- [x] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
 - [ ] WASM equivalent: same pipeline but targeting WAT (for comparison)
 
 **Gate:** `python -m incant infer models/tiny_nn.onnx --target z80` produces a Z80 binary that takes a game state and returns an action index. INT8 output matches float32 reference on >90% of test inputs.

@@ -38,8 +38,16 @@ python -m incant multi sigils/programs/wat_math.manifest.yaml
 # Multi-sigil build with dependencies (sum_of_factorials calls factorial + add)
 python -m incant multi sigils/programs/wat_composed.manifest.yaml
 
+# Run any compiled binary with string input
+python -m incant run output/greet.bin "Ben"
+python -m incant run output/greet_user.wasm "Ben"
+
 # BDD spec → WASI binary (smelt pipeline)
 python -m incant smelt specs/greet.spec.md -v
+
+# ONNX → INT8 → Z80 inference engine (M10)
+python -m incant infer tests/test_model.onnx --target z80
+python -m incant infer tests/test_model.onnx --target z80 --accuracy
 
 # Run all examples end-to-end
 bash demo.sh
@@ -122,7 +130,6 @@ WASI sigils use `fd_read`/`fd_write` for stdin/stdout I/O and `_start` as the en
 
 ## Learn
 
-- Project plan and milestones: [PLAN.md](PLAN.md)
-- Current milestone: [NEXT.md](NEXT.md)
+- Milestone log: [LOG.md](LOG.md)
 - Explainers: [explainers/](explainers/)
 - Shared concept explainers: [../explainers/](../explainers/README.md)

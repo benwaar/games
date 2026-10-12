@@ -17,14 +17,16 @@ Everything is text-based, inspectable, and hackable.
 
 - [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation ✅
 - [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
-- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly 🔨
+- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration, for exploring ASM security, AI model deployment and more ✅
+- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly ✅
 - [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
 - [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
-- [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
-- [Artefact: dig](artefact/dig/) — binary art scanner: find hidden sprites in ROM using CV and autoencoders
-- [Artefact: bloom](artefact/bloom/) — pixel art upscaler: super-resolution CNN and GAN
-- [Artefact: dream](artefact/dream/) — LoRA fine-tune a diffusion model on extracted sprites
+- [Artefact: dig](artefact/dig/) — ROM audio scanner: find hidden music/SFX in ROM dumps using autoencoders
+- [Artefact: bloom](artefact/bloom/) — 8-bit audio restoration: lo-fi → hi-fi using U-Net and STFT loss
+- [Artefact: dream](artefact/dream/) — generative chip-tunes: sequence model fine-tuned on VGM/SID data
+- [Artefact: drift](artefact/drift/) — diffusion chip-tune generator: DDPM/DDIM on spectrograms, head-to-head with dream
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
+
 
 ---
 
@@ -62,7 +64,7 @@ Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then 
 
 Write a plain-English spec, get a working binary — for both WASM and Z80.
 
-An LLM pipeline that reads BDD-format specs, decomposes them into function graphs, generates assembly (WAT or Z80), assembles it, and verifies it against tests. RAG-grounded with instruction set knowledge. Retry loop feeds assembler errors back to the LLM until the gate passes.
+An LLM pipeline that reads BDD-format specs, decomposes them into function graphs, generates assembly (WAT or Z80), assembles it, and verifies it against tests. RAG-grounded with instruction set knowledge. Also includes ONNX → INT8 → Z80 inference engine, Spectrum TAP file tools, and binary protection PoC (self-verifying code on both architectures).
 
 ```bash
 # BDD spec → WASI binary (WAT)
@@ -73,6 +75,16 @@ bash incant/run_z80_greet.sh         # "Type a name:" → hello Ben
 ```
 
 [Project folder](./incant/)
+
+---
+
+## zxw
+
+A ZX Spectrum 48K emulator written in Rust, compiled to WebAssembly. Built from scratch — small enough to understand completely.
+
+A platform for exploring binary protection (patching live memory via the Chrome DevTools Protocol debug API), deploying trained AI models onto retro hardware, and understanding what computation actually costs when you strip away modern abstractions. The KAOS 9 card game AI (5,727 parameters, INT8 quantised) runs inference on it — 6M T-states for what WASM does in microseconds.
+
+[Project folder](./zxw/)
 
 ---
 

@@ -12,8 +12,9 @@ games/
   signal-hunt/         — audio classifier: data pipelines → CNN → transfer learning → chords
   utala/kaos9/         — card game AI: TD learning → deep RL → distillation
   acoustic-odyssey/    — deployment layer for Signal Hunt: on-device inference + adaptive RL
-  artefact/            — pixel art: CV scanner, super-resolution CNN, LoRA diffusion
+  artefact/            — 8-bit audio: ROM scanner, restoration, generative chip-tunes + diffusion
   void-duel/           — ZX Spectrum shooter: classic ML → multi-agent RL → extreme-edge distil
+  zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
 ```
 
@@ -34,7 +35,7 @@ Shared knowledge lives at the top level. Project-specific knowledge lives in the
 These projects are about understanding algorithms by building them — seeing how different approaches think, and learning by stripping problems down to their nuts and bolts.
 
 - **Real systems, not tutorials.** Each project ships a working thing. Checkpoints train. Models infer. Games play.
-- **Build incrementally.** Milestones are small, gated, and committed one at a time. NEXT.md always points at the next concrete step.
+- **Build incrementally.** Milestones are small, gated, and committed one at a time.
 - **Document as you build.** Explainers are written alongside the code, not after. The teaching test: could someone read the explainer cold and understand what was built? Add to docs with each milestone, not in a batch at the end.
 - **Every skill maps to a real problem.** The business alignment in STUDY.md shows where each capability lands. This isn't abstract — it's practice for specific classes of production ML problem.
 - **Learning first, speed second.** When there's a choice between the fast way and the way that teaches more, pick the one that teaches. Cut corners on polish, not understanding.
@@ -49,7 +50,7 @@ These projects are about understanding algorithms by building them — seeing ho
 
 **Commits:** conventional commits — `feat`, `fix`, `docs`, `refactor`, `test`
 
-**Milestones:** each milestone has a gate (measurable pass/fail), a commit, and a tick in PLAN.md. NEXT.md is rewritten at the end of each milestone to point at the next one.
+**Milestones:** each milestone has a gate (measurable pass/fail), a commit, and a tick in LOG.md.
 
 **Tests:** every new module gets tests. Run `python -m pytest tests/ -v` from the project root.
 
@@ -70,4 +71,5 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
 | [Void Duel](void-duel/) | Planned |
-| [Incant](incant/) | M1–M6 complete — BDD spec → LLM decomposition → WASI binary (WAT + Z80 asm) |
+| [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
+| [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |

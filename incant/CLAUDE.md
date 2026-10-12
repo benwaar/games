@@ -34,6 +34,10 @@ bash setup.sh                                              # venv, deps, embed k
 python -m incant cast sigils/examples/z80_add.sigil.yaml   # generate + test one sigil
 python -m incant multi sigils/programs/wat_composed.manifest.yaml  # multi-sigil build
 python -m incant smelt specs/greet.spec.md -v              # BDD spec → WASI binary
+python -m incant run output/greet.bin "Ben"                # run Z80 binary
+python -m incant run output/greet_user.wasm "Ben"          # run WASM binary
+python -m incant infer tests/test_model.onnx --target z80  # ONNX → Z80 inference
+python -m incant infer tests/test_model.onnx --accuracy    # with accuracy test
 python -m incant rag query "add two numbers" --collection z80  # test RAG
 python -m pytest tests/ -v                                 # run tests
 ```
@@ -42,13 +46,16 @@ python -m pytest tests/ -v                                 # run tests
 
 ```
 incant/
-  __main__.py    — CLI entry point (cast, multi, smelt, rag)
+  __main__.py    — CLI entry point (cast, multi, smelt, rag, run, disasm, infer)
   rag.py         — embed + query (Ollama nomic-embed-text, JSONL store)
   gen.py         — prompt construction + LLM call + multi-sigil orchestration
   manifest.py    — manifest parser + topological sort
   stitch.py      — WAT module merger + Z80 concatenator (handles WASI imports/memory)
   sigil.py       — sigil YAML parser
   smelt.py       — BDD spec parser + library catalogue + LLM decomposition
+  onnx_parser.py — ONNX model parser: extract layers, weights, biases (M10)
+  quantise.py    — INT8 per-layer symmetric quantisation + accuracy comparison (M10)
+  z80_infer.py   — Z80 inference engine code generator + runner (M10)
   targets/
     z80.py       — Z80-specific prompt template + gate
     wat.py       — WAT-specific prompt template + gate + WASI support

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild Jetpac TAP with a simple single-stage loader.
+"""Rebuild a 1983 Spectrum game TAP with a simple single-stage loader.
 
 Extracts the screen and game code from the original multi-stage TAP
 and repackages with a straightforward BASIC loader that doesn't rely
@@ -62,12 +62,16 @@ def extract_blocks(tap_path: str) -> list[dict]:
 def make_basic_loader(clear_addr: int, code_name: str, usr_addr: int) -> bytes:
     """Build a minimal BASIC program:
         10 CLEAR VAL "24575"
-        20 LOAD ""CODE
+        20 LOAD ""SCREEN$
         30 LOAD ""CODE
-        40 RANDOMIZE USR VAL "24576"
+        40 POKE VAL "23672", VAL "90": POKE VAL "23673", VAL "131"
+        50 POKE VAL "23728", VAL "233"
+        60 RANDOMIZE USR VAL "25061"
 
-    We load screen (unnamed) then code (unnamed) then run.
-    Using VAL "number" is standard Spectrum practice to save tokeniser issues.
+    Line 40 patches ERR_SP (0x5C78 = 23672) with 0x5A, 0x83.
+    Line 50 patches 0x5CB0 (23728) with 0xE9 (JP (HL) opcode).
+    These are required — the game checks ERR_SP at startup as an integrity gate.
+    Using VAL "number" is standard Spectrum practice to avoid tokeniser issues.
     """
     lines = []
 
@@ -90,31 +94,52 @@ def make_basic_loader(clear_addr: int, code_name: str, usr_addr: int) -> bytes:
     line30 = (30).to_bytes(2, "big") + len(line30_body).to_bytes(2, "little") + line30_body
     lines.append(line30)
 
-    # Line 40: RANDOMIZE USR VAL "24576"
-    # RANDOMIZE = 0xF9, USR = 0xC0, VAL = 0xB0
-    usr_str = str(usr_addr).encode("ascii")
-    line40_body = bytes([0xF9, 0xC0, 0xB0, 0x22]) + usr_str + bytes([0x22, 0x0D])
+    # Line 40: POKE VAL "23672", VAL "90": POKE VAL "23673", VAL "131"
+    # ERR_SP low byte = 0x5A (90), high byte = 0x83 (131)
+    # POKE = 0xF4, VAL = 0xB0, : = 0x3A
+    line40_body = (
+        bytes([0xF4, 0xB0, 0x22]) + b"23672" + bytes([0x22, 0x2C, 0xB0, 0x22]) + b"90" + bytes([0x22])
+        + bytes([0x3A])  # colon separator
+        + bytes([0xF4, 0xB0, 0x22]) + b"23673" + bytes([0x22, 0x2C, 0xB0, 0x22]) + b"131" + bytes([0x22])
+        + bytes([0x0D])
+    )
     line40 = (40).to_bytes(2, "big") + len(line40_body).to_bytes(2, "little") + line40_body
     lines.append(line40)
+
+    # Line 50: POKE VAL "23728", VAL "233"
+    # 0x5CB0 = 23728, 0xE9 = 233 (JP (HL) opcode)
+    line50_body = (
+        bytes([0xF4, 0xB0, 0x22]) + b"23728" + bytes([0x22, 0x2C, 0xB0, 0x22]) + b"233" + bytes([0x22])
+        + bytes([0x0D])
+    )
+    line50 = (50).to_bytes(2, "big") + len(line50_body).to_bytes(2, "little") + line50_body
+    lines.append(line50)
+
+    # Line 60: RANDOMIZE USR VAL "25061"
+    # RANDOMIZE = 0xF9, USR = 0xC0, VAL = 0xB0
+    usr_str = str(usr_addr).encode("ascii")
+    line60_body = bytes([0xF9, 0xC0, 0xB0, 0x22]) + usr_str + bytes([0x22, 0x0D])
+    line60 = (60).to_bytes(2, "big") + len(line60_body).to_bytes(2, "little") + line60_body
+    lines.append(line60)
 
     return b"".join(lines)
 
 
-def rebuild_jetpac(src_path: str, dst_path: str) -> None:
+def rebuild_example(src_path: str, dst_path: str) -> None:
     blocks = extract_blocks(src_path)
 
-    # Original structure:
-    # blocks[0] = header: Program "Jetpac1"
+    # Original structure (6-block multi-stage loader):
+    # blocks[0] = header: Program (BASIC loader)
     # blocks[1] = data: BASIC loader
-    # blocks[2] = header: Code "Jetpac2" at 0x4000 (screen)
+    # blocks[2] = header: Code at 0x4000 (screen)
     # blocks[3] = data: 6912 bytes screen
-    # blocks[4] = header: Code "Jetpac3" at 0x6000 (game)
+    # blocks[4] = header: Code at 0x6000 (game)
     # blocks[5] = data: 8192 bytes game code
-    # blocks[6] = header: Code "Jetpac4" at 0x5B80 (relocation stub)
+    # blocks[6] = header: Code at 0x5B80 (relocation stub)
     # blocks[7] = data: 15 bytes stub
-    # blocks[8] = header: Code "Jetpac5" at 0x5CB0 (JP HL)
+    # blocks[8] = header: Code at 0x5CB0 (JP HL)
     # blocks[9] = data: 1 byte
-    # blocks[10] = header: Code "Jetpac6" at 0x5C78 (ERR_SP patch)
+    # blocks[10] = header: Code at 0x5C78 (ERR_SP patch)
     # blocks[11] = data: 2 bytes
 
     screen_data = blocks[3]["payload"]  # 6912 bytes
@@ -170,17 +195,22 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
     # Entry point: 0x61E5 absolute = offset 0x01E5 in our buffer.
     # We load at 0x6000, so USR 0x61E5 = USR 25061.
     #
-    # But actually we want to also handle the system var patches:
-    # - ERR_SP (0x5C78) = 0x835A — this is copy protection, skip it
-    # - JP (HL) at 0x5CB0 — also copy protection, skip it
-    # These prevent BREAK from working. We don't need them for a clean load.
-
-    # Actually, let's reconsider: maybe the entry should be via the stub.
-    # The simplest approach: include the stub in our code block.
-    # Load everything from 0x5B80, run USR 23424 (0x5B80).
-    # The stub relocates and jumps. This preserves the original behaviour.
+    # IMPORTANT: the sysvar patches MUST be included. The game checks ERR_SP
+    # at 0x5C79 as the very first thing at the entry point:
     #
-    # But simpler: just load the pre-relocated code at 0x6000 and USR 0x61E5.
+    #   0x61E5: LD A, (0x5C79)   ; read high byte of ERR_SP
+    #   0x61E8: CP 0x83          ; expected value
+    #   0x61EA: RET NZ           ; bail out if not set
+    #
+    # This was confirmed by running the loader in a Z80 emulator
+    # (tap_run_example.py). Without the patch, the game loads the screen
+    # but never starts — the RET NZ fires immediately.
+    #
+    # The developer was clever: the "copy protection" doubles as a
+    # startup integrity gate. Stripping it doesn't just remove protection —
+    # it prevents the game from running at all.
+    #
+    # We include the patches as POKE values embedded in the BASIC loader.
 
     entry_point = 0x61E5  # from JP 61E5h in the stub
     load_addr = 0x6000
@@ -195,15 +225,15 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
         usr_addr=entry_point,
     )
     # Program header: type=0, autostart line=10
-    output += make_header_block(0, "Jetpac", len(basic), 10, len(basic))
+    output += make_header_block(0, "Game", len(basic), 10, len(basic))
     output += make_data_block(basic)
 
     # 2. Screen (LOAD ""SCREEN$ expects a Code block at 0x4000, 6912 bytes)
-    output += make_header_block(3, "Jetpac", len(screen_data), 0x4000, 0x8000)
+    output += make_header_block(3, "Game", len(screen_data), 0x4000, 0x8000)
     output += make_data_block(screen_data)
 
     # 3. Game code (pre-relocated)
-    output += make_header_block(3, "Jetpac", len(relocated), load_addr, 0x8000)
+    output += make_header_block(3, "Game", len(relocated), load_addr, 0x8000)
     output += make_data_block(bytes(relocated))
 
     Path(dst_path).write_bytes(bytes(output))
@@ -213,6 +243,6 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
 
 
 if __name__ == "__main__":
-    src = sys.argv[1] if len(sys.argv) > 1 else "tools/jetpac.tap"
-    dst = sys.argv[2] if len(sys.argv) > 2 else "tools/jetpac_fixed.tap"
-    rebuild_jetpac(src, dst)
+    src = sys.argv[1] if len(sys.argv) > 1 else "tools/example.tap"
+    dst = sys.argv[2] if len(sys.argv) > 2 else "tools/example_fixed.tap"
+    rebuild_example(src, dst)

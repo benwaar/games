@@ -218,3 +218,23 @@ Threshold 0.5 optimal. Precision high across all notes (0.80–1.00) — misses 
 **Synthetic data:**
 - Synthesising from existing recordings is powerful — no new recordings needed for Phases 4a/4b
 - Domain gap from synthetic to real piano playing would need real recordings for production
+
+---
+
+## Phase 5 — Weight Initialisation Experiments (planned)
+
+**Goal:** Understand how weight initialisation affects training dynamics. Use the existing SoundClassifier as the test bed — same architecture, same data, different init strategies.
+
+### Plan
+
+- [ ] Experiment: train SoundClassifier with Xavier (Glorot), He (Kaiming), and default PyTorch init
+- [ ] Compare: convergence speed (epochs to 95% accuracy), final accuracy, loss curve shape
+- [ ] Experiment: deliberately bad init (all zeros, very large values) — show why init matters
+- [ ] Plot: loss curves and accuracy curves for each init strategy, overlaid
+- [ ] Document: which init suits which activation function (ReLU → He, tanh/sigmoid → Xavier)
+
+**Gate:** Documented comparison showing measurable difference in convergence between init strategies. Explainer written.
+
+**Docs:**
+- [ ] Explainer: weight initialisation — Xavier vs He vs default, why it matters, when to care
+- [ ] Explainer: vanishing/exploding gradients — how bad init causes them
