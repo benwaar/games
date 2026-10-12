@@ -620,3 +620,76 @@ The Spectrum is a perfect lab for this because the entire system fits in your he
 The M9 PoC (`incant/protect.py`) makes this concrete: the same XOR checksum technique, implemented on both Z80 and WASM, with working bypass code for each. The Z80 version is stronger (verifies actual code bytes); the WASM version is weaker (can only verify data segments). Both are trivially broken by someone who understands the algorithm.
 
 The defensive insight: understanding the attack surface is the only way to protect against it. Every technique in this document — from Jetpac's ERR_SP hijack to CDP memory patching — exists because the defender didn't account for what the attacker could reach. The Spectrum teaches this in miniature. WASM and CDP are the same lesson at production scale.
+
+---
+
+## The WASM security model points the wrong way
+
+This is the uncomfortable finding from M9. It's not that WASM is broken — it's that WASM's security was designed for a threat model that doesn't match what most developers assume.
+
+### What WASM actually protects
+
+WASM's sandbox protects the **host** from the **module**:
+
+- A malicious `.wasm` can't read your filesystem
+- It can't make system calls the host didn't import
+- It can't escape linear memory into the browser's address space
+- It can't corrupt another tab's memory
+
+This is real, valuable security. It's the reason you can run untrusted WASM in a browser without worrying about it installing malware. The sandbox is strong and well-tested.
+
+### What WASM doesn't protect
+
+WASM does **not** protect the **module** from the **host**:
+
+- The user (or anyone with CDP access) can read the entire linear memory
+- They can write to any address — auth flags, licence checks, feature gates
+- They can call any exported function directly, bypassing the intended UI flow
+- They can intercept and replace the `.wasm` binary before it loads
+- They can modify the compiled bytecode in transit or on disk
+
+And critically, from the M9 PoC: **a WASM module cannot verify its own code**. The Harvard architecture split means compiled functions are opaque to the module itself. There is no `LD A, (HL)` equivalent — no way for a function to read its own bytecode from linear memory.
+
+### Why this matters more than it sounds
+
+On the Z80, the same limitation doesn't exist. The Spectrum's flat memory model means code can read and checksum itself. Jetpac's ERR_SP check works because the entry point can inspect system variables that the loader wrote. The entire address space is one flat surface — code, data, system state, all readable.
+
+WASM deliberately broke that. Code and data are separated. The module can hash its data segments, but an attacker who patches the *verification function itself* (changing `i32.ne` to `i32.eq`, or `unreachable` to `nop`) bypasses the check entirely — and the module has no way to detect it.
+
+This means the protection ceiling on WASM is **lower** than on a 1983 8-bit computer:
+
+| Capability | Z80 Spectrum | WASM |
+|-----------|-------------|------|
+| Code can read own bytes | Yes — `LD A, (HL)` anywhere in 64K | No — code section is opaque |
+| Code can checksum itself | Yes — XOR/CRC over own address range | No — can only checksum data segments |
+| Attacker can patch code | Yes — same flat memory | Yes — modify `.wasm` binary or intercept at load |
+| Module detects code patch | Possible — self-checksum catches it | Impossible — no access to own bytecode |
+| Attacker can patch data | Yes — POKE | Yes — CDP / `memory.buffer` |
+| Module detects data patch | Yes — checksum | Yes — but attacker can patch the check too |
+
+The Z80 defender has strictly more tools than the WASM defender. The only advantage WASM has is SRI (Subresource Integrity) — a browser-enforced hash of the module at load time. But SRI verifies the file on the wire, not the module in memory. Post-load, the module is on its own, and it can't even see its own code.
+
+### The real-world consequence
+
+This affects every architecture that puts security-sensitive logic in WASM:
+
+- **Licence checks in WASM** — unenforceable client-side. The check function itself can be patched. Server-side verification is the only option that works.
+- **Feature gates** — if the decision is "does the user have access to feature X?" and the answer lives in linear memory or a WASM function, it's a single byte patch away from "yes".
+- **Anti-tamper** — the strongest technique available (data-segment checksums) is a speed bump. The attacker patches the data *and* the checksum constant *and* the branch, in three edits.
+- **DRM / content protection** — WASM cannot protect content from the user who is running it. The decryption key must enter linear memory at some point, and at that point it's readable.
+
+### What WASM security is actually good for
+
+The inversion: WASM excels at protecting the **server** from the **client**, not the other way around.
+
+- Run untrusted user-submitted code in a WASM sandbox (serverless functions, plugin systems) — strong isolation
+- Process sensitive data in a WASM module that can't exfiltrate it (no network, no filesystem) — capability-based security
+- Run ML inference on-device without exposing model architecture to a malicious plugin — the sandbox keeps the plugin out
+
+These are all cases where the host doesn't trust the module. That's what WASM was built for. The problems start when developers flip the trust relationship and try to use WASM to protect the module from the host — that's the Spectrum copy-protection problem all over again, with fewer tools.
+
+### The Spectrum lesson
+
+In 1983, every Spectrum game's copy protection was broken. Not because the protections were bad — some were genuinely clever (Jetpac's integrity gate, Speedlock's custom loaders). They were broken because the attacker had the hardware. You can't protect software from someone who controls the machine it runs on.
+
+WASM is the same machine. The browser is the user's hardware. CDP is the modern POKE. The sandbox protects the host — and only the host. Forty years later, the fundamental constraint hasn't changed: **if the user has the binary, they have the binary**.
