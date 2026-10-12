@@ -14,6 +14,7 @@ games/
   acoustic-odyssey/    — deployment layer for Signal Hunt: on-device inference + adaptive RL
   artefact/            — 8-bit audio: ROM scanner, restoration, generative chip-tunes + diffusion
   void-duel/           — ZX Spectrum shooter: classic ML → multi-agent RL → extreme-edge distil
+  zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
 ```
 
@@ -70,4 +71,5 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
 | [Void Duel](void-duel/) | Planned |
+| [zxw](zxw/) | Planned — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | M1–M6 complete — BDD spec → LLM decomposition → WASI binary (WAT + Z80 asm) |

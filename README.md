@@ -26,6 +26,7 @@ Everything is text-based, inspectable, and hackable.
 - [Artefact: dream](artefact/dream/) — generative chip-tunes: sequence model fine-tuned on VGM/SID data
 - [Artefact: drift](artefact/drift/) — diffusion chip-tune generator: DDPM/DDIM on spectrograms, head-to-head with dream
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
+- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration 🔨
 
 ---
 

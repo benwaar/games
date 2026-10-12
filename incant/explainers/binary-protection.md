@@ -73,6 +73,52 @@ The Spectrum ROM has a standard tape loader. Games replaced it entirely — cust
 
 **Why it works:** the protection is in the format, not the data. You need the custom loader to decode the tape.
 
+## Worked example: Jetpac's protection-as-integrity-gate
+
+Jetpac (Ultimate Play The Game, 1983) uses all of the above techniques in a single loader. We rebuilt the TAP file, stripped the "copy protection" patches, and the game refused to start. Running the loader in a Z80 emulator (`tap_run_jetpac.py`) confirmed why.
+
+### What the loader does
+
+Five blocks load in sequence:
+
+1. **Screen** → 0x4000 (loading artwork)
+2. **Game code** → 0x6000 (8192 bytes)
+3. **Relocation stub** → 0x5B80 (15 bytes — LDIR + JP 61E5h)
+4. **JP (HL) instruction** → 0x5CB0 (1 byte — traps BREAK)
+5. **ERR_SP patch** → 0x5C78 (2 bytes — redirects error handler)
+
+The stub relocates the game code (shifts 4 bytes left via overlapping LDIR), then jumps to 0x61E5.
+
+### The integrity gate
+
+The very first instructions at the entry point:
+
+```z80
+0x61E5: LD A, (5C79h)    ; read high byte of ERR_SP
+0x61E8: CP 83h           ; expected value?
+0x61EA: RET NZ           ; no → bail out to BASIC
+```
+
+Without the ERR_SP patch at 0x5C78, the comparison fails and `RET NZ` fires. The loading screen is already in screen memory, so you see the Jetpac artwork — but the game never starts.
+
+This is the key insight: **the protection IS the initialisation**. Ultimate didn't add a separate check that could be NOPed out. They wove it into the startup path. Stripping the "copy protection" doesn't unlock the game — it breaks it.
+
+### Emulator confirmation
+
+| Entry point | Sysvar patches | Result |
+|-------------|---------------|--------|
+| 0x61E5 | No | Bails at 0x61EA — RET NZ fires (ERR_SP check fails) |
+| 0x61E5 | Yes | Gets past check, runs until it hits Spectrum ROM calls at 0x25D6 |
+| 0x6000 | Either | Wrong entry point — skips init, hangs |
+
+The fix: include the sysvar patches as POKE values in the BASIC loader. The rebuilt TAP (`jetpac_fixed.tap`) does this. The game also requires Spectrum ROM routines (0x25D6 is in ROM space), so a full emulator (FUSE) is needed for complete execution.
+
+### The modern parallel
+
+This pattern appears in modern software licensing. A licence check that's tangled into the initialisation path — not a separate `if (licensed)` guard — is far harder to bypass. Remove it and the software crashes, not because of an intentional anti-tamper trap, but because the initialisation genuinely depends on the state the licence check establishes.
+
+---
+
 ## WASM equivalents (2017–present)
 
 WebAssembly has a real security model — sandboxed memory, validated bytecode, no direct code modification. But the same motivations exist: protect IP, prevent reverse engineering, enforce licensing.
