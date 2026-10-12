@@ -86,6 +86,7 @@ impl Emulator {
     }
 
     /// Advance CPU by one frame (~69 888 T-states) then render.
+    /// No-ops on the CPU step if paused; still renders so display stays live.
     pub fn step_frame(&mut self) -> Result<(), JsValue> {
         self.spectrum.step_frame();
         self.render_frame()
@@ -139,6 +140,131 @@ impl Emulator {
     /// Reset the keyboard — all keys released.
     pub fn keyboard_reset(&mut self) {
         self.spectrum.io.keyboard.reset();
+    }
+
+    // ------------------------------------------------------------------
+    // M7: Debug API
+    // ------------------------------------------------------------------
+
+    /// Read `len` bytes from memory at `addr`.
+    pub fn read_memory(&self, addr: u16, len: u16) -> Vec<u8> {
+        self.spectrum.memory.read_slice(addr, len)
+    }
+
+    /// Write `data` bytes into memory starting at `addr`.
+    pub fn write_memory(&mut self, addr: u16, data: &[u8]) {
+        for (i, &byte) in data.iter().enumerate() {
+            self.spectrum.memory.write_byte(addr.wrapping_add(i as u16), byte);
+        }
+    }
+
+    /// Return all Z80 register values as a plain JS object.
+    ///
+    /// Keys: pc, sp, af, bc, de, hl, ix, iy, af2, bc2, de2, hl2,
+    ///       i, r, iff1, iff2, im, halted.
+    pub fn read_registers(&self) -> JsValue {
+        let cpu = &self.spectrum.cpu;
+        let obj = js_sys::Object::new();
+
+        let set = |key: &str, val: u32| {
+            js_sys::Reflect::set(
+                &obj,
+                &JsValue::from_str(key),
+                &JsValue::from_f64(val as f64),
+            ).unwrap_or_default();
+        };
+
+        set("pc",  cpu.pc as u32);
+        set("sp",  cpu.sp as u32);
+        set("af",  cpu.af() as u32);
+        set("bc",  cpu.bc() as u32);
+        set("de",  cpu.de() as u32);
+        set("hl",  cpu.hl() as u32);
+        set("ix",  cpu.ix as u32);
+        set("iy",  cpu.iy as u32);
+        set("af2", ((cpu.a2 as u32) << 8) | cpu.f2 as u32);
+        set("bc2", ((cpu.b2 as u32) << 8) | cpu.c2 as u32);
+        set("de2", ((cpu.d2 as u32) << 8) | cpu.e2 as u32);
+        set("hl2", ((cpu.h2 as u32) << 8) | cpu.l2 as u32);
+        set("i",   cpu.i as u32);
+        set("r",   cpu.r as u32);
+        set("iff1",   cpu.iff1 as u32);
+        set("iff2",   cpu.iff2 as u32);
+        set("im",     cpu.im as u32);
+        set("halted", cpu.halted as u32);
+
+        obj.into()
+    }
+
+    /// Pause CPU execution. The RAF loop still calls render_frame so the display stays live.
+    pub fn pause(&mut self) {
+        self.spectrum.paused = true;
+    }
+
+    /// Resume CPU execution.
+    pub fn resume(&mut self) {
+        self.spectrum.paused = false;
+    }
+
+    /// True when the emulator is paused (breakpoint hit or explicit pause).
+    pub fn is_paused(&self) -> bool {
+        self.spectrum.paused
+    }
+
+    /// Execute exactly one CPU instruction and re-render.
+    /// Clears the paused flag first so the instruction runs even after a breakpoint.
+    /// Re-pauses if the new PC lands on another breakpoint.
+    pub fn step_single(&mut self) -> Result<(), JsValue> {
+        self.spectrum.paused = false;
+        self.spectrum.step_instruction();
+        // Re-pause if the new PC is a breakpoint.
+        if self.spectrum.breakpoints.contains(&self.spectrum.cpu.pc) {
+            self.spectrum.paused = true;
+        }
+        self.render_frame()
+    }
+
+    /// Set a breakpoint at `addr`. Execution pauses before the instruction at that address.
+    pub fn set_breakpoint(&mut self, addr: u16) {
+        self.spectrum.breakpoints.insert(addr);
+    }
+
+    /// Remove a single breakpoint.
+    pub fn clear_breakpoint(&mut self, addr: u16) {
+        self.spectrum.breakpoints.remove(&addr);
+    }
+
+    /// Remove all breakpoints.
+    pub fn clear_all_breakpoints(&mut self) {
+        self.spectrum.breakpoints.clear();
+    }
+
+    // ------------------------------------------------------------------
+    // M7: Watchpoint API
+    // ------------------------------------------------------------------
+
+    /// Watch a memory address for writes. Hits are recorded until drained.
+    pub fn add_watchpoint(&mut self, addr: u16) {
+        self.spectrum.memory.add_watchpoint(addr);
+    }
+
+    /// Stop watching an address.
+    pub fn remove_watchpoint(&mut self, addr: u16) {
+        self.spectrum.memory.remove_watchpoint(addr);
+    }
+
+    /// Remove all watchpoints.
+    pub fn clear_watchpoints(&mut self) {
+        self.spectrum.memory.clear_watchpoints();
+    }
+
+    /// Return accumulated watchpoint hits as a flat JS array: [addr, old, new, addr, old, new, ...].
+    pub fn get_watchpoint_hits(&mut self) -> Vec<u32> {
+        self.spectrum.memory
+            .drain_watchpoint_hits()
+            .iter()
+            .flat_map(|&(addr, old, new)| [addr as u32, old as u32, new as u32])
+            .collect()
     }
 }
 

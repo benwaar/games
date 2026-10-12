@@ -35,7 +35,45 @@ make serve           # start dev server at localhost:8080
 
 ## Status
 
-See [PLAN.md](PLAN.md) for milestones. Currently at M1.
+See [PLAN.md](PLAN.md) for milestones. M1–M7 complete.
+
+## Debug API (M7)
+
+The emulator exposes a `window.zxw` object in the browser. All functions are
+available from the Chrome DevTools console or via the CDP client.
+
+```javascript
+zxw.regs()                   // Z80 registers as a JS object
+zxw.mem(addr, len)           // Uint8Array — default len 16
+zxw.poke(addr, b1, b2, ...)  // write bytes at addr
+zxw.bp(addr)                 // set breakpoint
+zxw.clearBp(addr)            // clear one breakpoint
+zxw.clearAllBp()             // clear all breakpoints
+zxw.pause()                  // pause emulation
+zxw.resume()                 // resume emulation
+zxw.step()                   // single-step one instruction
+zxw.screen()                 // read screen memory (0x4000, 6912 bytes)
+zxw.watch(addr)              // add write watchpoint
+zxw.unwatch(addr)            // remove write watchpoint
+zxw.hits()                   // drain watchpoint hits → [addr, old, new, ...]
+```
+
+### CDP command-line client
+
+```bash
+pip install websockets
+# Start Chrome with remote debugging:
+#   Google Chrome --remote-debugging-port=9222
+python3 tools/cdp_debug.py
+
+# Commands at the zxw> prompt:
+# regs              — print all Z80 registers
+# mem 0x4000 32     — hex dump 32 bytes
+# poke 0x5C78 9     — write one byte
+# bp 0x61E5         — set breakpoint
+# step              — single-step
+# watch 0x4000 64   — poll memory every 0.5 s (Ctrl-C to stop)
+```
 
 ## Connections
 

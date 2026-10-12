@@ -90,6 +90,33 @@
     let rafId = null;
 
     // -----------------------------------------------------------------------
+    // M7: Debug API — window.zxw.* for Chrome DevTools / CDP access
+    // -----------------------------------------------------------------------
+    window.zxw = {
+      // Read len bytes from addr (default 16)
+      mem:        (addr, len)     => emulator.read_memory(addr, len || 16),
+      // Write bytes to addr: poke(0x4000, 0x38, 0x00, ...)
+      poke:       (addr, ...bytes)=> emulator.write_memory(addr, new Uint8Array(bytes)),
+      // All Z80 registers as a plain object
+      regs:       ()              => emulator.read_registers(),
+      // Breakpoints
+      bp:         (addr)          => emulator.set_breakpoint(addr),
+      clearBp:    (addr)          => emulator.clear_breakpoint(addr),
+      clearAllBp: ()              => emulator.clear_all_breakpoints(),
+      // Execution control
+      pause:      ()              => emulator.pause(),
+      resume:     ()              => emulator.resume(),
+      step:       ()              => emulator.step_single(),
+      // Convenience: full screen memory (0x4000, 6912 bytes)
+      screen:     ()              => emulator.read_memory(0x4000, 6912),
+      // Watchpoints
+      watch:      (addr)          => emulator.add_watchpoint(addr),
+      unwatch:    (addr)          => emulator.remove_watchpoint(addr),
+      hits:       ()              => emulator.get_watchpoint_hits(),
+    };
+    console.log('[zxw] debug API available at window.zxw — try zxw.regs(), zxw.mem(0x4000, 16)');
+
+    // -----------------------------------------------------------------------
     // M3: .scr loading (kept for backwards compat)
     // -----------------------------------------------------------------------
     document.getElementById('scr-input').addEventListener('change', async (e) => {
@@ -162,7 +189,13 @@
 
       function frame() {
         try {
-          emulator.step_frame();
+          // When paused (breakpoint hit or zxw.pause()) skip the CPU step but
+          // still render so the display stays live while the debugger inspects.
+          if (emulator.is_paused()) {
+            emulator.render_frame();
+          } else {
+            emulator.step_frame();
+          }
         } catch (err) {
           status.textContent = `Error: ${err}`;
           return;

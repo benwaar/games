@@ -1,38 +1,35 @@
-# Next: M7 — CDP debug integration
+# Next: incant M9 — multi-step decomposition + dependency graph
 
-Wire up a WASM debug API so Python CDP scripts can inspect and control the running emulator.
+zxw M7 (CDP debug integration) is complete. All milestones M1–M7 done.
 
-## What to do
+The next parallel track is incant M9.
 
-1. **WASM debug API** — expose via `window.zxw.*`:
-   - `read_memory(addr, len)` → Uint8Array
-   - `write_memory(addr, data)` — poke bytes
-   - `read_registers()` → JS object with all Z80 registers
-   - `set_breakpoint(addr)` / `clear_breakpoint(addr)`
-   - `step()` — single-step one instruction
-   - `pause()` / `resume()` — halt/resume the frame loop
+---
 
-2. **`tools/cdp_debug.py`** — WebSocket CDP client with commands:
-   - `regs` — print Z80 register state
-   - `mem <addr> <len>` — hex dump
-   - `poke <addr> <val>` — write single byte
-   - `bp <addr>` — set breakpoint, print when hit
-   - `screen` — dump screen memory (0x4000, 6912 bytes) to file
-   - `watch <addr>` — print value each frame
+## incant M9 — multi-step decomposition + dependency graph
 
-3. **Memory-write watchpoint** (optional) — callback when address range is written.
+Extend the incant code-gen pipeline to handle specifications that decompose into
+multiple interdependent WAT/WASM modules or Z80 assembly routines.
 
-4. **Test** — while Jetpac runs:
-   - `python3 tools/cdp_debug.py regs` prints Z80 state
-   - `mem 0x4000 32` dumps screen bytes
-   - `poke <lives_addr> 9` changes displayed lives
+### What to do
 
-## Gate
+1. **Dependency graph** — represent a multi-step spec as a DAG of sub-tasks
+   (each node is a spec → output pair; edges are data dependencies).
+2. **Topological execution** — resolve build order, execute leaf nodes first,
+   pass outputs forward as context to dependent nodes.
+3. **LLM decomposition** — given a high-level spec, ask the local LLM to break
+   it into a dependency graph (JSON) then execute the graph.
+4. **Test** — a two-module WASM program: module A exports a helper,
+   module B imports it; the pipeline produces both binaries in dependency order.
 
-Jetpac running → `python3 tools/cdp_debug.py` connects → `regs` prints Z80 state → `mem 0x4000 32` dumps screen bytes → `poke <lives_addr> 9` changes displayed lives.
+### Gate
+
+Given a spec like "write a Z80 routine that calls two sub-routines in sequence",
+incant M9 decomposes it, generates each routine independently, links them, and
+produces a working binary.
 
 ## Reference
 
-- CDP WebSocket endpoint: `ws://localhost:9222/json` (Chrome with `--remote-debugging-port=9222`)
-- wasm-bindgen exports: annotate functions with `#[wasm_bindgen]` and expose on `window.zxw`
-- Breakpoint hook: check `cpu.pc` against a set at start of each `step()` call
+- incant project: `incant/`
+- Previous milestone: M8 — TAP read/write + disassembly pipeline
+- Incant PLAN.md: `incant/PLAN.md`

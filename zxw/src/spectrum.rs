@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::cpu::{Cpu, FLAG_C};
 use crate::io::IoHandler;
 use crate::keyboard::Keyboard;
@@ -10,7 +12,7 @@ const TSTATES_PER_FRAME: u32 = 69_888;
 
 /// ROM address of the LD_BYTES routine entry point.
 /// When the CPU's PC reaches this address we short-circuit tape loading.
-const LD_BYTES: u16 = 0x0556;
+pub const LD_BYTES: u16 = 0x0556;
 
 /// All peripheral I/O for the Spectrum: keyboard matrix + border colour.
 /// Implements `IoHandler` so the CPU can read port 0xFE (keyboard) and
@@ -60,6 +62,10 @@ pub struct Spectrum {
     frame_count: u32,
     /// Pending TAP blocks — popped one at a time by the instant-load trap.
     pub tap_queue: Vec<TapBlock>,
+    /// When true, step_frame is a no-op (CPU is paused at a breakpoint or by request).
+    pub paused: bool,
+    /// Breakpoint addresses — if PC matches, step_frame pauses before executing.
+    pub breakpoints: HashSet<u16>,
 }
 
 impl Spectrum {
@@ -70,6 +76,8 @@ impl Spectrum {
             io: SpectrumIo::new(),
             frame_count: 0,
             tap_queue: Vec::new(),
+            paused: false,
+            breakpoints: HashSet::new(),
         }
     }
 
@@ -79,11 +87,21 @@ impl Spectrum {
     }
 
     /// Execute CPU instructions for approximately one 50Hz frame (~69 888 T-states).
+    /// No-ops when paused. Pauses automatically if a breakpoint is hit.
     pub fn step_frame(&mut self) {
+        if self.paused {
+            return;
+        }
         let mut elapsed = 0u32;
         while elapsed < TSTATES_PER_FRAME {
             if self.cpu.halted {
                 break;
+            }
+
+            // Breakpoint check: pause before executing the instruction at PC.
+            if self.breakpoints.contains(&self.cpu.pc) {
+                self.paused = true;
+                return;
             }
 
             // Instant-load trap: intercept LD_BYTES before executing the ROM routine.
@@ -103,6 +121,19 @@ impl Spectrum {
         }
 
         self.frame_count = self.frame_count.wrapping_add(1);
+    }
+
+    /// Execute exactly one CPU instruction (respects TAP trap, ignores breakpoints).
+    /// Used by the debug step API — the caller checks for new breakpoints after calling.
+    pub fn step_instruction(&mut self) {
+        if self.cpu.halted {
+            return;
+        }
+        if self.cpu.pc == LD_BYTES && !self.tap_queue.is_empty() {
+            self.instant_load();
+        } else {
+            self.cpu.step(&mut self.memory, &mut self.io);
+        }
     }
 
     /// Short-circuit the ROM's LD_BYTES tape-loading loop.

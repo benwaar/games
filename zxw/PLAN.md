@@ -83,11 +83,11 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M7 — CDP debug integration
 
-- [ ] WASM debug API: `read_memory`, `write_memory`, `read_registers`, `set_breakpoint`, `step`, `pause`, `resume`
-- [ ] Register as `window.zxw.*` functions for CDP access
-- [ ] `tools/cdp_debug.py`: connect via WebSocket, commands: `mem`, `regs`, `poke`, `bp`, `screen`, `watch`
-- [ ] Memory-write watchpoint mechanism (optional callback on address range write)
-- [ ] Test: while Jetpac runs, read score address, poke lives, dump screen
+- [x] WASM debug API: `read_memory`, `write_memory`, `read_registers`, `set_breakpoint`, `step`, `pause`, `resume`
+- [x] Register as `window.zxw.*` functions for CDP access
+- [x] `tools/cdp_debug.py`: connect via WebSocket, commands: `mem`, `regs`, `poke`, `bp`, `screen`, `watch`
+- [x] Memory-write watchpoint mechanism (optional callback on address range write)
+- [x] Test: while Jetpac runs, read score address, poke lives, dump screen
 
 **Gate:** Jetpac running → `python3 tools/cdp_debug.py` connects → `regs` prints Z80 state → `mem 0x4000 32` dumps screen bytes → `poke <lives_addr> 9` changes displayed lives.
 
