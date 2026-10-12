@@ -95,6 +95,13 @@ impl Spectrum {
             // Split borrow: cpu, memory, and io are separate fields — Rust allows this.
             elapsed += self.cpu.step(&mut self.memory, &mut self.io) as u32;
         }
+
+        // IM 1 interrupt: fire once per frame after ~69888 T-states if interrupts enabled.
+        // The ROM's handler at 0x0038 updates the frame counter and scans the keyboard.
+        if self.cpu.iff1 && self.cpu.im == 1 {
+            self.cpu.fire_interrupt(&mut self.memory);
+        }
+
         self.frame_count = self.frame_count.wrapping_add(1);
     }
 

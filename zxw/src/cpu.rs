@@ -571,16 +571,10 @@ impl Cpu {
             // ED prefix
             0xED => self.step_ed(mem, io),
 
-            // DD prefix (IX) — not implemented yet; panic with context
-            0xDD => {
-                let next = mem.read_byte(self.pc);
-                panic!("DD prefix (IX) not implemented: PC={:#06x} next={:#04x}", self.pc - 1, next);
-            }
-            // FD prefix (IY) — not implemented yet; panic with context
-            0xFD => {
-                let next = mem.read_byte(self.pc);
-                panic!("FD prefix (IY) not implemented: PC={:#06x} next={:#04x}", self.pc - 1, next);
-            }
+            // DD prefix (IX indexed instructions)
+            0xDD => self.step_dd(mem, io),
+            // FD prefix (IY indexed instructions)
+            0xFD => self.step_fd(mem, io),
         }
     }
 
@@ -1047,6 +1041,319 @@ impl Cpu {
         self.set_flag(FLAG_H, false);
         self.set_flag(FLAG_PV, parity(r));
         self.set_flag(FLAG_C, set_c);
+    }
+
+    // --- Static helper: compute (IX+d) / (IY+d) effective address ---
+
+    fn indexed_addr(base: u16, d: u8) -> u16 {
+        base.wrapping_add((d as i8) as u16)
+    }
+
+    // --- ADD IX,rr and ADD IY,rr ---
+
+    fn add_ix(&mut self, val: u16) {
+        let ix = self.ix;
+        let result = ix as u32 + val as u32;
+        self.set_flag(FLAG_C, result > 0xFFFF);
+        self.set_flag(FLAG_H, (ix & 0x0FFF) + (val & 0x0FFF) > 0x0FFF);
+        self.set_flag(FLAG_N, false);
+        self.ix = result as u16;
+    }
+
+    fn add_iy(&mut self, val: u16) {
+        let iy = self.iy;
+        let result = iy as u32 + val as u32;
+        self.set_flag(FLAG_C, result > 0xFFFF);
+        self.set_flag(FLAG_H, (iy & 0x0FFF) + (val & 0x0FFF) > 0x0FFF);
+        self.set_flag(FLAG_N, false);
+        self.iy = result as u16;
+    }
+
+    // --- DD prefix: IX indexed instructions ---
+
+    fn step_dd(&mut self, mem: &mut Memory, io: &mut impl IoHandler) -> u32 {
+        let op = self.fetch_byte(mem);
+        self.r = self.r.wrapping_add(1);
+
+        match op {
+            // LD IX, nn
+            0x21 => { let nn = self.fetch_word(mem); self.ix = nn; 14 }
+            // LD (nn), IX
+            0x22 => { let nn = self.fetch_word(mem); mem.write_word(nn, self.ix); 20 }
+            // LD IX, (nn)
+            0x2A => { let nn = self.fetch_word(mem); self.ix = mem.read_word(nn); 20 }
+            // INC IX
+            0x23 => { self.ix = self.ix.wrapping_add(1); 10 }
+            // DEC IX
+            0x2B => { self.ix = self.ix.wrapping_sub(1); 10 }
+            // ADD IX, rr
+            0x09 => { let v = self.bc(); self.add_ix(v); 15 }
+            0x19 => { let v = self.de(); self.add_ix(v); 15 }
+            0x29 => { let v = self.ix; self.add_ix(v); 15 }
+            0x39 => { let v = self.sp; self.add_ix(v); 15 }
+            // PUSH IX / POP IX
+            0xE5 => { let v = self.ix; self.push16(mem, v); 15 }
+            0xE1 => { let v = self.pop16(mem); self.ix = v; 14 }
+            // JP (IX) — actually JP IX (load PC from IX)
+            0xE9 => { self.pc = self.ix; 8 }
+            // EX (SP), IX
+            0xE3 => {
+                let top = mem.read_word(self.sp);
+                let ix = self.ix;
+                mem.write_word(self.sp, ix);
+                self.ix = top;
+                23
+            }
+            // LD SP, IX
+            0xF9 => { self.sp = self.ix; 10 }
+            // INC (IX+d)
+            0x34 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.ix, d);
+                let v = mem.read_byte(addr);
+                let r = self.inc8(v);
+                mem.write_byte(addr, r);
+                23
+            }
+            // DEC (IX+d)
+            0x35 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.ix, d);
+                let v = mem.read_byte(addr);
+                let r = self.dec8(v);
+                mem.write_byte(addr, r);
+                23
+            }
+            // LD (IX+d), n
+            0x36 => {
+                let d = self.fetch_byte(mem);
+                let n = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.ix, d);
+                mem.write_byte(addr, n);
+                19
+            }
+            // LD r, (IX+d) — B C D E H L _ A (not 0x76 which would be HALT)
+            0x46 | 0x4E | 0x56 | 0x5E | 0x66 | 0x6E | 0x7E => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.ix, d);
+                let val = mem.read_byte(addr);
+                let dst = (op >> 3) & 0x07;
+                self.reg_write(dst, val, mem);
+                19
+            }
+            // LD (IX+d), r — B C D E H L _ A (not 0x76)
+            0x70 | 0x71 | 0x72 | 0x73 | 0x74 | 0x75 | 0x77 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.ix, d);
+                let src = op & 0x07;
+                let val = self.reg_read(src, mem);
+                mem.write_byte(addr, val);
+                19
+            }
+            // ADD A, (IX+d)
+            0x86 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.add_a(v, false); 19 }
+            // ADC A, (IX+d)
+            0x8E => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.add_a(v, true); 19 }
+            // SUB (IX+d)
+            0x96 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.sub_a(v, false); 19 }
+            // SBC A, (IX+d)
+            0x9E => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.sub_a(v, true); 19 }
+            // AND (IX+d)
+            0xA6 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.and_a(v); 19 }
+            // XOR (IX+d)
+            0xAE => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.xor_a(v); 19 }
+            // OR (IX+d)
+            0xB6 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.or_a(v); 19 }
+            // CP (IX+d)
+            0xBE => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.ix, d); let v = mem.read_byte(a); self.cp_a(v); 19 }
+            // DDCB double prefix: displacement then opcode
+            0xCB => { let base = self.ix; self.step_xycb(mem, base) }
+            // Unknown DD sub-opcode: Z80 treats DD as NOP — back up and re-execute
+            _ => {
+                self.pc = self.pc.wrapping_sub(1);
+                self.step(mem, io)
+            }
+        }
+    }
+
+    // --- FD prefix: IY indexed instructions ---
+
+    fn step_fd(&mut self, mem: &mut Memory, io: &mut impl IoHandler) -> u32 {
+        let op = self.fetch_byte(mem);
+        self.r = self.r.wrapping_add(1);
+
+        match op {
+            // LD IY, nn
+            0x21 => { let nn = self.fetch_word(mem); self.iy = nn; 14 }
+            // LD (nn), IY
+            0x22 => { let nn = self.fetch_word(mem); mem.write_word(nn, self.iy); 20 }
+            // LD IY, (nn)
+            0x2A => { let nn = self.fetch_word(mem); self.iy = mem.read_word(nn); 20 }
+            // INC IY
+            0x23 => { self.iy = self.iy.wrapping_add(1); 10 }
+            // DEC IY
+            0x2B => { self.iy = self.iy.wrapping_sub(1); 10 }
+            // ADD IY, rr
+            0x09 => { let v = self.bc(); self.add_iy(v); 15 }
+            0x19 => { let v = self.de(); self.add_iy(v); 15 }
+            0x29 => { let v = self.iy; self.add_iy(v); 15 }
+            0x39 => { let v = self.sp; self.add_iy(v); 15 }
+            // PUSH IY / POP IY
+            0xE5 => { let v = self.iy; self.push16(mem, v); 15 }
+            0xE1 => { let v = self.pop16(mem); self.iy = v; 14 }
+            // JP (IY)
+            0xE9 => { self.pc = self.iy; 8 }
+            // EX (SP), IY
+            0xE3 => {
+                let top = mem.read_word(self.sp);
+                let iy = self.iy;
+                mem.write_word(self.sp, iy);
+                self.iy = top;
+                23
+            }
+            // LD SP, IY
+            0xF9 => { self.sp = self.iy; 10 }
+            // INC (IY+d)
+            0x34 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.iy, d);
+                let v = mem.read_byte(addr);
+                let r = self.inc8(v);
+                mem.write_byte(addr, r);
+                23
+            }
+            // DEC (IY+d)
+            0x35 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.iy, d);
+                let v = mem.read_byte(addr);
+                let r = self.dec8(v);
+                mem.write_byte(addr, r);
+                23
+            }
+            // LD (IY+d), n
+            0x36 => {
+                let d = self.fetch_byte(mem);
+                let n = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.iy, d);
+                mem.write_byte(addr, n);
+                19
+            }
+            // LD r, (IY+d)
+            0x46 | 0x4E | 0x56 | 0x5E | 0x66 | 0x6E | 0x7E => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.iy, d);
+                let val = mem.read_byte(addr);
+                let dst = (op >> 3) & 0x07;
+                self.reg_write(dst, val, mem);
+                19
+            }
+            // LD (IY+d), r
+            0x70 | 0x71 | 0x72 | 0x73 | 0x74 | 0x75 | 0x77 => {
+                let d = self.fetch_byte(mem);
+                let addr = Self::indexed_addr(self.iy, d);
+                let src = op & 0x07;
+                let val = self.reg_read(src, mem);
+                mem.write_byte(addr, val);
+                19
+            }
+            // ADD A, (IY+d)
+            0x86 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.add_a(v, false); 19 }
+            // ADC A, (IY+d)
+            0x8E => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.add_a(v, true); 19 }
+            // SUB (IY+d)
+            0x96 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.sub_a(v, false); 19 }
+            // SBC A, (IY+d)
+            0x9E => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.sub_a(v, true); 19 }
+            // AND (IY+d)
+            0xA6 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.and_a(v); 19 }
+            // XOR (IY+d)
+            0xAE => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.xor_a(v); 19 }
+            // OR (IY+d)
+            0xB6 => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.or_a(v); 19 }
+            // CP (IY+d)
+            0xBE => { let d = self.fetch_byte(mem); let a = Self::indexed_addr(self.iy, d); let v = mem.read_byte(a); self.cp_a(v); 19 }
+            // FDCB double prefix
+            0xCB => { let base = self.iy; self.step_xycb(mem, base) }
+            // Unknown FD sub-opcode: treat FD as NOP, re-execute
+            _ => {
+                self.pc = self.pc.wrapping_sub(1);
+                self.step(mem, io)
+            }
+        }
+    }
+
+    // --- DDCB / FDCB: BIT/SET/RES/(rotates) on (IX+d) or (IY+d) ---
+    // Byte order: prefix CB d oo  (displacement d comes before opcode oo)
+
+    fn step_xycb(&mut self, mem: &mut Memory, base: u16) -> u32 {
+        let d = self.fetch_byte(mem);
+        let op = self.fetch_byte(mem);
+        let addr = Self::indexed_addr(base, d);
+        let val = mem.read_byte(addr);
+        let bit = (op >> 3) & 0x07;
+
+        match op >> 6 {
+            // Rotates / shifts (0x00..0x3F) — result written back; also written to r if r!=6
+            0 => {
+                let result = match bit {
+                    0 => self.rlc(val),
+                    1 => self.rrc(val),
+                    2 => self.rl(val),
+                    3 => self.rr(val),
+                    4 => self.sla(val),
+                    5 => self.sra(val),
+                    6 => self.sll(val),
+                    7 => self.srl(val),
+                    _ => unreachable!(),
+                };
+                mem.write_byte(addr, result);
+                // Also copy to register encoded in lower 3 bits (if not (HL)=6)
+                let r = op & 0x07;
+                if r != 6 { self.reg_write(r, result, mem); }
+                23
+            }
+            // BIT b, (IX+d) — 0x40..0x7F
+            1 => {
+                let mask = 1u8 << bit;
+                self.set_flag(FLAG_Z, val & mask == 0);
+                self.set_flag(FLAG_H, true);
+                self.set_flag(FLAG_N, false);
+                self.set_flag(FLAG_S, bit == 7 && val & mask != 0);
+                20
+            }
+            // RES b, (IX+d) — 0x80..0xBF
+            2 => {
+                let result = val & !(1u8 << bit);
+                mem.write_byte(addr, result);
+                let r = op & 0x07;
+                if r != 6 { self.reg_write(r, result, mem); }
+                23
+            }
+            // SET b, (IX+d) — 0xC0..0xFF
+            3 => {
+                let result = val | (1u8 << bit);
+                mem.write_byte(addr, result);
+                let r = op & 0x07;
+                if r != 6 { self.reg_write(r, result, mem); }
+                23
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Fire a maskable interrupt (IM 1): push PC, jump to 0x0038, disable interrupts.
+    /// Called by the frame loop after ~69888 T-states when IFF1 is true.
+    /// Returns the T-state cost (13).
+    pub fn fire_interrupt(&mut self, mem: &mut Memory) -> u32 {
+        if !self.iff1 { return 0; }
+        self.halted = false; // wake from HALT if needed
+        self.iff1 = false;
+        self.iff2 = false;
+        let pc = self.pc;
+        self.push16(mem, pc);
+        self.pc = 0x0038;
+        13
     }
 }
 

@@ -70,11 +70,11 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ## M6 — Jetpac bring-up (incremental opcode completion)
 
-- [ ] Load `jetpac_fixed.tap` (rebuilt 3-block version) → screen at 0x4000, code at 0x6000, entry 0x61E5
-- [ ] Unimplemented-opcode trap: log PC, opcode, context, halt — feedback loop for incremental implementation
-- [ ] Implement IX/IY prefix opcodes (DD/FD): indexed addressing `(IX+d)` / `(IY+d)`
-- [ ] Fill remaining ED-prefix gaps as Jetpac hits them
-- [ ] IM 1 interrupt handling: RST 0x38 every ~69888 T-states
+- [x] Load `jetpac_fixed.tap` (rebuilt 3-block version) → screen at 0x4000, code at 0x6000, entry 0x61E5
+- [x] Unimplemented-opcode trap: log PC, opcode, context, halt — feedback loop for incremental implementation
+- [x] Implement IX/IY prefix opcodes (DD/FD): indexed addressing `(IX+d)` / `(IY+d)`
+- [x] Fill remaining ED-prefix gaps as Jetpac hits them
+- [x] IM 1 interrupt handling: RST 0x38 every ~69888 T-states
 - [ ] Verify: title screen → key press → gameplay → movement + fire works
 
 **Gate:** Jetpac loads, title screen renders, game starts on keypress, player moves and collects rockets. ~50fps, no visible slowdown.
