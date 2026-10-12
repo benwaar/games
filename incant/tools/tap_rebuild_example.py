@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild Jetpac TAP with a simple single-stage loader.
+"""Rebuild a 1983 Spectrum game TAP with a simple single-stage loader.
 
 Extracts the screen and game code from the original multi-stage TAP
 and repackages with a straightforward BASIC loader that doesn't rely
@@ -125,21 +125,21 @@ def make_basic_loader(clear_addr: int, code_name: str, usr_addr: int) -> bytes:
     return b"".join(lines)
 
 
-def rebuild_jetpac(src_path: str, dst_path: str) -> None:
+def rebuild_example(src_path: str, dst_path: str) -> None:
     blocks = extract_blocks(src_path)
 
-    # Original structure:
-    # blocks[0] = header: Program "Jetpac1"
+    # Original structure (6-block multi-stage loader):
+    # blocks[0] = header: Program (BASIC loader)
     # blocks[1] = data: BASIC loader
-    # blocks[2] = header: Code "Jetpac2" at 0x4000 (screen)
+    # blocks[2] = header: Code at 0x4000 (screen)
     # blocks[3] = data: 6912 bytes screen
-    # blocks[4] = header: Code "Jetpac3" at 0x6000 (game)
+    # blocks[4] = header: Code at 0x6000 (game)
     # blocks[5] = data: 8192 bytes game code
-    # blocks[6] = header: Code "Jetpac4" at 0x5B80 (relocation stub)
+    # blocks[6] = header: Code at 0x5B80 (relocation stub)
     # blocks[7] = data: 15 bytes stub
-    # blocks[8] = header: Code "Jetpac5" at 0x5CB0 (JP HL)
+    # blocks[8] = header: Code at 0x5CB0 (JP HL)
     # blocks[9] = data: 1 byte
-    # blocks[10] = header: Code "Jetpac6" at 0x5C78 (ERR_SP patch)
+    # blocks[10] = header: Code at 0x5C78 (ERR_SP patch)
     # blocks[11] = data: 2 bytes
 
     screen_data = blocks[3]["payload"]  # 6912 bytes
@@ -203,10 +203,10 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
     #   0x61EA: RET NZ           ; bail out if not set
     #
     # This was confirmed by running the loader in a Z80 emulator
-    # (tap_run_jetpac.py). Without the patch, the game loads the screen
+    # (tap_run_example.py). Without the patch, the game loads the screen
     # but never starts — the RET NZ fires immediately.
     #
-    # Ultimate Play The Game were clever: the "copy protection" doubles as a
+    # The developer was clever: the "copy protection" doubles as a
     # startup integrity gate. Stripping it doesn't just remove protection —
     # it prevents the game from running at all.
     #
@@ -225,15 +225,15 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
         usr_addr=entry_point,
     )
     # Program header: type=0, autostart line=10
-    output += make_header_block(0, "Jetpac", len(basic), 10, len(basic))
+    output += make_header_block(0, "Game", len(basic), 10, len(basic))
     output += make_data_block(basic)
 
     # 2. Screen (LOAD ""SCREEN$ expects a Code block at 0x4000, 6912 bytes)
-    output += make_header_block(3, "Jetpac", len(screen_data), 0x4000, 0x8000)
+    output += make_header_block(3, "Game", len(screen_data), 0x4000, 0x8000)
     output += make_data_block(screen_data)
 
     # 3. Game code (pre-relocated)
-    output += make_header_block(3, "Jetpac", len(relocated), load_addr, 0x8000)
+    output += make_header_block(3, "Game", len(relocated), load_addr, 0x8000)
     output += make_data_block(bytes(relocated))
 
     Path(dst_path).write_bytes(bytes(output))
@@ -243,6 +243,6 @@ def rebuild_jetpac(src_path: str, dst_path: str) -> None:
 
 
 if __name__ == "__main__":
-    src = sys.argv[1] if len(sys.argv) > 1 else "tools/jetpac.tap"
-    dst = sys.argv[2] if len(sys.argv) > 2 else "tools/jetpac_fixed.tap"
-    rebuild_jetpac(src, dst)
+    src = sys.argv[1] if len(sys.argv) > 1 else "tools/example.tap"
+    dst = sys.argv[2] if len(sys.argv) > 2 else "tools/example_fixed.tap"
+    rebuild_example(src, dst)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Jetpac loader in a Z80 emulator.
+"""Run a 1983 Spectrum game loader in a Z80 emulator.
 
 Loads all blocks from the original TAP at their correct addresses,
 simulates the multi-stage loader, and traces execution to find
@@ -7,7 +7,7 @@ why the game doesn't start.
 
 Three modes:
   1. original  — load all blocks including sysvar patches, run stub
-  2. relocated — load pre-relocated code (as tap_rebuild_jetpac does), jump to 0x61E5
+  2. relocated — load pre-relocated code (as tap_rebuild_example does), jump to 0x61E5
   3. probe     — try multiple entry points and report which one gets furthest
 """
 
@@ -85,9 +85,9 @@ def run_original(tap_path: str) -> None:
 
     # Show what's at key addresses
     print("\n--- Memory state after loading ---")
-    dump_region(machine, 0x5B80, 15, "Relocation stub (Jetpac4)")
-    dump_region(machine, 0x5C78, 2, "ERR_SP patch (Jetpac6)")
-    dump_region(machine, 0x5CB0, 1, "JP (HL) byte (Jetpac5)")
+    dump_region(machine, 0x5B80, 15, "Relocation stub (block 4)")
+    dump_region(machine, 0x5C78, 2, "ERR_SP patch (block 6)")
+    dump_region(machine, 0x5CB0, 1, "JP (HL) byte (block 5)")
     dump_region(machine, 0x6000, 32, "Game code first 32 bytes (before relocation)")
 
     # Run the relocation stub at 0x5B80
@@ -222,7 +222,7 @@ def run_probe(tap_path: str) -> None:
 
 
 if __name__ == "__main__":
-    tap_path = sys.argv[2] if len(sys.argv) > 2 else "data/raw/tap/jetpac.tap"
+    tap_path = sys.argv[2] if len(sys.argv) > 2 else "data/raw/tap/example.tap"
     mode = sys.argv[1] if len(sys.argv) > 1 else "original"
 
     if not Path(tap_path).exists():
@@ -237,5 +237,5 @@ if __name__ == "__main__":
         run_probe(tap_path)
     else:
         print(f"Unknown mode: {mode}")
-        print("Usage: tap_run_jetpac.py [original|relocated|probe] [path/to/jetpac.tap]")
+        print("Usage: tap_run_example.py [original|relocated|probe] [path/to/example.tap]")
         sys.exit(1)

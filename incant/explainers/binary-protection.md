@@ -20,7 +20,7 @@ LD HL, game_restart
 LD (5C78h), HL
 ```
 
-Jetpac does this via `LOAD CODE` — it loads a 2-byte block directly to 0x5C78 (ERR_SP), redirecting the error handler. Press BREAK and you don't get BASIC — you get a crash or a restart.
+A 1983 Spectrum game does this via `LOAD CODE` — it loads a 2-byte block directly to 0x5C78 (ERR_SP), redirecting the error handler. Press BREAK and you don't get BASIC — you get a crash or a restart.
 
 **Why it works:** the ROM trusts the values in system variables unconditionally. There's no validation. If you put a new address in ERR_SP, that's where execution goes on error.
 
@@ -42,7 +42,7 @@ The stub itself is tiny and disposable. The real code only exists in its correct
 
 ### Multi-stage loading
 
-Instead of one LOAD, the program loads in multiple stages. Each stage may decrypt or relocate the next. Jetpac loads 5 blocks in a FOR loop — screen, code, stub, and two system variable patches.
+Instead of one LOAD, the program loads in multiple stages. Each stage may decrypt or relocate the next. A typical 1983 game loads 5 blocks in a FOR loop — screen, code, stub, and two system variable patches.
 
 **Why it works:** simple tape copiers that duplicate block-by-block may miss the ordering or the system variable writes. The whole sequence has to execute correctly.
 
@@ -73,9 +73,9 @@ The Spectrum ROM has a standard tape loader. Games replaced it entirely — cust
 
 **Why it works:** the protection is in the format, not the data. You need the custom loader to decode the tape.
 
-## Worked example: Jetpac's protection-as-integrity-gate
+## Worked example: protection-as-integrity-gate (1983 Spectrum game)
 
-Jetpac (Ultimate Play The Game, 1983) uses all of the above techniques in a single loader. We rebuilt the TAP file, stripped the "copy protection" patches, and the game refused to start. Running the loader in a Z80 emulator (`tap_run_jetpac.py`) confirmed why.
+A 1983 Spectrum game uses all of the above techniques in a single loader. We rebuilt the TAP file, stripped the "copy protection" patches, and the game refused to start. Running the loader in a Z80 emulator (`tap_run_example.py`) confirmed why.
 
 ### What the loader does
 
@@ -99,9 +99,9 @@ The very first instructions at the entry point:
 0x61EA: RET NZ           ; no → bail out to BASIC
 ```
 
-Without the ERR_SP patch at 0x5C78, the comparison fails and `RET NZ` fires. The loading screen is already in screen memory, so you see the Jetpac artwork — but the game never starts.
+Without the ERR_SP patch at 0x5C78, the comparison fails and `RET NZ` fires. The loading screen is already in screen memory, so you see the artwork — but the game never starts.
 
-This is the key insight: **the protection IS the initialisation**. Ultimate didn't add a separate check that could be NOPed out. They wove it into the startup path. Stripping the "copy protection" doesn't unlock the game — it breaks it.
+This is the key insight: **the protection IS the initialisation**. The developer didn't add a separate check that could be NOPed out. They wove it into the startup path. Stripping the "copy protection" doesn't unlock the game — it breaks it.
 
 ### Emulator confirmation
 
@@ -111,7 +111,7 @@ This is the key insight: **the protection IS the initialisation**. Ultimate didn
 | 0x61E5 | Yes | Gets past check, runs until it hits Spectrum ROM calls at 0x25D6 |
 | 0x6000 | Either | Wrong entry point — skips init, hangs |
 
-The fix: include the sysvar patches as POKE values in the BASIC loader. The rebuilt TAP (`jetpac_fixed.tap`) does this. The game also requires Spectrum ROM routines (0x25D6 is in ROM space), so a full emulator (FUSE) is needed for complete execution.
+The fix: include the sysvar patches as POKE values in the BASIC loader. The rebuilt TAP (`example_fixed.tap`) does this. The game also requires Spectrum ROM routines (0x25D6 is in ROM space), so a full emulator (FUSE) is needed for complete execution.
 
 ### The modern parallel
 
@@ -273,7 +273,7 @@ Chrome DevTools Protocol gives an attacker (or a security tester) the same capab
 On the Spectrum, POK files patch memory addresses after a game loads:
 
 ```
-; Jetpac infinite lives
+; 1983 Spectrum game — infinite lives
 POKE 24698, 0
 ```
 
@@ -331,7 +331,7 @@ mem[256] = 1;  // licensed = true
 wasmInstance.exports.show_dashboard();
 ```
 
-This is the Jetpac ERR_SP patch in modern form. The game checks a memory address; the attacker writes the expected value. Forty years apart, same vulnerability.
+This is the 1983 ERR_SP patch in modern form. The game checks a memory address; the attacker writes the expected value. Forty years apart, same vulnerability.
 
 ### Defence implications
 
@@ -385,7 +385,7 @@ if (sharedMem[AUTH_OFFSET] === VALID_TOKEN) {
 }
 ```
 
-This is the multi-threaded version of the Jetpac ERR_SP patch. Instead of poking a value after load, you poke it between check and use.
+This is the multi-threaded version of the 1983 ERR_SP patch. Instead of poking a value after load, you poke it between check and use.
 
 **Heap spray**
 
@@ -465,7 +465,7 @@ The proposals above don't affect all WASM usage equally. The risk depends on *wh
 
 ### The Spectrum parallel
 
-Jetpac put its copy protection (ERR_SP patch, system variable writes) in the same flat 64K as the game itself. Crackers didn't need to break the protection scheme — they just needed to find the address and write a byte. The protection lived in the same address space as the thing it was protecting.
+A 1983 Spectrum game put its copy protection (ERR_SP patch, system variable writes) in the same flat 64K as the game itself. Crackers didn't need to break the protection scheme — they just needed to find the address and write a byte. The protection lived in the same address space as the thing it was protecting.
 
 Flutter web (and any "compile the whole app to WASM" framework) does the same thing. Auth logic, route guards, feature gates, and business rules all compile into the same linear memory as the UI rendering. An attacker with CDP doesn't need to break the auth scheme — they just need to find the right offset and write a byte. Or call an exported function. Or intercept the module at load time.
 
@@ -619,7 +619,7 @@ The Spectrum is a perfect lab for this because the entire system fits in your he
 
 The M9 PoC (`incant/protect.py`) makes this concrete: the same XOR checksum technique, implemented on both Z80 and WASM, with working bypass code for each. The Z80 version is stronger (verifies actual code bytes); the WASM version is weaker (can only verify data segments). Both are trivially broken by someone who understands the algorithm.
 
-The defensive insight: understanding the attack surface is the only way to protect against it. Every technique in this document — from Jetpac's ERR_SP hijack to CDP memory patching — exists because the defender didn't account for what the attacker could reach. The Spectrum teaches this in miniature. WASM and CDP are the same lesson at production scale.
+The defensive insight: understanding the attack surface is the only way to protect against it. Every technique in this document — from the 1983 ERR_SP hijack to CDP memory patching — exists because the defender didn't account for what the attacker could reach. The Spectrum teaches this in miniature. WASM and CDP are the same lesson at production scale.
 
 ---
 
@@ -652,7 +652,7 @@ And critically, from the M9 PoC: **a WASM module cannot verify its own code**. T
 
 ### Why this matters more than it sounds
 
-On the Z80, the same limitation doesn't exist. The Spectrum's flat memory model means code can read and checksum itself. Jetpac's ERR_SP check works because the entry point can inspect system variables that the loader wrote. The entire address space is one flat surface — code, data, system state, all readable.
+On the Z80, the same limitation doesn't exist. The Spectrum's flat memory model means code can read and checksum itself. The 1983 game's ERR_SP check works because the entry point can inspect system variables that the loader wrote. The entire address space is one flat surface — code, data, system state, all readable.
 
 WASM deliberately broke that. Code and data are separated. The module can hash its data segments, but an attacker who patches the *verification function itself* (changing `i32.ne` to `i32.eq`, or `unreachable` to `nop`) bypasses the check entirely — and the module has no way to detect it.
 
@@ -690,6 +690,6 @@ These are all cases where the host doesn't trust the module. That's what WASM wa
 
 ### The Spectrum lesson
 
-In 1983, every Spectrum game's copy protection was broken. Not because the protections were bad — some were genuinely clever (Jetpac's integrity gate, Speedlock's custom loaders). They were broken because the attacker had the hardware. You can't protect software from someone who controls the machine it runs on.
+In 1983, every Spectrum game's copy protection was broken. Not because the protections were bad — some were genuinely clever (integrity gates, Speedlock's custom loaders). They were broken because the attacker had the hardware. You can't protect software from someone who controls the machine it runs on.
 
 WASM is the same machine. The browser is the user's hardware. CDP is the modern POKE. The sandbox protects the host — and only the host. Forty years later, the fundamental constraint hasn't changed: **if the user has the binary, they have the binary**.

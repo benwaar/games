@@ -1,39 +1,39 @@
-# Jetpac TAP Analysis — Multi-Stage Loader and System Variable Patching
+# TAP Analysis — Multi-Stage Loader and System Variable Patching
 
-Analysis of the Jetpac TAP file structure. The file is structurally valid (all checksums pass) but uses a tricky multi-stage loader that some emulators struggle with.
+Analysis of a 1983 Spectrum game TAP file structure. The file is structurally valid (all checksums pass) but uses a tricky multi-stage loader that some emulators struggle with.
 
 ## Block inventory
 
-| Block | Name | Type | Address | Size | What it is |
-|-------|------|------|---------|------|-----------|
-| 1–2 | Jetpac1 | Program | — | 94 | BASIC autostart loader |
-| 3–4 | Jetpac2 | Code | 0x4000 | 6912 | Loading screen (fills screen memory) |
-| 5–6 | Jetpac3 | Code | 0x6000 | 8192 | Main game code |
-| 7–8 | Jetpac4 | Code | 0x5B80 | 15 | Relocation stub — copies code then jumps to entry |
-| 9–10 | Jetpac5 | Code | 0x5CB0 | 1 | Single `JP (HL)` instruction (0xE9) |
-| 11–12 | Jetpac6 | Code | 0x5C78 | 2 | ERR_SP system variable patch (0x5A83) |
+| Block | Type | Address | Size | What it is |
+|-------|------|---------|------|-----------|
+| 1–2 | Program | — | 94 | BASIC autostart loader |
+| 3–4 | Code | 0x4000 | 6912 | Loading screen (fills screen memory) |
+| 5–6 | Code | 0x6000 | 8192 | Main game code |
+| 7–8 | Code | 0x5B80 | 15 | Relocation stub — copies code then jumps to entry |
+| 9–10 | Code | 0x5CB0 | 1 | Single `JP (HL)` instruction (0xE9) |
+| 11–12 | Code | 0x5C78 | 2 | ERR_SP system variable patch (0x5A83) |
 
 ## Memory map
 
 ```
-0x4000–0x5AFF  Screen memory (6912 bytes)        ← Jetpac2
-0x5B00–0x5CB5  System variables                   ← Jetpac4, 5, 6 load HERE
-  0x5B80       Relocation stub (15 bytes)         ← Jetpac4
-  0x5C78       ERR_SP system variable             ← Jetpac6 patches this
-  0x5CB0       Inside system area                 ← Jetpac5
+0x4000–0x5AFF  Screen memory (6912 bytes)        ← block 2
+0x5B00–0x5CB5  System variables                   ← blocks 4, 5, 6 load HERE
+  0x5B80       Relocation stub (15 bytes)         ← block 4
+  0x5C78       ERR_SP system variable             ← block 6 patches this
+  0x5CB0       Inside system area                 ← block 5
 0x5CB6+        BASIC program / workspace
-0x6000–0x7FFF  Main game code (8192 bytes)        ← Jetpac3
+0x6000–0x7FFF  Main game code (8192 bytes)        ← block 3
 ```
 
 ## BASIC loader (line 1, autostart)
 
 ```basic
-1 CLEAR VAL "24575": ... : FOR q=2 TO 6: LOAD "Jetpac"+STR$(q) CODE: NEXT q: PRINT USR 24576
+1 CLEAR VAL "24575": ... : FOR q=2 TO 6: LOAD "" CODE: NEXT q: PRINT USR 24576
 ```
 
 Loads 5 blocks in a loop, then jumps to 0x6000.
 
-## The relocation stub (Jetpac4 at 0x5B80)
+## The relocation stub (block 4 at 0x5B80)
 
 ```z80
 5B80  LD HL, 6004h    ; source = game code + 4 byte offset
@@ -52,7 +52,7 @@ The loader writes directly into the Spectrum's system variable area using `LOAD 
 - **0x5C78 (ERR_SP)** — the error stack pointer. Patching this redirects where the Spectrum goes on error, part of the copy protection / anti-break scheme.
 - **0x5CB0** — `JP (HL)` instruction. If something tries to break into the program, this redirects execution.
 
-This is a common Ultimate Play The Game technique from 1983. By patching ERR_SP and planting jump instructions in the system area, pressing BREAK doesn't return to BASIC — it either crashes or jumps back into the game.
+This is a common 1983 Spectrum technique. By patching ERR_SP and planting jump instructions in the system area, pressing BREAK doesn't return to BASIC — it either crashes or jumps back into the game.
 
 ## Why it fails in some emulators
 
@@ -60,7 +60,7 @@ The TAP format is valid. The problem is the loader's runtime behaviour:
 
 1. **Multi-block LOAD loop** — the BASIC `FOR q=2 TO 6: LOAD ... CODE: NEXT q` does 5 sequential tape loads. Some emulators with "fast load" or "instant load" don't handle multiple LOADs from a single BASIC line correctly.
 2. **System variable writes** — loading code into 0x5B80/0x5C78/0x5CB0 modifies the Spectrum's own housekeeping. Emulators that protect or shadow the system area may reject these loads silently.
-3. **Block naming** — the loader expects blocks named "Jetpac2" through "Jetpac6" in order. If the emulator's tape simulation doesn't match names correctly, it may skip blocks or load them out of order.
+3. **Block naming** — the loader expects blocks in order. If the emulator's tape simulation doesn't match names correctly, it may skip blocks or load them out of order.
 
 ## Fix approaches
 
@@ -79,9 +79,9 @@ This is a real-world example of binary-level protection techniques:
 
 The Z80 Spectrum is a useful testbed because the protection techniques are simple enough to fully understand, but the concepts map directly to modern binary security.
 
-## Rebuild: jetpac_fixed.tap
+## Rebuild: example_fixed.tap
 
-The original TAP is structurally valid but the multi-stage loader fails in some emulators. We rebuilt it with `tap_rebuild_jetpac.py`.
+The original TAP is structurally valid but the multi-stage loader fails in some emulators. We rebuilt it with `tap_rebuild_example.py`.
 
 ### What the rebuild does
 

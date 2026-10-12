@@ -40,7 +40,7 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 - [x] Expose to JS via wasm-bindgen, blit with `ImageData` + `putImageData`
 - [x] `requestAnimationFrame` loop: step CPU ~69888 T-states per frame, then render
 
-**Gate:** Load the Jetpac loading screen (6912 bytes extracted from TAP) directly into memory at 0x4000 → loading screen renders correctly with proper colours.
+**Gate:** Load a 1983 Spectrum game's loading screen (6912 bytes extracted from TAP) directly into memory at 0x4000 → loading screen renders correctly with proper colours.
 
 ---
 
@@ -68,16 +68,16 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ---
 
-## M6 — Jetpac bring-up (incremental opcode completion)
+## M6 — 1983 game bring-up (incremental opcode completion)
 
-- [x] Load `jetpac_fixed.tap` (rebuilt 3-block version) → screen at 0x4000, code at 0x6000, entry 0x61E5
+- [x] Load `example_fixed.tap` (rebuilt 3-block version) → screen at 0x4000, code at 0x6000, entry 0x61E5
 - [x] Unimplemented-opcode trap: log PC, opcode, context, halt — feedback loop for incremental implementation
 - [x] Implement IX/IY prefix opcodes (DD/FD): indexed addressing `(IX+d)` / `(IY+d)`
-- [x] Fill remaining ED-prefix gaps as Jetpac hits them
+- [x] Fill remaining ED-prefix gaps as the game hits them
 - [x] IM 1 interrupt handling: RST 0x38 every ~69888 T-states
 - [ ] Verify: title screen → key press → gameplay → movement + fire works
 
-**Gate:** Jetpac loads, title screen renders, game starts on keypress, player moves and collects rockets. ~50fps, no visible slowdown.
+**Gate:** Game loads, title screen renders, game starts on keypress, player moves. ~50fps, no visible slowdown.
 
 ---
 
@@ -87,19 +87,19 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 - [x] Register as `window.zxw.*` functions for CDP access
 - [x] `tools/cdp_debug.py`: connect via WebSocket, commands: `mem`, `regs`, `poke`, `bp`, `screen`, `watch`
 - [x] Memory-write watchpoint mechanism (optional callback on address range write)
-- [x] Test: while Jetpac runs, read score address, poke lives, dump screen
+- [x] Test: while game runs, read score address, poke lives, dump screen
 
-**Gate:** Jetpac running → `python3 tools/cdp_debug.py` connects → `regs` prints Z80 state → `mem 0x4000 32` dumps screen bytes → `poke <lives_addr> 9` changes displayed lives.
+**Gate:** Game running → `python3 tools/cdp_debug.py` connects → `regs` prints Z80 state → `mem 0x4000 32` dumps screen bytes → `poke <lives_addr> 9` changes displayed lives.
 
 ---
 
 ## Explicitly deferred
 
-- **Sound** — beeper + AY not needed for Jetpac gameplay
+- **Sound** — beeper + AY not needed for basic gameplay
 - **TZX** — TAP is sufficient
 - **Cycle-exact timing** — contended memory, floating bus
 - **Snapshot formats** — .z80 / .sna can come later
-- **Full opcode set** — only what Jetpac executes (grows organically in M6)
+- **Full opcode set** — only what the test game executes (grows organically in M6)
 
 ---
 
