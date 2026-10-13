@@ -82,3 +82,11 @@ python3 tools/cdp_debug.py
 | [incant](../incant/) | TAP tools, Z80 knowledge, binary-protection research |
 | [void-duel](../void-duel/) | Layer 3 emulator host, P2P input via debug API |
 | [acoustic-odyssey](../acoustic-odyssey/) | Rust + WASM build patterns |
+
+## Demos
+
+| Demo | Description | Doc |
+|------|-------------|-----|
+| [demo-protection.html](www/demo-protection.html) | Z80 self-verifying binary — run, tamper, HALT | [docs/binary-protection-demos.md](docs/binary-protection-demos.md) |
+| [demo-wasm-protect.html](www/demo-wasm-protect.html) | WASM self-verifying module — run, tamper, unreachable | [docs/binary-protection-demos.md](docs/binary-protection-demos.md) |
+
