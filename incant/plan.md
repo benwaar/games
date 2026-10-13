@@ -1,73 +1,8 @@
 # WASM Inference Engine — plan
 
-**Goal:** Add `--target wasm` to `incant infer`, demo KAOS 9 TinyNN in WASM, then build a real-time browser pipeline for Signal Hunt.
+**Goal:** Real-time Signal Hunt CNN inference in the browser.
 
----
-
-## Prerequisites
-
-All already available:
-- `wat2wasm` v1.0.42 (brew `wabt`)
-- Node v20 (for running WASM in tests via `wasm-interp` or a simple JS harness)
-- Python 3.12 + venv
-- `tiny_nn_f32.json` — TinyNN weights (80→32→95 f32)
-- `models/onnx/tiny_nn.onnx` — KAOS 9 TinyNN ONNX
-
-New for Phase 3 only:
-- `onnxruntime-web` (npm) — runs Signal Hunt ONNX in the browser via WASM
-
----
-
-## Phase 1 — WAT inference engine (`incant infer --target wasm`)
-
-Mirrors `z80_infer.py` but emits f32 WAT instead of INT8 Z80 assembly.
-No LLM — deterministic code generator from weights.
-
-### M1 — `wasm_infer.py`: f32 WAT matmul kernel ✅
-- [x] Create `incant/wasm_infer.py`
-- [x] `generate_wat_inference(parsed) -> str` — reads parsed ONNX layers (same dict as z80_infer),
-  emits a self-contained WAT module with:
-  - Linear memory (exported), data segments for weights/biases
-  - `$fc` helper: generic dense layer loop (`out[j] = bias[j] + Σ in[i] * w[j*in_dim + i]`)
-  - `$relu_buf`, `$argmax` helpers
-  - Exported `infer` function: runs layer 1 (+ ReLU) then layer 2, returns argmax as i32
-- **Gate:** ✅ `wat2wasm` assembles without error; 100/100 agreement on test_model.onnx
-
-Memory layout is dynamic (computed from layer dims). For TinyNN (80→32→95) fits in 1 WASM page.
-
-### M2 — accuracy test for WAT infer ✅
-- [x] `tests/test_wasm_infer.py` — 100 random inputs, checks argmax agreement ≥ 95% vs onnxruntime
-- [x] `tests/wasm_infer_runner.js` — Node.js shim: writes f32 bytes to WASM memory, calls infer()
-- **Gate:** ✅ `pytest tests/test_wasm_infer.py` passes; 100% agreement on test_model.onnx
-
-### M3 — `--target wasm` in CLI ✅
-- [x] Add `wasm` to `choices` in `infer_parser` in `__main__.py`
-- [x] Wire `cmd_infer` to call `generate_wat_inference` when `args.target == "wasm"`,
-  assemble with `wat_target.assemble()`, write `.wat` + `.wasm` to output dir
-- **Gate:** ✅ `python -m incant infer tests/test_model.onnx --target wasm` exits 0 and writes `output/test_model.wasm`
-
-### M4 — update docs + tick ✅
-- [x] Added `incant/explainers/wasm-inference.md` — covers pipeline, memory layout, WAT data segments, $fc/$relu_buf/$argmax, testing strategy, Z80 vs WASM comparison
-- [x] Commit + push
-
----
-
-## Phase 2 — KAOS 9 TinyNN WASM demo
-
-A standalone HTML page. No framework — plain JS + the compiled WASM.
-
-### M5 — demo page skeleton ✅
-- [x] Created `utala/kaos9/demo/wasm_demo.html`
-- [x] Loads `tiny_nn.wasm` via `WebAssembly.instantiateStreaming`
-- [x] Writes 80 floats into WASM linear memory at offset 0
-- [x] Calls exported `infer`, reads result (i32 argmax)
-- [x] Displays result in the page; ↺ randomise button for new inputs
-- **Gate:** ✅ Opens in browser, shows Action 85 (of 95) for seeded input
-
-### M6 — timing benchmark ✅
-- [x] 10 000 inferences in a loop with `performance.now()` (100-call JIT warm-up first)
-- [x] Displays µs/inference and total ms; table comparing WASM vs Z80 estimate
-- **Gate:** ✅ 6.50 µs/inference (well under 100µs); Z80 ~6 s estimate shown for contrast
+Phase 1 (M1–M4, WAT generator) and Phase 2 (M5–M6, KAOS 9 demo) are complete — see [LOG.md](LOG.md).
 
 ---
 
@@ -99,12 +34,6 @@ Use `onnxruntime-web` which runs ONNX inference via WASM under the hood.
 - **Gate:** End-to-end < 20ms (target); shows correct chord label for a test tone
 
 ---
-
-## Session targets
-
-- **Phase 1 (M1–M4):** Core WAT generator — self-contained, testable, no browser needed
-- **Phase 2 (M5–M6):** Demo page — 2–3 hours; browser only
-- **Phase 3 (M7–M9):** Full pipeline — most complex; can be a separate session
 
 ## Follow-up (post-plan)
 

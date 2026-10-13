@@ -1,3 +1,11 @@
+
+## Next: Binary protection demos
+
+- Load self-verifying binary on zxw, tamper via debug API, show the crash
+- POK file support — classic Spectrum cheat format, ties into the debug API
+- Same demo on WASM — tamper data segment, show detection + bypass
+- 
+
 # Next: incant M9 — multi-step decomposition + dependency graph
 
 zxw M7 (CDP debug integration) is complete. All milestones M1–M7 done.

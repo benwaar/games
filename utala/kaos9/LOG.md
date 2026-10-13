@@ -132,7 +132,7 @@ Retrained against corrected Heuristic. **56% peak vs Heuristic at game 32,500.**
 
 | Student | Params | vs Heuristic | vs Random |
 |---------|--------|-------------|----------|
-| TinyNN (80→32→95) | 5,727 | **48%** | 50% |
+| TinyNN (80→32→95) | 5,727 | **54%** | 50% |
 | Linear (80→95) | 7,695 | 46.5% | — |
 | DQN v3 (teacher, deployed) | 39,135 | 49% | — |
 
@@ -162,7 +162,7 @@ All numbers are Variant A, corrected harness (200 games balanced P1/P2).
 | TD-Linear NoInt | 43.8% avg / 47.5% best | 27 | <0.25ms | Candidate |
 | DQN v2 peak | 53% | 39,135 | 0.054ms | No |
 | DQN v3 peak | 56% | 39,135 | 0.054ms | No (teacher) |
-| **TinyNN v2** | **48%** | **5,727** | **0.045ms** | **✅ Shipped** |
+| **TinyNN v2** | **54%** | **5,727** | **0.045ms** | **✅ Shipped** |
 | Linear distilled | 46.5% | 7,695 | 0.040ms | Candidate |
 
 ---
