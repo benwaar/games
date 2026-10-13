@@ -47,6 +47,7 @@
 
 <div class="controls">
   <button id="btn-start">Start mic</button>
+  <button id="btn-a4">Test A4</button>
   <button id="btn-stop" disabled>Stop</button>
   <span id="status" class="status">Idle</span>
 </div>
@@ -132,6 +133,7 @@ async function startMic() {
 
   // Resample to 22050 if needed using OfflineAudioContext.
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE_TARGET });
+  console.log('AudioContext sample rate:', audioCtx.sampleRate);
   const source = audioCtx.createMediaStreamSource(stream);
 
   // ScriptProcessor for collecting samples (deprecated but still supported).
@@ -157,6 +159,16 @@ async function startMic() {
 
     // Wait until we have enough frames before inferring.
     if (bufferPos < Math.ceil(BUFFER_SAMPLES / FRAME_SAMPLES)) return;
+
+    // Energy gate — skip inference on silence.
+    let rms = 0;
+    for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
+    rms = Math.sqrt(rms / buffer.length);
+    if (rms < 0.01) {
+      document.getElementById('note').textContent = '—';
+      document.getElementById('conf').textContent = 'listening…';
+      return;
+    }
 
     const t0 = performance.now();
 
@@ -200,7 +212,7 @@ async function startMic() {
         barEls[i].inner.style.width = pct + '%';
         barEls[i].pct.textContent = pct + '%';
       });
-    }).catch(err => setStatus('Inference error: ' + err.message, 'error'));
+    }).catch(err => { console.error('Inference error:', err); setStatus('Inference error: ' + err.message, 'error'); });
   };
 }
 
@@ -209,8 +221,64 @@ function stopMic() {
   if (processor) { processor.disconnect(); processor = null; }
   if (audioCtx) { audioCtx.close(); audioCtx = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  session = null;
+  bufferPos = 0;
+  buffer.fill(0);
   setStatus('Stopped');
 }
+
+document.getElementById('btn-a4').addEventListener('click', async () => {
+  try {
+    if (!session) await loadModel();
+    setStatus('Running A4 test…', 'live');
+    const resp = await fetch('./iowa_mf_A4.wav');
+    const arrayBuf = await resp.arrayBuffer();
+    const tmpCtx = new OfflineAudioContext(1, SR * 3, SR);
+    const decoded = await tmpCtx.decodeAudioData(arrayBuf);
+    // Render mono at 22050 Hz.
+    const src = tmpCtx.createBufferSource();
+    src.buffer = decoded;
+    src.connect(tmpCtx.destination);
+    src.start();
+    const rendered = await tmpCtx.startRendering();
+    const pcm = rendered.getChannelData(0);
+
+    // Play it through speakers.
+    const playCtx = new AudioContext();
+    const playBuf = playCtx.createBuffer(1, pcm.length, SR);
+    playBuf.copyToChannel(pcm, 0);
+    const playSrc = playCtx.createBufferSource();
+    playSrc.buffer = playBuf;
+    playSrc.connect(playCtx.destination);
+    playSrc.start();
+
+    // Take BUFFER_SAMPLES from the middle (skip silence at start).
+    const onset = Math.floor(SR * 0.1);
+    const chunk = pcm.slice(onset, onset + BUFFER_SAMPLES);
+    const mel = extractFeatures(chunk, filterbank);
+    const tensor = new ort.Tensor('float32', new Float32Array(mel), [1, 1, N_MELS, TARGET_FRAMES]);
+    const t0 = performance.now();
+    const result = await session.run({ mel_spectrogram: tensor });
+    const totalMs = (performance.now() - t0).toFixed(1);
+    const logits = Array.from(result.logits.data);
+    const probs = softmax(logits);
+    const topIdx = probs.indexOf(Math.max(...probs));
+    const topProb = probs[topIdx];
+    const conf = (topProb * 100).toFixed(1);
+    document.getElementById('note').textContent = LABELS[topIdx];
+    document.getElementById('conf').textContent = conf + '% confidence';
+    document.getElementById('timing').textContent = totalMs;
+    probs.forEach((p, i) => {
+      const pct = (p * 100).toFixed(0);
+      barEls[i].inner.style.width = pct + '%';
+      barEls[i].pct.textContent = pct + '%';
+    });
+    setStatus('Test done', 'live');
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+    console.error(e);
+  }
+});
 
 document.getElementById('btn-start').addEventListener('click', async () => {
   document.getElementById('btn-start').disabled = true;

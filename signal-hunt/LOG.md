@@ -221,7 +221,46 @@ Threshold 0.5 optimal. Precision high across all notes (0.80–1.00) — misses 
 
 ---
 
-## Phase 5 — Weight Initialisation Experiments (planned)
+## Phase 5 — Browser Inference Pipeline
+
+**Goal:** Run the trained Signal Hunt model entirely in the browser — no server, no Python, no GPU.
+
+### What was built
+
+| File | What it does |
+|------|-------------|
+| `scripts/export_onnx.py` | Export `best_model.pt` → `output/chord_cnn.onnx` (opset 18, inlined weights) |
+| `demo/browser_pipeline.js` | Mel spectrogram pipeline in JS: Radix-2 FFT, Slaney Mel filterbank, top_db=80 clamping, per-spectrogram normalise |
+| `demo/index.html` | Live demo UI: mic capture via ScriptProcessor, onnxruntime-web WASM inference, timing display, Test A4 button |
+| `demo/spectrogram_check.html` | Validates JS pipeline against Python reference values (3/3 pass) |
+| `demo/chord_cnn.onnx` | Self-contained model for browser (122 KB, no external .data file) |
+| `tests/test_export_onnx.py` | 4 tests: input/output shape, softmax sums to 1, deterministic output |
+| `explainers/browser-pipeline.md` | Pipeline design decisions, ONNX export gotchas, Slaney scale notes |
+
+### Results
+
+- JS Mel spectrogram matches Python/librosa to < 0.01% error
+- End-to-end inference: **~11–13 ms warm** (target < 20 ms) ✅
+- `iowa_mf_A4.wav` → predicts **A4 at 71.2% confidence** ✅
+- Model works on piano/instrument input; pure sine waves classify poorly (not in training distribution)
+
+### Key lessons
+
+- `onnxruntime-web` WASM cannot read `.onnx.data` external files — must re-save with `save_as_external_data=False` after `torch.onnx.export`
+- librosa's `power_to_db` clamps to `top_db=80` by default — missing this in JS produces completely wrong pre-normalisation distributions
+- Slaney Mel filterbank uses Hz-space interpolation and `2/bandwidth` normalisation — bin-space implementations give values ~2.7× too small
+- `Float64` for FFT avoids sidelobe underflow for small signals
+- macOS built-in mic won't hear built-in speakers — test live pipeline with external audio source or use the Test A4 button for model validation
+
+### Milestone summary
+
+| Milestone | Gate | Result |
+|-----------|------|--------|
+| M11 — ONNX export | Input `[B,1,128,65]`, output `[B,12]` | ✅ |
+| M12 — JS Mel spectrogram | Matches Python within 10% | ✅ < 0.01% |
+| M13 — End-to-end demo | < 20 ms, correct note on test tone | ✅ 12 ms, A4 → A4 |
+
+
 
 **Goal:** Understand how weight initialisation affects training dynamics. Use the existing SoundClassifier as the test bed — same architecture, same data, different init strategies.
 
