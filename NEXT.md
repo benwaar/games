@@ -6,9 +6,10 @@ Remaining work before starting Acoustic Odyssey or Artefact.
 
 ## 1. zxw — POK file support (Demo 2)
 
-Simulate the real-hardware pattern: load a protected TAP, apply cheat pokes from a `.pok`
-file to bypass the protection — the same thing players did with Multiface hardware or by
-typing POKEs from magazine listings.
+Study the real-hardware pattern for educational purposes: load a protected TAP, apply pokes
+from a `.pok` file to bypass the startup check — the same technique players used with
+Multiface hardware or POKE listings from magazines. The goal is understanding how binary
+protection works, not breaking anything current.
 
 Test subject: `j83.tap`. Three sysvar pokes bypass the startup protection check — without
 them the game bails immediately. The `.pok` file is the bypass.
