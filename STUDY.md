@@ -31,11 +31,11 @@ The focus is applied: every skill maps to a class of real problem. The business 
 |---------|-----------|--------|
 | [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | ✅ Complete |
 | [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, transfer learning, multi-label chords, CNN-RNN progressions, browser inference | ✅ Complete (Ph 1–5) |
-| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, TFLite, INT8 quantisation, sub-100ms on-device inference; Rust mobile runtime (native audio, rustfft, ort, UniFFI); model serving (REST API) | Planned |
-| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | Planned |
-| [Artefact: dig](artefact/dig/) | ROM audio scanner — find hidden music/SFX in ROM dumps using autoencoders and anomaly detection | Planned |
-| [Artefact: bloom](artefact/bloom/) | 8-bit audio restoration — super-resolution, denoising, lo-fi → hi-fi using U-Net and STFT loss | Planned |
-| [Artefact: dream](artefact/dream/) | Generative chip-tunes — fine-tune sequence model on VGM/SID data, constraint-aware generation | Planned |
+| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, TFLite, INT8 quantisation, sub-100ms on-device inference; Rust mobile runtime (native audio, rustfft, ort, UniFFI); model serving (REST API) | ▶ Ready |
+| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | ▶ Ready |
+| [Artefact: dig](artefact/dig/) | ROM audio scanner — find hidden music/SFX in ROM dumps using autoencoders and anomaly detection | ▶ Ready |
+| [Artefact: bloom](artefact/bloom/) | 8-bit audio restoration — super-resolution, denoising, lo-fi → hi-fi using U-Net and STFT loss | ▶ Ready |
+| [Artefact: dream](artefact/dream/) | Generative chip-tunes — fine-tune sequence model on VGM/SID data, constraint-aware generation | ▶ Ready |
 | [Artefact: drift](artefact/drift/) | Diffusion chip-tune generator — DDPM/DDIM on spectrograms, head-to-head with dream | Planned (after dream) |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
 | [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | ✅ M1–M7 complete |
