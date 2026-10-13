@@ -19,16 +19,16 @@ Uses the Signal Hunt transfer model (12-class piano note classifier) as the infe
 
 ### M11 — Export Signal Hunt CNN to ONNX
 
-- [ ] Verify no `.onnx` file exists in `signal-hunt/output/`
-- [ ] Write `signal-hunt/scripts/export_onnx.py`:
+- [x] Verify no `.onnx` file exists in `signal-hunt/output/`
+- [x] Write `signal-hunt/scripts/export_onnx.py`:
   - Load `output/transfer/finetune/best_model.pt`
   - Reconstruct `SoundClassifier(num_classes=12)` and load state dict
   - `model.eval()` — required before export (affects BatchNorm, Dropout)
   - Create dummy input `torch.randn(1, 1, 128, 65)`
   - `torch.onnx.export(...)` → `signal-hunt/output/chord_cnn.onnx`
-  - Export with `opset_version=17`, `dynamic_axes` on batch dim
-- [ ] Gate: `python -c "import onnxruntime as ort; s = ort.InferenceSession('output/chord_cnn.onnx'); print(s.get_inputs()[0].shape)"` — must print `[None, 1, 128, 65]`
-- [ ] Write test `signal-hunt/tests/test_export_onnx.py` — loads ONNX, runs dummy input, checks output shape `(1, 12)` and softmax sums to ~1
+  - Export with `opset_version=18`, `dynamic_axes` on batch dim
+- [x] Gate: input shape `[batch_size, 1, 128, 65]`, output `[batch_size, 12]` ✅
+- [x] Write test `signal-hunt/tests/test_export_onnx.py` — 4 tests pass ✅
 
 **Commit:** `feat(signal-hunt): export CNN to ONNX (M11)`
 
