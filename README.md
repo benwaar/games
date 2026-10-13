@@ -9,7 +9,7 @@ These projects are about:
 - seeing how different approaches *think*
 - learning by stripping problems down to their **nuts and bolts**
 
-Everything is text-based, inspectable, and hackable.
+Everything is inspectable and hackable.
 
 ---
 

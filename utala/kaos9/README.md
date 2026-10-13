@@ -2,7 +2,7 @@
 
 A study of learning algorithms through a 2-player tactical card game. Five phases of progressively sophisticated agents — from random baseline to a neural network that beats expert heuristics and ships to mobile.
 
-Everything is text-based, inspectable, and hackable.
+Everything is inspectable and hackable.
 
 ![Human gameplay screenshot](screenshot.png)
 
