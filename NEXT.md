@@ -4,13 +4,27 @@ Remaining work before starting Acoustic Odyssey or Artefact.
 
 ---
 
-## 1. zxw — Binary protection demos (Demo 2 only remaining)
+## 1. zxw — POK file support (Demo 2)
 
-Demo 1 (Z80 self-verifying binary) and Demo 3 (WASM tamper detection) are done — see `zxw/LOG.md`.
+Simulate the real-hardware pattern: load a protected TAP, apply cheat pokes from a `.pok`
+file to bypass the protection — the same thing players did with Multiface hardware or by
+typing POKEs from magazine listings.
 
-**Demo 2 — POK file support (deferred)**
-1. ZX Spectrum POK file format (classic cheat/poke format)
-2. Implement POK parser in zxw — read POK files and apply pokes on load
-3. Tie into the CDP debug API as an alternative poke source
-4. Test with a known game POK
+Test subject: `j83.tap`. Three sysvar pokes bypass the startup protection check — without
+them the game bails immediately. The `.pok` file is the bypass.
 
+**M8** — Create `zxw/www/tap/j83.pok` with the three sysvar pokes  
+Gate: file parses correctly and addresses match `j83-analysis.md`
+
+**M9** — POK parser in Rust — parse `.pok` text format, return `Vec<(addr, value)>`  
+Gate: unit tests pass for valid and malformed files
+
+**M10** — Apply pokes on TAP load — after tape load, check for matching `.pok` by name,  
+apply pokes before entry point runs  
+Gate: `j83.tap` loads and reaches the loading screen with `j83.pok` applied
+
+**M11** — CDP path — apply same pokes via the existing CDP debug API  
+Gate: same result as M10, triggered via CDP
+
+**M12** — Demo page — shows TAP name, POK file applied, addresses and values listed  
+Gate: non-technical person can see what was poked and why
