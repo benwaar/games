@@ -24,6 +24,20 @@ if ! command -v wasm-pack &>/dev/null; then
 fi
 echo "  [OK] wasm-pack"
 
+# wasm-opt (Binaryen — post-build WASM optimiser, 92% size reduction)
+if ! command -v wasm-opt &>/dev/null; then
+  echo "  [INSTALLING] binaryen (wasm-opt)"
+  brew install binaryen
+fi
+echo "  [OK] wasm-opt ($(wasm-opt --version 2>&1 | head -1))"
+
+# cargo-audit (supply chain vulnerability scanner)
+if ! command -v cargo-audit &>/dev/null; then
+  echo "  [INSTALLING] cargo-audit"
+  cargo install cargo-audit
+fi
+echo "  [OK] cargo-audit"
+
 # python3 (for dev server)
 if ! command -v python3 &>/dev/null; then
   echo "  [MISSING] python3 — needed for 'make serve'"
