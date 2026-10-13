@@ -46,9 +46,9 @@ Memory layout is dynamic (computed from layer dims). For TinyNN (80→32→95) f
   assemble with `wat_target.assemble()`, write `.wat` + `.wasm` to output dir
 - **Gate:** ✅ `python -m incant infer tests/test_model.onnx --target wasm` exits 0 and writes `output/test_model.wasm`
 
-### M4 — update docs + tick
-- [ ] Add WAT inference explainer to `incant/explainers/` (or update existing)
-- [ ] Commit + push
+### M4 — update docs + tick ✅
+- [x] Added `incant/explainers/wasm-inference.md` — covers pipeline, memory layout, WAT data segments, $fc/$relu_buf/$argmax, testing strategy, Z80 vs WASM comparison
+- [x] Commit + push
 
 ---
 
