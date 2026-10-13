@@ -29,7 +29,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 
 | Project | What it is | Status |
 |---------|-----------|--------|
-| [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | 🔷 Ph 1–5 done, redistil TinyNN from v3 pending |
+| [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | ✅ Complete |
 | [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, training loop, inference, 100% test accuracy | ✅ Ph 1–3 complete |
 | [Signal Hunt Ph 4](signal-hunt/) | Chord detection (multi-label) + chord progressions (CNN-RNN) | In progress — M18 next |
 | [Signal Hunt Ph 5](signal-hunt/) | Weight initialisation experiments — Xavier vs He vs default, convergence analysis | Planned |

@@ -67,7 +67,7 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | Project | Status |
 |---------|--------|
 | [Signal Hunt](signal-hunt/) | Phase 4 complete — all milestones done |
-| [Utala: KAOS 9](utala/kaos9/) | Phase 1–5 complete |
+| [Utala: KAOS 9](utala/kaos9/) | ✅ Complete |
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned (depends on Signal Hunt Phase 4) |
 | [Artefact](artefact/) | Planned |
 | [Void Duel](void-duel/) | Planned |
