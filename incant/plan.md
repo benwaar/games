@@ -40,12 +40,11 @@ Memory layout is dynamic (computed from layer dims). For TinyNN (80→32→95) f
 - [x] `tests/wasm_infer_runner.js` — Node.js shim: writes f32 bytes to WASM memory, calls infer()
 - **Gate:** ✅ `pytest tests/test_wasm_infer.py` passes; 100% agreement on test_model.onnx
 
-### M3 — `--target wasm` in CLI
-- [ ] Add `wasm` to `choices` in `infer_parser` in `__main__.py`
-- [ ] Wire `cmd_infer` to call `generate_wat_inference` when `args.target == "wasm"`,
+### M3 — `--target wasm` in CLI ✅
+- [x] Add `wasm` to `choices` in `infer_parser` in `__main__.py`
+- [x] Wire `cmd_infer` to call `generate_wat_inference` when `args.target == "wasm"`,
   assemble with `wat_target.assemble()`, write `.wat` + `.wasm` to output dir
-- **Gate:** `python -m incant infer utala/kaos9/models/onnx/tiny_nn.onnx --target wasm`
-  exits 0 and writes `output/tiny_nn.wasm`
+- **Gate:** ✅ `python -m incant infer tests/test_model.onnx --target wasm` exits 0 and writes `output/test_model.wasm`
 
 ### M4 — update docs + tick
 - [ ] Add WAT inference explainer to `incant/explainers/` (or update existing)

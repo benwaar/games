@@ -21,7 +21,7 @@ from .targets import wat as wat_target
 
 
 def cmd_infer(args):
-    """ONNX → INT8 → Z80 inference engine."""
+    """ONNX → inference engine (Z80 INT8 assembly or WASM f32)."""
     try:
         import numpy as np
     except ImportError:
@@ -30,9 +30,6 @@ def cmd_infer(args):
 
     try:
         from .onnx_parser import architecture_summary, parse_onnx
-        from .quantise import compare_accuracy, quantise_model
-        from .z80_infer import generate_z80_inference, run_z80_inference
-        from .targets.z80 import assemble as z80_assemble
     except ImportError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -46,6 +43,86 @@ def cmd_infer(args):
     parsed = parse_onnx(str(model_path))
     print(f"  Architecture: {architecture_summary(parsed)}")
 
+    output_dir = Path(args.output) if args.output else PROJECT_ROOT / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = model_path.stem
+
+    if args.target == "wasm":
+        _cmd_infer_wasm(args, parsed, model_path, output_dir, stem, np)
+    else:
+        _cmd_infer_z80(args, parsed, model_path, output_dir, stem, np)
+
+
+def _cmd_infer_wasm(args, parsed, model_path, output_dir, stem, np):
+    try:
+        from .wasm_infer import generate_wat_inference
+    except ImportError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print("Generating WAT (f32) ...")
+    wat_source = generate_wat_inference(parsed)
+
+    ok, wasm_path, err = wat_target.assemble(wat_source)
+    if not ok:
+        print(f"  FAILED to assemble: {err}", file=sys.stderr)
+        sys.exit(1)
+
+    import shutil
+
+    wat_out = output_dir / f"{stem}.wat"
+    wasm_out = output_dir / f"{stem}.wasm"
+    wat_out.write_text(wat_source)
+    shutil.copy2(wasm_path, wasm_out)
+    print(f"  WAT:  {wat_out}")
+    print(f"  WASM: {wasm_out} ({wasm_out.stat().st_size} bytes)")
+
+    if getattr(args, "accuracy", False):
+        import struct
+        import subprocess
+        from pathlib import Path as _P
+
+        runner = _P(__file__).parent.parent / "tests" / "wasm_infer_runner.js"
+        if not runner.exists():
+            print("  Skipped WASM accuracy (wasm_infer_runner.js not found)")
+            return
+        try:
+            import onnxruntime as ort
+
+            in_dim = parsed["input_shape"][-1] if parsed["input_shape"] else None
+            if not (in_dim and in_dim > 0):
+                print("  Skipped WASM accuracy (unknown input dim)")
+                return
+            sess = ort.InferenceSession(str(model_path))
+            in_name = sess.get_inputs()[0].name
+            rng = np.random.default_rng(0)
+            agree, n = 0, 100
+            for _ in range(n):
+                x = rng.standard_normal((1, in_dim)).astype(np.float32)
+                ref_am = int(np.argmax(sess.run(None, {in_name: x})[0].flatten()))
+                hex_args = [struct.pack("<f", float(v)).hex() for v in x.flatten()]
+                r = subprocess.run(
+                    ["node", str(runner), str(wasm_out)] + hex_args,
+                    capture_output=True, text=True,
+                )
+                if r.returncode == 0:
+                    agree += int(int(r.stdout.strip()) == ref_am)
+            print(f"  WASM argmax agreement: {agree}/{n} = {agree/n:.0%}")
+        except ImportError as e:
+            print(f"  Skipped WASM accuracy (missing dep): {e}")
+        except Exception as e:
+            print(f"  WASM accuracy test failed: {e}")
+
+
+def _cmd_infer_z80(args, parsed, model_path, output_dir, stem, np):
+    try:
+        from .quantise import compare_accuracy, quantise_model
+        from .z80_infer import generate_z80_inference, run_z80_inference
+        from .targets.z80 import assemble as z80_assemble
+    except ImportError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
     print("Quantising to INT8 ...")
     quantised = quantise_model(parsed)
     linear_layers = [l for l in quantised["layers"] if l["type"] == "linear"]
@@ -55,17 +132,12 @@ def cmd_infer(args):
     print("Generating Z80 assembly ...")
     asm_source = generate_z80_inference(quantised)
 
-    # Assemble
     ok, binary, err = z80_assemble(asm_source)
     if not ok:
         print(f"  FAILED to assemble: {err}", file=sys.stderr)
         sys.exit(1)
     print(f"  Assembled: {len(binary)} bytes")
 
-    # Write output
-    output_dir = Path(args.output) if args.output else PROJECT_ROOT / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    stem = model_path.stem
     asm_out = output_dir / f"{stem}_z80_infer.asm"
     bin_out = output_dir / f"{stem}_z80_infer.bin"
     asm_out.write_text(asm_source)
@@ -73,7 +145,6 @@ def cmd_infer(args):
     print(f"  ASM: {asm_out}")
     print(f"  BIN: {bin_out}")
 
-    # Accuracy test
     if getattr(args, "accuracy", False):
         print("Running accuracy test (100 samples) ...")
         try:
@@ -83,7 +154,6 @@ def cmd_infer(args):
         except ImportError as e:
             print(f"  Skipped (missing dep): {e}")
 
-        # Z80 accuracy
         print("Running Z80 accuracy test (20 samples) ...")
         try:
             import onnxruntime as ort
@@ -403,10 +473,10 @@ def main():
     run_parser.set_defaults(func=cmd_run)
 
     # infer
-    infer_parser = subparsers.add_parser("infer", help="ONNX → INT8 → Z80 inference engine")
+    infer_parser = subparsers.add_parser("infer", help="ONNX → inference engine (z80 or wasm)")
     infer_parser.add_argument("model", help="Path to .onnx model file")
     infer_parser.add_argument(
-        "--target", choices=["z80"], default="z80", help="Target architecture (default: z80)"
+        "--target", choices=["z80", "wasm"], default="z80", help="Target architecture (default: z80)"
     )
     infer_parser.add_argument(
         "--accuracy", action="store_true", help="Run accuracy test against float32 reference"
