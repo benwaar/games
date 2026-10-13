@@ -80,6 +80,22 @@ Why order matters (I-IV-V-I ≠ V-IV-I-I), how synthetic progressions give free 
 
 ---
 
+### Browser Inference Pipeline (Phase 5)
+
+How the trained CNN runs entirely in the browser via `onnxruntime-web` (WASM). ONNX export, inlining weights for browser delivery, replicating the Python Mel spectrogram pipeline in JavaScript, and the gotchas (Slaney scale, `top_db=80`, external data files).
+
+→ [Browser inference pipeline](browser-pipeline.md)
+
+---
+
+### Real-Time Sliding Window Inference (Phase 5)
+
+How the demo classifies audio continuously — the ring buffer, the ScriptProcessor callback loop, why predictions feel instant, and the tradeoffs of window size. Connects to keyword spotting and wake-word detection in production.
+
+→ [Real-time inference](realtime-inference.md)
+
+---
+
 ### RNN Temporal Learning (Phase 4 — coming)
 
 *Coming in Phase 4.* Recurrent layers for chord progressions over time.

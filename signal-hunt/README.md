@@ -51,6 +51,20 @@ python -m model.chord_train --mode name --mode notes  # Phase 4a
 python -m model.progression_train                  # Phase 4b
 ```
 
+## Live browser demo
+
+The trained model runs entirely in the browser via `onnxruntime-web` (WASM). No server, no Python.
+
+```bash
+cd demo && python -m http.server 8312
+# open http://localhost:8312/index.html
+```
+
+Click **Test A4** to hear the Iowa A4 sample and see the model classify it. Click **Start mic** for live input (works best with a piano or instrument — see below).
+
+- How the pipeline works: [explainers/browser-pipeline.md](explainers/browser-pipeline.md)
+- How real-time sliding-window inference works: [explainers/realtime-inference.md](explainers/realtime-inference.md)
+
 ## Learn
 
 - Project log (what was built, decisions, results): [LOG.md](LOG.md)
