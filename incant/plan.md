@@ -23,33 +23,22 @@ New for Phase 3 only:
 Mirrors `z80_infer.py` but emits f32 WAT instead of INT8 Z80 assembly.
 No LLM — deterministic code generator from weights.
 
-### M1 — `wasm_infer.py`: f32 WAT matmul kernel
-- [ ] Create `incant/wasm_infer.py`
-- [ ] `generate_wat_inference(parsed) -> str` — reads parsed ONNX layers (same dict as z80_infer),
+### M1 — `wasm_infer.py`: f32 WAT matmul kernel ✅
+- [x] Create `incant/wasm_infer.py`
+- [x] `generate_wat_inference(parsed) -> str` — reads parsed ONNX layers (same dict as z80_infer),
   emits a self-contained WAT module with:
-  - Linear memory, data segments for weights/biases
-  - `$relu` helper: `f32.max 0.0`
-  - `$fc_forward` loop: `out[j] = bias[j] + Σ in[i] * w[j*in_dim + i]`
+  - Linear memory (exported), data segments for weights/biases
+  - `$fc` helper: generic dense layer loop (`out[j] = bias[j] + Σ in[i] * w[j*in_dim + i]`)
+  - `$relu_buf`, `$argmax` helpers
   - Exported `infer` function: runs layer 1 (+ ReLU) then layer 2, returns argmax as i32
-- **Gate:** `wat2wasm` assembles without error on TinyNN (80→32→95)
+- **Gate:** ✅ `wat2wasm` assembles without error; 100/100 agreement on test_model.onnx
 
-**Memory layout (TinyNN, 1 WASM page = 64KB):**
-```
-offset    0: input buffer     80 × 4 = 320 bytes
-offset  320: hidden buffer    32 × 4 = 128 bytes
-offset  448: output buffer    95 × 4 = 380 bytes
-offset  828: fc1 weights      80 × 32 × 4 = 10240 bytes  (data segment)
-offset 11068: fc1 bias        32 × 4 = 128 bytes          (data segment)
-offset 11196: fc2 weights     32 × 95 × 4 = 12160 bytes   (data segment)
-offset 23356: fc2 bias        95 × 4 = 380 bytes           (data segment)
-Total: ~23.7 KB — fits in 1 page with room to spare
-```
+Memory layout is dynamic (computed from layer dims). For TinyNN (80→32→95) fits in 1 WASM page.
 
-### M2 — accuracy test for WAT infer
-- [ ] `tests/test_wasm_infer.py` — loads `tiny_nn.onnx`, runs WAT infer on 100 random inputs,
-  checks argmax agreement ≥ 95% vs float32 ONNX
-- [ ] Uses `wasm-interp` (already used in `targets/wat.py`) or a Node.js shim
-- **Gate:** `pytest tests/test_wasm_infer.py` passes; agreement ≥ 95%
+### M2 — accuracy test for WAT infer ✅
+- [x] `tests/test_wasm_infer.py` — 100 random inputs, checks argmax agreement ≥ 95% vs onnxruntime
+- [x] `tests/wasm_infer_runner.js` — Node.js shim: writes f32 bytes to WASM memory, calls infer()
+- **Gate:** ✅ `pytest tests/test_wasm_infer.py` passes; 100% agreement on test_model.onnx
 
 ### M3 — `--target wasm` in CLI
 - [ ] Add `wasm` to `choices` in `infer_parser` in `__main__.py`
