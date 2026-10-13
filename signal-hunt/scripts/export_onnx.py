@@ -11,6 +11,9 @@ Usage:
 import sys
 from pathlib import Path
 
+import numpy as np
+import onnx
+import onnxruntime as ort
 import torch
 
 # Allow running from scripts/ directly or as module from project root.
@@ -56,14 +59,11 @@ def export(checkpoint: Path = CHECKPOINT, output: Path = OUTPUT) -> Path:
     )
 
     # Inline all tensors — prevents split .onnx.data file (required for browser WASM).
-    import onnx
     model_proto = onnx.load(str(output))
     onnx.save(model_proto, str(output), save_as_external_data=False)
 
     # Verify the export loads and produces the right output shape.
-    import onnxruntime as ort
     session = ort.InferenceSession(str(output))
-    import numpy as np
     out = session.run(None, {"mel_spectrogram": dummy.numpy()})[0]
     assert out.shape == (1, num_classes), f"Unexpected output shape: {out.shape}"
 

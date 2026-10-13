@@ -64,7 +64,7 @@ def _wasm_infer(wasm_path: Path, x: np.ndarray) -> int:
     hex_args = [struct.pack("<f", float(v)).hex() for v in x.flatten()]
     r = subprocess.run(
         ["node", str(RUNNER), str(wasm_path)] + hex_args,
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=30,
     )
     assert r.returncode == 0, f"node runner failed: {r.stderr}"
     return int(r.stdout.strip())
