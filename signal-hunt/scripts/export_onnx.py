@@ -73,7 +73,8 @@ def export(checkpoint: Path = CHECKPOINT, output: Path = OUTPUT) -> Path:
     print(f"Input:    {session.get_inputs()[0].shape}")
     print(f"Output:   {session.get_outputs()[0].shape}  ({num_classes} classes)")
     print(f"Labels:   {[idx_to_label[i] for i in range(num_classes)]}")
-    print(f"Val acc at export: {ckpt.get('val_acc', 'n/a'):.1%}")
+    val_acc = ckpt.get('val_acc')
+    print(f"Val acc at export: {val_acc:.1%}" if val_acc is not None else "Val acc at export: n/a")
 
     return output
 
