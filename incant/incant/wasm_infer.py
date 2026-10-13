@@ -179,7 +179,7 @@ def generate_wat_inference(parsed: dict) -> str:
     """
     np = _numpy()
 
-    linear_layers = [l for l in parsed["layers"] if l["type"] == "linear"]
+    linear_layers = [layer for layer in parsed["layers"] if layer["type"] == "linear"]
     if len(linear_layers) != 2:
         raise ValueError(
             f"generate_wat_inference expects exactly 2 linear layers, got {len(linear_layers)}"

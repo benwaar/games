@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- CSP: 'wasm-unsafe-eval' required for WebAssembly.instantiate() JIT compilation.
+       'unsafe-inline' here permits the inline style/script blocks in this demo page.
+       In production, replace 'unsafe-inline' with nonces or hashes. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'">
   <title>zxw — WASM Protection Demo</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }

@@ -29,15 +29,13 @@ The focus is applied: every skill maps to a class of real problem. The business 
 
 | Project | What it is | Status |
 |---------|-----------|--------|
-| [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | 🔷 Ph 1–5 done, redistil TinyNN from v3 pending |
-| [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, training loop, inference, 100% test accuracy | ✅ Ph 1–3 complete |
-| [Signal Hunt Ph 4](signal-hunt/) | Chord detection (multi-label) + chord progressions (CNN-RNN) | In progress — M18 next |
-| [Signal Hunt Ph 5](signal-hunt/) | Weight initialisation experiments — Xavier vs He vs default, convergence analysis | Planned |
-| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, TFLite, INT8 quantisation, sub-100ms on-device inference; Rust mobile runtime (native audio, rustfft, ort, UniFFI); model serving (REST API) | Planned |
-| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | Planned |
-| [Artefact: dig](artefact/dig/) | ROM audio scanner — find hidden music/SFX in ROM dumps using autoencoders and anomaly detection | Planned |
-| [Artefact: bloom](artefact/bloom/) | 8-bit audio restoration — super-resolution, denoising, lo-fi → hi-fi using U-Net and STFT loss | Planned |
-| [Artefact: dream](artefact/dream/) | Generative chip-tunes — fine-tune sequence model on VGM/SID data, constraint-aware generation | Planned |
+| [Utala: KAOS 9](utala/kaos9/) | Card game AI — RL from scratch, TD learning, deep RL, model distillation | ✅ Complete |
+| [Signal Hunt](signal-hunt/) | Audio classifier — data pipelines, CNN, transfer learning, multi-label chords, CNN-RNN progressions, browser inference | ✅ Complete (Ph 1–5) |
+| [Acoustic Odyssey: cast](acoustic-odyssey/cast/) | Edge deployment — ONNX, TFLite, INT8 quantisation, sub-100ms on-device inference; Rust mobile runtime (native audio, rustfft, ort, UniFFI); model serving (REST API) | ▶ Ready |
+| [Acoustic Odyssey: echo](acoustic-odyssey/echo/) | Adaptive RL system — MDP, Q-learning, personalises task difficulty to the user | ▶ Ready |
+| [Artefact: dig](artefact/dig/) | ROM audio scanner — find hidden music/SFX in ROM dumps using autoencoders and anomaly detection | ▶ Ready |
+| [Artefact: bloom](artefact/bloom/) | 8-bit audio restoration — super-resolution, denoising, lo-fi → hi-fi using U-Net and STFT loss | ▶ Ready |
+| [Artefact: dream](artefact/dream/) | Generative chip-tunes — fine-tune sequence model on VGM/SID data, constraint-aware generation | ▶ Ready |
 | [Artefact: drift](artefact/drift/) | Diffusion chip-tune generator — DDPM/DDIM on spectrograms, head-to-head with dream | Planned (after dream) |
 | [Void Duel](void-duel/) | 2P space shooter on ZX Spectrum + WASM emulator — classic ML, multi-agent RL, extreme-edge distillation | Planned (Ph 0: PoC) |
 | [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | ✅ M1–M7 complete |
@@ -68,11 +66,11 @@ AI / ML
 │   │   ├── Forward pass / loss / backprop ─────── ✅ signal-hunt Ph 2
 │   │   ├── Adam, LR scheduling, early stopping ── ✅ signal-hunt Ph 2
 │   │   ├── Dropout, BatchNorm ──────────────────── ✅ signal-hunt Ph 2
-│   │   └── Weight initialisation ───────────────── signal-hunt Ph 5
+│   │   └── Weight initialisation ───────────────── ✅ signal-hunt Ph 5
 │   │
 │   ├── Architectures
 │   │   ├── CNN (Conv2d, pooling, GAP) ──────────── ✅ signal-hunt Ph 2
-│   │   ├── RNN / GRU / LSTM ────────────────────── signal-hunt Ph 4
+│   │   ├── RNN / GRU / LSTM ────────────────────── ✅ signal-hunt Ph 4b
 │   │   ├── Attention ───────────────────────────── signal-hunt Ph 4
 │   │   ├── U-Net / encoder-decoder ─────────────── artefact/bloom
 │   │   ├── Transformer ─────────────────────────── 🔷 TPP + artefact/dream
@@ -102,7 +100,7 @@ AI / ML
 │
 ├── Domains
 │   ├── Audio / signal processing ───────────────── ✅ signal-hunt
-│   ├── Sequence / temporal ─────────────────────── signal-hunt Ph 4
+│   ├── Sequence / temporal ─────────────────────── ✅ signal-hunt Ph 4b
 │   ├── Computer vision ─────────────────────────── 🔶 NPR
 │   ├── Binary / ROM data ───────────────────────── artefact/dig
 │   ├── Audio restoration ───────────────────────── artefact/bloom
