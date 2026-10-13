@@ -56,19 +56,18 @@ Memory layout is dynamic (computed from layer dims). For TinyNN (80→32→95) f
 
 A standalone HTML page. No framework — plain JS + the compiled WASM.
 
-### M5 — demo page skeleton
-- [ ] Create `utala/kaos9/demo/wasm_demo.html`
-- [ ] Loads `tiny_nn.wasm` via `WebAssembly.instantiateStreaming`
-- [ ] Writes 80 floats into WASM linear memory (input buffer at offset 0)
-- [ ] Calls exported `infer`, reads result (i32 argmax)
-- [ ] Displays result in the page
-- **Gate:** Open in browser, page shows argmax for a hardcoded input
+### M5 — demo page skeleton ✅
+- [x] Created `utala/kaos9/demo/wasm_demo.html`
+- [x] Loads `tiny_nn.wasm` via `WebAssembly.instantiateStreaming`
+- [x] Writes 80 floats into WASM linear memory at offset 0
+- [x] Calls exported `infer`, reads result (i32 argmax)
+- [x] Displays result in the page; ↺ randomise button for new inputs
+- **Gate:** ✅ Opens in browser, shows Action 85 (of 95) for seeded input
 
-### M6 — timing benchmark
-- [ ] Run 10,000 inferences in a loop, use `performance.now()` to measure wall time
-- [ ] Display: `WASM: Xµs/inference` vs `Z80: ~6,300,000 T-states (~6s @ 3.5MHz)`
-- [ ] Add a table showing params, ops, and time
-- **Gate:** WASM shows < 100µs/inference (expect ~1–5µs); Z80 estimate shown for contrast
+### M6 — timing benchmark ✅
+- [x] 10 000 inferences in a loop with `performance.now()` (100-call JIT warm-up first)
+- [x] Displays µs/inference and total ms; table comparing WASM vs Z80 estimate
+- **Gate:** ✅ 6.50 µs/inference (well under 100µs); Z80 ~6 s estimate shown for contrast
 
 ---
 
