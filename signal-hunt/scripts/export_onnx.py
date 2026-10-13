@@ -55,6 +55,11 @@ def export(checkpoint: Path = CHECKPOINT, output: Path = OUTPUT) -> Path:
         },
     )
 
+    # Inline all tensors — prevents split .onnx.data file (required for browser WASM).
+    import onnx
+    model_proto = onnx.load(str(output))
+    onnx.save(model_proto, str(output), save_as_external_data=False)
+
     # Verify the export loads and produces the right output shape.
     import onnxruntime as ort
     session = ort.InferenceSession(str(output))

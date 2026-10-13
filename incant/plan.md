@@ -54,15 +54,15 @@ Uses the Signal Hunt transfer model (12-class piano note classifier) as the infe
 
 ### M13 — End-to-end classify + timing
 
-- [ ] Copy `signal-hunt/output/chord_cnn.onnx` into `signal-hunt/demo/`
-- [ ] Write `signal-hunt/demo/index.html` — end-to-end demo:
+- [x] Copy `signal-hunt/output/chord_cnn.onnx` into `signal-hunt/demo/`
+- [x] Write `signal-hunt/demo/index.html` — end-to-end demo:
   - Load `chord_cnn.onnx` via `ort.InferenceSession` (onnxruntime-web CDN)
   - Capture mic audio, compute Mel spectrogram, run inference
   - Display: top-1 note label + confidence percentage
   - Timing display: pipeline time in ms (`performance.now()`)
   - Threshold: show "listening..." when confidence < 0.6
-- [ ] Gate: end-to-end < 20 ms on a test tone; correct note label for A4 (440 Hz) test tone
-- [ ] Write explainer: `signal-hunt/explainers/browser-pipeline.md` — how it works, perf numbers, key design decisions
+- [x] Gate: end-to-end < 20 ms on a test tone ✅ (~11–13 ms warm); correct note label for A4 (440 Hz) test tone
+- [x] Write explainer: `signal-hunt/explainers/browser-pipeline.md` — how it works, perf numbers, key design decisions
 
 **Commit:** `feat(signal-hunt): end-to-end browser inference demo (M13)`
 

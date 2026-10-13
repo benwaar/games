@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Signal Hunt — Live Note Classifier</title>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0d0d0d; color: #ccc; padding: 2rem; }
+    h1 { color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .controls { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+    button {
+      background: #1a1a2e; color: #8af; border: 1px solid #8af;
+      padding: 0.5rem 1.2rem; cursor: pointer; font-family: monospace;
+      font-size: 0.9rem; border-radius: 2px;
+    }
+    button:hover { background: #8af; color: #0d0d0d; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .status { color: #666; font-size: 0.85rem; }
+    .status.live { color: #4f4; }
+    .status.error { color: #f44; }
+
+    .display { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .card { background: #111; border: 1px solid #222; padding: 1rem; }
+    .card-label { color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .card-value { font-size: 2rem; color: #fff; font-weight: bold; }
+    .card-sub { color: #666; font-size: 0.75rem; margin-top: 0.25rem; }
+
+    .bars { display: flex; flex-direction: column; gap: 3px; margin-bottom: 1.5rem; }
+    .bar-row { display: flex; align-items: center; gap: 0.5rem; }
+    .bar-label { width: 3rem; text-align: right; font-size: 0.7rem; color: #666; flex-shrink: 0; }
+    .bar-outer { flex: 1; height: 16px; background: #1a1a1a; position: relative; }
+    .bar-inner { height: 100%; background: #8af; transition: width 0.08s; }
+    .bar-pct { width: 3rem; font-size: 0.7rem; color: #666; }
+
+    .timing { color: #666; font-size: 0.8rem; margin-top: 1rem; }
+    .timing span { color: #8af; }
+
+    .note { color: #555; font-size: 0.8rem; margin-top: 1rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<h1>Signal Hunt — Live Note Classifier</h1>
+<p class="subtitle">Mic → Mel spectrogram → CNN (onnxruntime-web) → note label. Target: &lt;20 ms end-to-end.</p>
+
+<div class="controls">
+  <button id="btn-start">Start mic</button>
+  <button id="btn-stop" disabled>Stop</button>
+  <span id="status" class="status">Idle</span>
+</div>
+
+<div class="display">
+  <div class="card">
+    <div class="card-label">Note</div>
+    <div class="card-value" id="note">—</div>
+    <div class="card-sub" id="conf">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Pipeline time</div>
+    <div class="card-value" id="timing">—</div>
+    <div class="card-sub">ms end-to-end</div>
+  </div>
+</div>
+
+<div class="bars" id="bars"></div>
+
+<div class="timing" id="timing-detail"></div>
+
+<div class="note">
+  Model: 12-class piano note classifier (A4–Gb4), trained via transfer learning from a voice classifier.<br>
+  Pipeline: 22050 Hz mono → 2048-point STFT → 128-band Slaney Mel → log-dB+top_db clamp → normalize → CNN → softmax.
+</div>
+
+<script type="module">
+import { extractFeatures, buildMelFilterbank, N_FFT, HOP_LENGTH, N_MELS, TARGET_FRAMES } from './browser_pipeline.js';
+
+const LABELS = ['A4','Ab4','B4','Bb4','C4','D4','Db4','E4','Eb4','F4','G4','Gb4'];
+const SR = 22050;
+const SAMPLE_RATE_TARGET = SR;
+const FRAME_SAMPLES = HOP_LENGTH;
+const BUFFER_SAMPLES = (TARGET_FRAMES - 1) * HOP_LENGTH + N_FFT;  // samples needed for 65 frames
+
+let session = null;
+let stream = null;
+let audioCtx = null;
+let processor = null;
+let filterbank = null;
+const buffer = new Float32Array(BUFFER_SAMPLES);
+let bufferPos = 0;
+let running = false;
+
+// Build probability bars.
+const barsEl = document.getElementById('bars');
+const barEls = LABELS.map(label => {
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <div class="bar-label">${label}</div>
+    <div class="bar-outer"><div class="bar-inner" style="width:0%"></div></div>
+    <div class="bar-pct">0%</div>`;
+  barsEl.appendChild(row);
+  return { inner: row.querySelector('.bar-inner'), pct: row.querySelector('.bar-pct') };
+});
+
+function setStatus(msg, cls = '') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+function softmax(logits) {
+  const max = Math.max(...logits);
+  const exp = logits.map(x => Math.exp(x - max));
+  const sum = exp.reduce((a, b) => a + b, 0);
+  return exp.map(x => x / sum);
+}
+
+async function loadModel() {
+  setStatus('Loading model…');
+  session = await ort.InferenceSession.create('./chord_cnn.onnx', {
+    executionProviders: ['wasm'],
+  });
+  filterbank = buildMelFilterbank(SR);
+  setStatus('Model ready', 'live');
+}
+
+async function startMic() {
+  setStatus('Requesting mic…');
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+  // Resample to 22050 if needed using OfflineAudioContext.
+  audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE_TARGET });
+  const source = audioCtx.createMediaStreamSource(stream);
+
+  // ScriptProcessor for collecting samples (deprecated but still supported).
+  processor = audioCtx.createScriptProcessor(HOP_LENGTH, 1, 1);
+  source.connect(processor);
+  processor.connect(audioCtx.destination);
+
+  running = true;
+  setStatus('Listening…', 'live');
+
+  let tPrev = performance.now();
+  let inferCount = 0;
+  let totalInferMs = 0;
+
+  processor.onaudioprocess = (e) => {
+    if (!running) return;
+    const chunk = e.inputBuffer.getChannelData(0);
+
+    // Shift buffer left by HOP_LENGTH and append new chunk.
+    buffer.copyWithin(0, FRAME_SAMPLES);
+    buffer.set(chunk, BUFFER_SAMPLES - FRAME_SAMPLES);
+    bufferPos++;
+
+    // Wait until we have enough frames before inferring.
+    if (bufferPos < Math.ceil(BUFFER_SAMPLES / FRAME_SAMPLES)) return;
+
+    const t0 = performance.now();
+
+    // Extract Mel spectrogram from the buffer.
+    const tMelStart = performance.now();
+    const mel = extractFeatures(buffer, filterbank);
+    const tMelEnd = performance.now();
+
+    // Run ONNX inference.
+    const tInferStart = performance.now();
+    const tensor = new ort.Tensor('float32', new Float32Array(mel), [1, 1, N_MELS, TARGET_FRAMES]);
+
+    session.run({
+      mel_spectrogram: tensor
+    }).then(output => {
+      const tInferEnd = performance.now();
+      const logits = Array.from(output.logits.data);
+      const probs = softmax(logits);
+      const topIdx = probs.indexOf(Math.max(...probs));
+      const topProb = probs[topIdx];
+
+      const tEnd = performance.now();
+      const totalMs = (tEnd - t0).toFixed(1);
+      const melMs = (tMelEnd - tMelStart).toFixed(1);
+      const inferMs = (tInferEnd - tInferStart).toFixed(1);
+
+      inferCount++;
+      totalInferMs += parseFloat(totalMs);
+
+      // Update UI.
+      const conf = (topProb * 100).toFixed(1);
+      document.getElementById('note').textContent = topProb >= 0.5 ? LABELS[topIdx] : '…';
+      document.getElementById('conf').textContent = topProb >= 0.5 ? `${conf}% confidence` : 'listening…';
+      document.getElementById('timing').textContent = totalMs;
+      document.getElementById('timing-detail').innerHTML =
+        `Mel: <span>${melMs} ms</span> &nbsp; Inference: <span>${inferMs} ms</span> &nbsp; Total: <span>${totalMs} ms</span> &nbsp; Avg over ${inferCount}: <span>${(totalInferMs/inferCount).toFixed(1)} ms</span>`;
+
+      // Update bars.
+      probs.forEach((p, i) => {
+        const pct = (p * 100).toFixed(0);
+        barEls[i].inner.style.width = pct + '%';
+        barEls[i].pct.textContent = pct + '%';
+      });
+    }).catch(err => setStatus('Inference error: ' + err.message, 'error'));
+  };
+}
+
+function stopMic() {
+  running = false;
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  setStatus('Stopped');
+}
+
+document.getElementById('btn-start').addEventListener('click', async () => {
+  document.getElementById('btn-start').disabled = true;
+  try {
+    await loadModel();
+    await startMic();
+    document.getElementById('btn-stop').disabled = false;
+  } catch (e) {
+    setStatus('Error: ' + e.message, 'error');
+    document.getElementById('btn-start').disabled = false;
+  }
+});
+
+document.getElementById('btn-stop').addEventListener('click', () => {
+  stopMic();
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+});
+</script>
+</body>
+</html>
