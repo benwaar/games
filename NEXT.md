@@ -28,13 +28,4 @@ Showcase incant's self-verifying binaries running on the zxw emulator, with live
 2. Load the WASM self-verifying module in browser
 3. Tamper the data segment, show detection
 4. Document the bypass (patch constant, intercept load)
-
----
-
-## 2. Log entries
-
-Update LOG.md for both projects with what was completed this session:
-
-- [ ] `incant/LOG.md` — WASM Phase 1–2 already logged; add any missing detail
-- [ ] `zxw/LOG.md` — note the binary protection demo work once complete
-- [ ] Delete stale `utala/kaos9/demo/screenshot.png` (old WASM screenshot, renamed)
+5. `zxw/LOG.md` — note the binary protection demo work once complete
