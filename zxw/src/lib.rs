@@ -247,6 +247,17 @@ impl Emulator {
         self.render_frame()
     }
 
+    /// Set the Z80 program counter directly.
+    pub fn set_pc(&mut self, addr: u16) {
+        self.spectrum.cpu.pc = addr;
+        self.spectrum.paused = false;
+    }
+
+    /// Get the current Z80 program counter.
+    pub fn get_pc(&self) -> u16 {
+        self.spectrum.cpu.pc
+    }
+
     /// Set a breakpoint at `addr`. Execution pauses before the instruction at that address.
     pub fn set_breakpoint(&mut self, addr: u16) {
         self.spectrum.breakpoints.insert(addr);

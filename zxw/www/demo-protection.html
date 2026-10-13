@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>zxw — Binary Protection Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0d0d0d; color: #ccc; padding: 2rem; }
+    h1 { color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 2rem; }
+
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .panel { background: #111; border: 1px solid #222; padding: 1.2rem; }
+    .panel h2 { color: #8af; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+
+    canvas { display: block; image-rendering: pixelated; width: 100%; border: 1px solid #333; }
+
+    .step { margin-bottom: 1rem; }
+    .step-label { color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+    .step-desc { font-size: 0.85rem; line-height: 1.5; color: #aaa; margin-bottom: 0.5rem; }
+
+    button {
+      background: #1a1a2e; color: #8af; border: 1px solid #8af;
+      padding: 0.4rem 1rem; cursor: pointer; font-family: monospace;
+      font-size: 0.85rem; border-radius: 2px; margin-right: 0.5rem;
+    }
+    button:hover { background: #8af; color: #0d0d0d; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .code {
+      background: #0a0a0a; border: 1px solid #333; padding: 0.6rem 0.8rem;
+      font-size: 0.8rem; color: #4f4; margin: 0.5rem 0; cursor: pointer;
+      user-select: all;
+    }
+    .code:hover { border-color: #4f4; }
+    .code-hint { font-size: 0.7rem; color: #555; margin-bottom: 0.3rem; }
+
+    .status { font-size: 0.85rem; margin-top: 0.75rem; padding: 0.4rem 0.6rem; border-left: 2px solid #333; }
+    .status.ok { color: #4f4; border-color: #4f4; }
+    .status.halt { color: #f44; border-color: #f44; }
+    .status.info { color: #8af; border-color: #8af; }
+
+    .addr-table { font-size: 0.75rem; border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+    .addr-table td { padding: 0.2rem 0.5rem; border: 1px solid #222; }
+    .addr-table td:first-child { color: #666; }
+    .addr-table td:last-child { color: #fff; font-family: monospace; }
+
+    .note { color: #555; font-size: 0.78rem; margin-top: 1.5rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<h1>zxw — Binary Protection Demo 1</h1>
+<p class="subtitle">Z80 self-verifying binary: XOR checksum prefix → detect tampered payload</p>
+
+<div class="layout">
+  <div class="panel">
+    <h2>Emulator</h2>
+    <canvas id="screen" width="256" height="192"></canvas>
+    <div id="emu-status" class="status info">Loading emulator…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Demo Steps</h2>
+
+    <div class="step">
+      <div class="step-label">Step 1 — Load protected binary</div>
+      <div class="step-desc">Load <code>protected.tap</code> into the emulator. The binary contains a 26-byte XOR checksum verifier prefix followed by the payload.</div>
+      <button id="btn-load">Load protected.tap</button>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 2 — Run (intact)</div>
+      <div class="step-desc">Execute the binary from load address 0x8000. The verifier computes the XOR checksum of the payload, compares against the embedded expected value — match → JP to payload → white stripe appears.</div>
+      <button id="btn-run" disabled>Run (RANDOMIZE USR 32768)</button>
+      <div id="run-status"></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 3 — Tamper one byte</div>
+      <div class="step-desc">Flip one bit in the payload while the binary is loaded in RAM. The verifier hasn't run yet — tamper now before calling USR.</div>
+      <button id="btn-tamper" disabled>Tamper byte at 0x801A</button>
+      <div id="tamper-status"></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 4 — Run (tampered)</div>
+      <div class="step-desc">Execute again. The verifier recomputes the checksum — mismatch → JP to crash HALT. Payload never executes.</div>
+      <button id="btn-run-tampered" disabled>Run tampered binary</button>
+      <div id="tampered-status"></div>
+    </div>
+
+    <table class="addr-table">
+      <tr><td>Load address</td><td>0x8000</td></tr>
+      <tr><td>Verifier prefix</td><td>0x8000 – 0x8019 (26 bytes)</td></tr>
+      <tr><td>Payload start</td><td>0x801A</td></tr>
+      <tr><td>Tamper address</td><td>0x801A (first payload byte)</td></tr>
+      <tr><td>Crash HALT</td><td>0x8049</td></tr>
+    </table>
+
+    <p class="note">
+      The verifier is 26 bytes of pure Z80: LD HL/BC, XOR loop over payload, CP against embedded constant, JP NZ to HALT.<br>
+      Attacker bypasses: NOP out the JP NZ (3 bytes), or recompute the checksum constant after patching.<br>
+      See <code>incant/incant/protect.py</code> for the full implementation.
+    </p>
+  </div>
+</div>
+
+<script type="module">
+import init, { Emulator } from './pkg/zxw.js';
+
+const LOAD_ADDR = 0x8000;
+const TAMPER_ADDR = 0x801A;  // first byte of payload
+const TAMPER_FLIP = 0x01;    // XOR mask
+
+let emu = null;
+let animId = null;
+// canvas bound to Emulator constructor — no manual ctx needed
+
+function setEmuStatus(msg, cls = 'info') {
+  const el = document.getElementById('emu-status');
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+function setStatus(id, msg, cls = 'info') {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+async function initEmu() {
+  await init();
+  emu = new Emulator('screen');
+  const romResp = await fetch('./rom/48.rom');
+  const romData = new Uint8Array(await romResp.arrayBuffer());
+  emu.load_rom(romData);
+  setEmuStatus('Emulator ready', 'ok');
+  document.getElementById('btn-load').disabled = false;
+  renderLoop();
+}
+
+function renderLoop() {
+  if (!emu) return;
+  emu.step_frame();
+  emu.render_frame();
+  animId = requestAnimationFrame(renderLoop);
+}
+
+function stopLoop() {
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+}
+
+document.getElementById('btn-load').addEventListener('click', async () => {
+  const resp = await fetch('./tap/protected.tap');
+  const data = new Uint8Array(await resp.arrayBuffer());
+
+  // TAP format: [len_lo, len_hi, ...len bytes (flag + payload + checksum)...]
+  // Block 1 = header (flag 0x00), Block 2 = data (flag 0xFF, then raw binary, then checksum)
+  const b1len = data[0] | (data[1] << 8);
+  const b2off = 2 + b1len;
+  const b2len = data[b2off] | (data[b2off + 1] << 8);
+  // b2off+2 = flag byte (0xFF), b2off+3..b2off+1+b2len-1 = raw binary (last byte is checksum)
+  const binary = data.slice(b2off + 3, b2off + 1 + b2len);
+
+  emu.write_memory(LOAD_ADDR, binary);
+
+  setStatus('run-status', '', '');
+  setStatus('tamper-status', '', '');
+  setStatus('tampered-status', '', '');
+  setEmuStatus(`protected.tap loaded — ${binary.length} bytes at 0x${LOAD_ADDR.toString(16).toUpperCase()}`, 'ok');
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-tamper').disabled = false;
+  document.getElementById('btn-run-tampered').disabled = true;
+});
+
+document.getElementById('btn-run').addEventListener('click', () => {
+  stopLoop();
+  // Clear target screen bytes so we can detect a fresh write
+  emu.write_memory(0x4000, new Uint8Array(9).fill(0x00));
+  emu.set_pc(LOAD_ADDR);
+  emu.run_until_halt();  // intact binary loops forever → times out after ~2.8s
+  // Payload writes 0xFF to 0x4000–0x4008 — check if screen memory was written
+  const screen = emu.read_memory(0x4000, 9);
+  const payloadRan = screen.every(b => b === 0xFF);
+  if (payloadRan) {
+    setStatus('run-status', '✓ Payload executed — verifier passed (screen memory written)', 'ok');
+  } else {
+    const got = Array.from(screen).map(b => '0x' + b.toString(16).padStart(2,'0')).join(' ');
+    setStatus('run-status', `? Screen bytes: ${got} — expected 0xFF×9`, 'info');
+  }
+  renderLoop();
+});
+
+document.getElementById('btn-tamper').addEventListener('click', () => {
+  const current = emu.read_memory(TAMPER_ADDR, 1)[0];
+  const flipped = current ^ TAMPER_FLIP;
+  emu.write_memory(TAMPER_ADDR, new Uint8Array([flipped]));
+  setStatus('tamper-status', `✓ Byte at 0x${TAMPER_ADDR.toString(16).toUpperCase()}: 0x${current.toString(16).padStart(2,'0').toUpperCase()} → 0x${flipped.toString(16).padStart(2,'0').toUpperCase()}`, 'ok');
+  document.getElementById('btn-run-tampered').disabled = false;
+});
+
+document.getElementById('btn-run-tampered').addEventListener('click', () => {
+  stopLoop();
+  emu.set_pc(LOAD_ADDR);
+  emu.run_until_halt();  // tampered binary → verifier mismatches → JP to crash HALT
+  const pc = emu.get_pc();
+  const crashHalt = 0x8049;
+  if (pc === crashHalt || pc === crashHalt + 1) {
+    setStatus('tampered-status', `✓ HALT at 0x${crashHalt.toString(16).toUpperCase()} — tamper detected`, 'ok');
+    setEmuStatus('Tamper detected — verifier triggered HALT', 'halt');
+  } else {
+    setStatus('tampered-status', `? PC = 0x${pc.toString(16).toUpperCase()} — check addresses`, 'info');
+  }
+  renderLoop();
+});
+
+initEmu().catch(e => setEmuStatus('Error: ' + e.message, 'halt'));
+</script>
+</body>
+</html>

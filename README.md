@@ -88,6 +88,8 @@ A ZX Spectrum 48K emulator written in Rust, compiled to WebAssembly. Built from 
 
 A platform for exploring binary protection (patching live memory via the Chrome DevTools Protocol debug API), deploying trained AI models onto retro hardware, and understanding what computation actually costs when you strip away modern abstractions. The KAOS 9 card game AI (5,727 parameters, INT8 quantised) runs inference on it — 6M T-states for what WASM does in microseconds.
 
+**Highlights:** live [Z80 tamper demo](zxw/www/demo-protection.html) — 26-byte XOR verifier prefix catches a single flipped bit, crashes to HALT · live [WASM tamper demo](zxw/www/demo-wasm-protect.html) — `unreachable` trap fires on checksum mismatch · full [writeup](zxw/docs/binary-protection-demos.md) with bypass analysis
+
 [Project folder](./zxw/)
 
 ---

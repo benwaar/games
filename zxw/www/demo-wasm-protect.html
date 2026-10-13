@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>zxw — WASM Protection Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #0d0d0d; color: #ccc; padding: 2rem; }
+    h1 { color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 2rem; }
+
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .panel { background: #111; border: 1px solid #222; padding: 1.2rem; }
+    .panel h2 { color: #8af; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+
+    .step { margin-bottom: 1.2rem; }
+    .step-label { color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+    .step-desc { font-size: 0.85rem; line-height: 1.5; color: #aaa; margin-bottom: 0.5rem; }
+
+    button {
+      background: #1a1a2e; color: #8af; border: 1px solid #8af;
+      padding: 0.4rem 1rem; cursor: pointer; font-family: monospace;
+      font-size: 0.85rem; border-radius: 2px; margin-right: 0.5rem;
+    }
+    button:hover { background: #8af; color: #0d0d0d; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .status { font-size: 0.85rem; margin-top: 0.75rem; padding: 0.4rem 0.6rem; border-left: 2px solid #333; }
+    .status.ok { color: #4f4; border-color: #4f4; }
+    .status.halt { color: #f44; border-color: #f44; }
+    .status.info { color: #8af; border-color: #8af; }
+
+    .bytes { font-size: 0.75rem; margin-top: 0.5rem; word-break: break-all; }
+    .bytes span { display: inline-block; padding: 1px 3px; margin: 1px; }
+    .bytes span.tampered { background: #3a0000; color: #f88; border: 1px solid #f44; }
+    .bytes span.normal { color: #888; }
+
+    table.info-table { font-size: 0.75rem; border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+    .info-table td { padding: 0.2rem 0.5rem; border: 1px solid #222; }
+    .info-table td:first-child { color: #666; }
+    .info-table td:last-child { color: #fff; font-family: monospace; }
+
+    .note { color: #555; font-size: 0.78rem; margin-top: 1.5rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<h1>zxw — WASM Protection Demo 3</h1>
+<p class="subtitle">Self-verifying WASM module: XOR hash of data segment → unreachable trap on mismatch</p>
+
+<div class="layout">
+  <div class="panel">
+    <h2>Module Info</h2>
+    <div id="module-status" class="status info">Loading protect.wasm…</div>
+
+    <table class="info-table" style="margin-top: 1rem;">
+      <tr><td>Payload</td><td id="info-payload">—</td></tr>
+      <tr><td>XOR checksum</td><td id="info-checksum">—</td></tr>
+      <tr><td>Expected result</td><td>42</td></tr>
+      <tr><td>Module size</td><td id="info-size">—</td></tr>
+    </table>
+
+    <div style="margin-top: 1.2rem;">
+      <div class="step-label" style="margin-bottom: 0.4rem;">Data segment bytes (first 16)</div>
+      <div id="byte-display" class="bytes">—</div>
+    </div>
+
+    <p class="note">
+      The module stores a payload in a data segment at offset 1024.<br>
+      At startup <code>$verify</code> XOR-hashes the segment and compares to the embedded constant.<br>
+      Match → returns 42. Mismatch → <code>unreachable</code> trap (WASM runtime exception).<br>
+      See <code>incant/incant/protect.py</code> for <code>generate_self_verify_wat</code>.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Demo Steps</h2>
+
+    <div class="step">
+      <div class="step-label">Step 1 — Run intact module</div>
+      <div class="step-desc">Instantiate <code>protect.wasm</code> and call <code>run()</code>. The verifier XOR-hashes the data segment — checksum matches → returns 42.</div>
+      <button id="btn-run" disabled>Run intact</button>
+      <div id="run-status"></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 2 — Tamper one byte</div>
+      <div class="step-desc">Flip the first bit of the payload in the raw WASM bytes before instantiation. The checksum will mismatch.</div>
+      <button id="btn-tamper" disabled>Tamper payload byte</button>
+      <div id="tamper-status"></div>
+    </div>
+
+    <div class="step">
+      <div class="step-label">Step 3 — Run tampered module</div>
+      <div class="step-desc">Re-instantiate from the tampered bytes and call <code>run()</code>. The verifier detects mismatch → <code>unreachable</code> → runtime exception.</div>
+      <button id="btn-run-tampered" disabled>Run tampered</button>
+      <div id="tampered-status"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const PAYLOAD_MARKER = new TextEncoder().encode("ZX S");  // start of payload
+
+let originalBytes = null;
+let tamperedBytes = null;
+let payloadOffset = -1;
+
+function setModuleStatus(msg, cls = 'info') {
+  const el = document.getElementById('module-status');
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+function setStatus(id, msg, cls = 'info') {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+function findMarker(bytes, marker) {
+  outer: for (let i = 0; i < bytes.length - marker.length; i++) {
+    for (let j = 0; j < marker.length; j++) {
+      if (bytes[i + j] !== marker[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
+}
+
+function renderBytes(bytes, tamperedIdx) {
+  const el = document.getElementById('byte-display');
+  const slice = bytes.slice(payloadOffset, payloadOffset + 16);
+  el.innerHTML = Array.from(slice).map((b, i) => {
+    const isTampered = (payloadOffset + i) === tamperedIdx;
+    const cls = isTampered ? 'tampered' : 'normal';
+    return `<span class="${cls}">${b.toString(16).padStart(2, '0')}</span>`;
+  }).join('');
+}
+
+async function instantiateAndRun(bytes) {
+  const mod = await WebAssembly.instantiate(bytes);
+  return mod.instance.exports.run();
+}
+
+async function init() {
+  const resp = await fetch('./protect.wasm');
+  originalBytes = new Uint8Array(await resp.arrayBuffer());
+
+  payloadOffset = findMarker(originalBytes, PAYLOAD_MARKER);
+  if (payloadOffset < 0) {
+    setModuleStatus('Error: payload marker not found in WASM', 'halt');
+    return;
+  }
+
+  // Compute XOR checksum of the 45-byte payload starting at payloadOffset
+  let checksum = 0;
+  const PAYLOAD_LEN = 45;
+  for (let i = 0; i < PAYLOAD_LEN; i++) checksum ^= originalBytes[payloadOffset + i];
+
+  document.getElementById('info-payload').textContent = 'ZX Spectrum binary protection demo payload v1';
+  document.getElementById('info-checksum').textContent = `0x${checksum.toString(16).toUpperCase().padStart(2, '0')}`;
+  document.getElementById('info-size').textContent = `${originalBytes.length} bytes`;
+  renderBytes(originalBytes, -1);
+
+  setModuleStatus('protect.wasm loaded — ready', 'ok');
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-tamper').disabled = false;
+}
+
+document.getElementById('btn-run').addEventListener('click', async () => {
+  try {
+    const result = await instantiateAndRun(originalBytes);
+    if (result === 42) {
+      setStatus('run-status', '✓ run() → 42 — verifier passed', 'ok');
+    } else {
+      setStatus('run-status', `? run() → ${result} — unexpected`, 'info');
+    }
+  } catch (e) {
+    setStatus('run-status', `✗ Exception: ${e.message}`, 'halt');
+  }
+});
+
+document.getElementById('btn-tamper').addEventListener('click', () => {
+  tamperedBytes = new Uint8Array(originalBytes);
+  const orig = tamperedBytes[payloadOffset];
+  tamperedBytes[payloadOffset] ^= 0x01;
+  const flipped = tamperedBytes[payloadOffset];
+  setStatus('tamper-status',
+    `✓ Byte at offset ${payloadOffset}: 0x${orig.toString(16).padStart(2,'0').toUpperCase()} → 0x${flipped.toString(16).padStart(2,'0').toUpperCase()}`,
+    'ok');
+  renderBytes(tamperedBytes, payloadOffset);
+  document.getElementById('btn-run-tampered').disabled = false;
+});
+
+document.getElementById('btn-run-tampered').addEventListener('click', async () => {
+  try {
+    const result = await instantiateAndRun(tamperedBytes);
+    setStatus('tampered-status', `? run() returned ${result} — expected unreachable`, 'info');
+  } catch (e) {
+    if (e instanceof WebAssembly.RuntimeError && e.message.includes('unreachable')) {
+      setStatus('tampered-status', '✓ WebAssembly.RuntimeError: unreachable — tamper detected', 'ok');
+      setModuleStatus('Tamper detected — unreachable trap fired', 'halt');
+    } else {
+      setStatus('tampered-status', `✓ Exception caught: ${e.message}`, 'ok');
+      setModuleStatus('Tamper detected — exception on run()', 'halt');
+    }
+  }
+});
+
+init().catch(e => setModuleStatus('Error: ' + e.message, 'halt'));
+</script>
+</body>
+</html>
