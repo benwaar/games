@@ -293,7 +293,7 @@ ONNX model (float32)
 - [x] Weight packer: emit weights as Z80 `db` data blocks
 - [x] Inference harness: load input → matmul → ReLU → matmul → argmax → output
 - [x] Accuracy test: compare INT8 Z80 output vs float32 Python on 100+ inputs
-- [ ] WASM equivalent: same pipeline but targeting WAT (for comparison)
+- [x] WASM equivalent: same pipeline but targeting WAT (for comparison)
 
 **Gate:** `python -m incant infer models/tiny_nn.onnx --target z80` produces a Z80 binary that takes a game state and returns an action index. INT8 output matches float32 reference on >90% of test inputs.
 
@@ -319,6 +319,33 @@ ONNX model (float32)
 | ONNX → INT8 quantisation | ⬜ → ✅ (M10) |
 | Neural net inference on Z80 | ⬜ → ✅ (M10) |
 | Extreme-edge deployment | ⬜ → ✅ (M10) |
+| WASM f32 inference engine | ⬜ → ✅ (WASM M1–M4) |
+| Browser inference demo | ⬜ → ✅ (WASM M5–M6) |
+
+---
+
+## WASM Inference Engine (Phase 1–2)
+
+**Goal:** Add `--target wasm` to `incant infer` and build a browser demo for KAOS 9 TinyNN.
+
+### Phase 1 — WAT inference engine (M1–M4)
+
+Deterministic WAT code generator from ONNX weights — mirrors `z80_infer.py` but emits f32 WAT. No LLM, no quantisation.
+
+- `wasm_infer.py` — `generate_wat_inference(parsed) -> str`: emits self-contained WAT module with data segments for weights/biases, `$fc` dense layer loop, `$relu_buf`, `$argmax`, and exported `infer` function
+- Memory layout computed dynamically from layer dims. TinyNN (80→32→95) fits in 1 WASM page (64 KB)
+- 100% argmax agreement vs onnxruntime on test_model.onnx (100 random inputs)
+- `--target wasm` wired into CLI: `python -m incant infer model.onnx --target wasm`
+- Explainer: `explainers/wasm-inference.md`
+
+### Phase 2 — KAOS 9 TinyNN WASM demo (M5–M6)
+
+Standalone HTML page at `utala/kaos9/demo/wasm_demo.html`. No framework — plain JS + compiled WASM.
+
+- Loads `tiny_nn.wasm` via `WebAssembly.instantiateStreaming`
+- Single inference: writes 80 floats into WASM memory, calls `infer()`, displays action index
+- Timing benchmark: **6.50 µs/inference** (10,000 inferences in 65 ms, with JIT warm-up)
+- Comparison table: WASM f32 (6.5 µs) vs Z80 INT8 (~6 seconds @ 3.5 MHz)
 
 ---
 
