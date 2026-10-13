@@ -93,6 +93,29 @@ Minimal ZX Spectrum 48K emulator: Rust → WASM, with CDP debug integration.
 
 ---
 
+## Demo 1 — Z80 self-verifying binary
+
+Shows incant's `wrap_z80_checksum` in action on the live emulator.
+
+- [x] `incant/scripts/make_protected_tap.py` — 26-byte XOR verifier prefix + payload (writes 0xFF stripe to screen), output to `zxw/www/tap/protected.tap`
+- [x] `zxw/src/lib.rs` — added `set_pc` / `get_pc` to WASM API
+- [x] `zxw/www/demo-protection.html` — 4-step browser demo
+
+**Gate:** Load binary → run intact (verifier passes, screen memory written at 0x4000) → tamper byte at 0x801A → run again (verifier JP NZ → HALT at 0x8049). ✅
+
+---
+
+## Demo 3 — WASM self-verifying module
+
+Shows incant's `generate_self_verify_wat` in a pure browser context.
+
+- [x] `incant/scripts/make_protected_wasm.py` — generates `protect.wasm` (168 bytes, XOR checksum 0x1F)
+- [x] `zxw/www/demo-wasm-protect.html` — 3-step browser demo
+
+**Gate:** intact → `run()` returns 42; tamper payload byte → `WebAssembly.RuntimeError: unreachable`. ✅
+
+---
+
 ## Explicitly deferred
 
 - **Sound** — beeper + AY not needed for basic gameplay
