@@ -52,9 +52,13 @@ The overarching project bridges art, music, AI and a developing series of compan
 
 ## Signal Hunt
 
-A deep learning project — from raw audio to a trained classifier.
+A deep learning project — from raw audio to a live browser piano classifier.
 
-Turn raw audio (hums, whistles, claps) into clean Mel-spectrogram tensors, then train a hybrid CNN-RNN to classify them.
+`CNN` · `transfer learning` · `Mel spectrogram` · `multi-label` · `CNN-RNN` · `ONNX` · `WASM inference`
+
+Turn raw audio into Mel-spectrogram tensors and build up from sound-type classification through piano note detection, chord recognition, and chord progressions. The trained model ships to the browser — real-time inference via `onnxruntime-web`, ~12 ms end-to-end, no server required.
+
+**Highlights:** 89.5% piano note accuracy · 96.2% chord name accuracy · live browser demo (`demo/index.html`) · real-time sliding-window inference
 
 [Project folder](./signal-hunt/)
 
