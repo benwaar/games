@@ -34,11 +34,11 @@ Z
 ```
 Bank 8 = 48K RAM. Addresses in decimal. Old value `N` = unknown/runtime.
 
-- [ ] Create `zxw/www/tap/j83.pok` with the three pokes:
+- [x] Create `zxw/www/pok/j83.pok` with the three pokes:
   - `M 8 23672 90 N` (0x5C78 — ERR_SP low byte)
   - `M 8 23673 131 N` (0x5C79 — ERR_SP high byte)
   - `M 8 23728 233 N` (0x5CB0 — JP (HL) instruction)
-- [ ] Manually verify addresses match `incant/data/raw/tap/j83-analysis.md`
+- [x] Manually verify addresses match `incant/data/raw/tap/j83-analysis.md`
 
 **Gate:** file exists, addresses match the analysis  
 **Commit:** `feat(zxw): add j83.pok — sysvar pokes for startup bypass`
@@ -49,13 +49,13 @@ Bank 8 = 48K RAM. Addresses in decimal. Old value `N` = unknown/runtime.
 
 New module: parse a `.pok` file into a list of `(address, value)` pairs.
 
-- [ ] Create `zxw/src/pok.rs`:
+- [x] Create `zxw/src/pok.rs`:
   - `pub struct Poke { pub addr: u16, pub value: u8 }`
   - `pub fn parse_pok(data: &str) -> Result<Vec<Poke>, String>` — skip `Y`/`Z` lines, parse `M` lines
   - Reject bank != 8 (only 48K RAM supported), addresses > 65535, values > 255
   - Ignore malformed lines gracefully (skip with warning)
-- [ ] Add `mod pok;` to `src/lib.rs`
-- [ ] Write `zxw/tests/test_pok.rs`:
+- [x] Add `mod pok;` to `src/lib.rs`
+- [x] Write `zxw/tests/test_pok.rs`:
   - valid 3-poke file → 3 results
   - `Y` and `Z` lines ignored
   - bank != 8 → error or skip

@@ -2,6 +2,7 @@ pub mod cpu;
 pub mod io;
 pub mod keyboard;
 pub mod memory;
+pub mod pok;
 pub mod tap;
 pub mod ula;
 pub mod spectrum;
