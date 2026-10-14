@@ -122,6 +122,7 @@
   <div class="sidebar" id="sidebar">
     <div class="section" id="rom-section"></div>
     <div class="section" id="tap-section"></div>
+    <div class="section" id="pok-section"></div>
     <div class="section" id="scr-section"></div>
   </div>
 
@@ -141,6 +142,7 @@
     let tapLoaded = false;
     let running = false;
     let rafId = null;
+    let selectedPok = null; // { text, name }
 
     // -- Sidebar: load assets.json and populate -------------------------
 
@@ -150,6 +152,7 @@
         const assets = await res.json();
         buildSection('rom-section', 'ROM', assets.rom || [], loadRomFromUrl);
         buildSection('tap-section', 'TAP', assets.tap || [], loadTapFromUrl);
+        buildSection('pok-section', 'POK', assets.pok || [], loadPokFromUrl);
         buildSection('scr-section', 'SCR', assets.scr || [], loadScrFromUrl);
       } catch (e) {
         document.getElementById('sidebar').innerHTML =
@@ -212,6 +215,16 @@
         status.textContent = `TAP error: ${err}`;
         tapLoaded = false;
       }
+      updateButtons();
+    }
+
+    async function loadPokFromUrl(li) {
+      const res = await fetch(`./${li.dataset.file}`);
+      const text = await res.text();
+      selectedPok = { text, name: li.textContent.trim() };
+      setActive(li);
+      console.log(`[zxw] POK selected: ${selectedPok.name}`);
+      status.textContent = `POK: ${selectedPok.name} — select ROM + TAP then Load & Run`;
       updateButtons();
     }
 
@@ -292,7 +305,18 @@
 
     bootBtn.addEventListener('click', boot);
     loadBtn.addEventListener('click', () => autoTypeLOAD());
-    runBtn.addEventListener('click', () => { boot(); autoTypeLOAD(); });
+    runBtn.addEventListener('click', () => {
+      boot();
+      if (selectedPok) {
+        try {
+          emulator.apply_pok(selectedPok.text);
+          console.log(`[zxw] POK applied: ${selectedPok.name}`);
+        } catch (e) {
+          console.error('[zxw] POK error:', e);
+        }
+      }
+      autoTypeLOAD();
+    });
 
     function boot() {
       if (!romLoaded) return;

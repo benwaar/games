@@ -2,6 +2,7 @@ pub mod cpu;
 pub mod io;
 pub mod keyboard;
 pub mod memory;
+pub mod pok;
 pub mod tap;
 pub mod ula;
 pub mod spectrum;
@@ -179,6 +180,21 @@ impl Emulator {
         for (i, &byte) in data.iter().enumerate() {
             self.spectrum.memory.write_byte(addr.wrapping_add(i as u16), byte);
         }
+    }
+
+    /// Apply pokes from a `.pok` file (ZX Spectrum cheat format).
+    ///
+    /// Call after `load_tap()` and before starting the emulator loop.
+    /// Returns an error string on parse failure.
+    pub fn apply_pok(&mut self, pok_data: &str) -> Result<(), JsValue> {
+        let pokes = pok::parse_pok(pok_data)
+            .map_err(|e| JsValue::from_str(&e))?;
+        log!("apply_pok: {} poke(s)", pokes.len());
+        for p in &pokes {
+            log!("  POKE {}, {}", p.addr, p.value);
+            self.spectrum.memory.write_byte(p.addr, p.value);
+        }
+        Ok(())
     }
 
     /// Return all Z80 register values as a plain JS object.

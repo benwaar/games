@@ -1,0 +1,5 @@
+Y Bypass Z80 checksum verifier — NOP out JP NZ at prefix offset 20
+M 8 32788 0 N
+M 8 32789 0 N
+M 8 32790 0 N
+Z
