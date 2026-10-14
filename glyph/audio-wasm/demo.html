@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glyph Audio Engine — Demo</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #eee;
+      padding: 2rem;
+      max-width: 600px;
+    }
+    h1 { color: #7df; margin-bottom: 0.25rem; }
+    p  { color: #aaa; margin-top: 0; font-size: 0.9rem; }
+    h2 { color: #adf; margin-top: 2rem; font-size: 1rem; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    button {
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    button:hover { background: #333; border-color: #7df; }
+    #status { margin-top: 1.5rem; color: #7df; font-size: 0.85rem; }
+    label { color: #aaa; font-size: 0.9rem; }
+    input[type=range] { vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <h1>Glyph Audio Engine</h1>
+  <p>WASM target demo — Web Audio API, square waves, ADSR envelopes</p>
+
+  <h2>Init (required before any sound)</h2>
+  <button id="btn-init">Init AudioContext</button>
+
+  <h2>Single tone</h2>
+  <div class="row">
+    <button data-note="C4"  data-ms="400">C4</button>
+    <button data-note="E4"  data-ms="400">E4</button>
+    <button data-note="G4"  data-ms="400">G4</button>
+    <button data-note="A4"  data-ms="400">A4 (440Hz)</button>
+    <button data-note="C5"  data-ms="400">C5</button>
+    <button data-note="C#4" data-ms="400">C#4</button>
+  </div>
+
+  <h2>SFX</h2>
+  <div class="row">
+    <button data-sfx="sweep_up">sweep_up</button>
+    <button data-sfx="sweep_down">sweep_down</button>
+    <button data-sfx="noise_burst">noise_burst</button>
+    <button data-sfx="coin">coin</button>
+    <button data-sfx="explosion">explosion</button>
+  </div>
+
+  <h2>Melody</h2>
+  <div class="row">
+    <button id="btn-melody-cscale">C major scale</button>
+    <button id="btn-melody-fanfare">Fanfare</button>
+    <button id="btn-melody-stop">Stop melody</button>
+  </div>
+
+  <h2>Volume</h2>
+  <label>
+    Volume: <input type="range" id="volume" min="0" max="100" value="80" />
+    <span id="vol-display">80%</span>
+  </label>
+
+  <div id="status">Click "Init AudioContext" to start.</div>
+
+  <script type="module">
+    import { createAudioEngine } from "./dist/audio.js";
+
+    const engine = createAudioEngine();
+    const statusEl = document.getElementById("status");
+
+    function log(msg) {
+      statusEl.textContent = msg;
+    }
+
+    document.getElementById("btn-init").addEventListener("click", () => {
+      engine.init();
+      log("AudioContext ready.");
+    });
+
+    // Tone buttons
+    document.querySelectorAll("[data-note]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const note = btn.dataset.note;
+        const ms   = parseInt(btn.dataset.ms, 10);
+        engine.tonePlay(note, ms);
+        log(`tonePlay("${note}", ${ms}ms)`);
+      });
+    });
+
+    // SFX buttons
+    document.querySelectorAll("[data-sfx]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sfx = btn.dataset.sfx;
+        engine.sfxPlay(sfx);
+        log(`sfxPlay("${sfx}")`);
+      });
+    });
+
+    // Melody: C major scale
+    document.getElementById("btn-melody-cscale").addEventListener("click", () => {
+      engine.melodyPlay([
+        { note: "C4", ms: 200 },
+        { note: "D4", ms: 200 },
+        { note: "E4", ms: 200 },
+        { note: "F4", ms: 200 },
+        { note: "G4", ms: 200 },
+        { note: "A4", ms: 200 },
+        { note: "B4", ms: 200 },
+        { note: "C5", ms: 400 },
+      ]);
+      log("melodyPlay: C major scale");
+    });
+
+    // Melody: quick fanfare
+    document.getElementById("btn-melody-fanfare").addEventListener("click", () => {
+      engine.melodyPlay([
+        { note: "C4", ms: 150 },
+        { note: "E4", ms: 150 },
+        { note: "G4", ms: 150 },
+        { note: "C5", ms: 100 },
+        { note: "E5", ms: 100 },
+        { note: "G5", ms: 500 },
+      ]);
+      log("melodyPlay: fanfare");
+    });
+
+    document.getElementById("btn-melody-stop").addEventListener("click", () => {
+      engine.melodyStop();
+      log("melodyStop()");
+    });
+
+    // Volume
+    const volSlider = document.getElementById("volume");
+    const volDisplay = document.getElementById("vol-display");
+    volSlider.addEventListener("input", () => {
+      const level = parseInt(volSlider.value, 10) / 100;
+      engine.setVolume(level);
+      volDisplay.textContent = `${volSlider.value}%`;
+    });
+  </script>
+</body>
+</html>
