@@ -72,15 +72,15 @@ New module: parse a `.pok` file into a list of `(address, value)` pairs.
 Expose `apply_pok()` on `Emulator` so JS can pass POK data after loading a TAP. Wire into
 the demo so pokes are applied before the game starts.
 
-- [ ] Add to `src/lib.rs`:
+- [x] Add to `src/lib.rs`:
   ```rust
   pub fn apply_pok(&mut self, pok_data: &str) -> Result<(), JsValue>
   ```
   Calls `parse_pok()`, then `write_memory()` for each poke. Returns error string on parse failure.
-- [ ] Rebuild WASM: `wasm-pack build --target web`
-- [ ] Update `zxw/www/index.html` (or create a demo page) — after `load_tap()`, fetch
+- [x] Rebuild WASM: `wasm-pack build --target web`
+- [x] Update `zxw/www/index.html` — after `load_tap()`, fetch
   `<tapname>.pok` if it exists, call `apply_pok()`, then start the emulator
-- [ ] Run `make assets` to pick up `j83.pok` in `assets.json`
+- [x] Run `make assets` to pick up `j83.pok` in `assets.json`
 
 **Gate:** `j83.tap` loads in the browser, pokes applied, loading screen appears  
 **Commit:** `feat(zxw): apply_pok() on Emulator — wire POK into TAP load`

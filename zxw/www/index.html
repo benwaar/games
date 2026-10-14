@@ -207,6 +207,20 @@
         setActive(li);
         console.log(`[zxw] TAP loaded: ${li.textContent} (${data.length} bytes)`);
         status.textContent = `TAP: ${li.textContent} (${data.length} bytes)`;
+
+        // Apply matching .pok file if one exists (e.g. j83.tap → pok/j83.pok)
+        const tapName = (li.dataset.file || li.textContent.trim()).replace(/^.*\//, '');
+        const pokName = tapName.replace(/\.tap$/i, '.pok');
+        try {
+          const pokResp = await fetch(`pok/${pokName}`);
+          if (pokResp.ok) {
+            const pokText = await pokResp.text();
+            emulator.apply_pok(pokText);
+            console.log(`[zxw] POK applied: ${pokName}`);
+            status.textContent += ` + ${pokName}`;
+          }
+        } catch (_) { /* no .pok file — fine */ }
+
       } catch (err) {
         console.error('[zxw] TAP error:', err);
         status.textContent = `TAP error: ${err}`;

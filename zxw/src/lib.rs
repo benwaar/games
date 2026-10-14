@@ -182,6 +182,21 @@ impl Emulator {
         }
     }
 
+    /// Apply pokes from a `.pok` file (ZX Spectrum cheat format).
+    ///
+    /// Call after `load_tap()` and before starting the emulator loop.
+    /// Returns an error string on parse failure.
+    pub fn apply_pok(&mut self, pok_data: &str) -> Result<(), JsValue> {
+        let pokes = pok::parse_pok(pok_data)
+            .map_err(|e| JsValue::from_str(&e))?;
+        log!("apply_pok: {} poke(s)", pokes.len());
+        for p in &pokes {
+            log!("  POKE {}, {}", p.addr, p.value);
+            self.spectrum.memory.write_byte(p.addr, p.value);
+        }
+        Ok(())
+    }
+
     /// Return all Z80 register values as a plain JS object.
     ///
     /// Keys: pc, sp, af, bc, de, hl, ix, iy, af2, bc2, de2, hl2,
