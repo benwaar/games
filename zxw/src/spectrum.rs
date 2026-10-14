@@ -54,19 +54,22 @@ const SPECTRUM_ERRORS: &[&str] = &[
     "R Tape loading error",
 ];
 
-/// All peripheral I/O for the Spectrum: keyboard matrix + border colour.
+/// All peripheral I/O for the Spectrum: keyboard matrix + border colour + beeper.
 /// Implements `IoHandler` so the CPU can read port 0xFE (keyboard) and
-/// port 0x1F (Kempston), and write port 0xFE (border colour).
+/// port 0x1F (Kempston), and write port 0xFE (border colour + beeper).
 pub struct SpectrumIo {
     pub keyboard: Keyboard,
     pub border_colour: u8,
+    /// Current beeper state: true = speaker cone out (bit 4 high).
+    pub beeper_state: bool,
 }
 
 impl SpectrumIo {
     pub fn new() -> Self {
         SpectrumIo {
             keyboard: Keyboard::new(),
-            border_colour: 7, // white border until an OUT to 0xFE changes it
+            border_colour: 7,
+            beeper_state: false,
         }
     }
 }
@@ -87,14 +90,19 @@ impl IoHandler for SpectrumIo {
     }
 
     fn port_write(&mut self, port: u16, val: u8) {
-        // Port 0xFE low 3 bits control border colour.
         if (port & 0xFF) as u8 == 0xFE {
             self.border_colour = val & 0x07;
+            self.beeper_state = (val & 0x10) != 0;
         }
     }
 }
 
-/// Top-level emulator state: CPU + Memory + I/O (keyboard, border) + TAP queue.
+/// Audio sample rate for Web Audio output.
+const AUDIO_SAMPLE_RATE: u32 = 44_100;
+/// CPU clock frequency.
+const CPU_CLOCK_HZ: u32 = 3_500_000;
+
+/// Top-level emulator state: CPU + Memory + I/O (keyboard, border, beeper) + TAP queue.
 pub struct Spectrum {
     pub cpu: Cpu,
     pub memory: Memory,
@@ -110,6 +118,10 @@ pub struct Spectrum {
     last_err_nr: u8,
     /// Detected LD_BYTES entry point — set when a ROM is scanned.
     ld_bytes_addr: Option<u16>,
+    /// Audio sample buffer — f32 samples at AUDIO_SAMPLE_RATE, drained by JS each frame.
+    audio_buffer: Vec<f32>,
+    /// Fractional T-state accumulator for sample-rate conversion.
+    audio_tstate_accum: f64,
 }
 
 impl Spectrum {
@@ -124,6 +136,8 @@ impl Spectrum {
             breakpoints: HashSet::new(),
             last_err_nr: 0xFF,
             ld_bytes_addr: None,
+            audio_buffer: Vec::with_capacity(1024),
+            audio_tstate_accum: 0.0,
         }
     }
 
@@ -140,6 +154,8 @@ impl Spectrum {
         self.frame_count = 0;
         self.paused = false;
         self.last_err_nr = 0xFF;
+        self.audio_buffer.clear();
+        self.audio_tstate_accum = 0.0;
     }
 
     /// Scan loaded ROM for the LD_BYTES entry point.
@@ -171,30 +187,44 @@ impl Spectrum {
         if self.paused {
             return;
         }
+
+        let tstates_per_sample = CPU_CLOCK_HZ as f64 / AUDIO_SAMPLE_RATE as f64;
         let mut elapsed = 0u32;
+
         while elapsed < TSTATES_PER_FRAME {
             if self.cpu.halted {
+                // Fill remaining audio samples with current beeper state
+                let remaining_tstates = TSTATES_PER_FRAME - elapsed;
+                self.audio_tstate_accum += remaining_tstates as f64;
+                while self.audio_tstate_accum >= tstates_per_sample {
+                    self.audio_tstate_accum -= tstates_per_sample;
+                    let sample = if self.io.beeper_state { 0.5_f32 } else { -0.5 };
+                    self.audio_buffer.push(sample);
+                }
                 break;
             }
 
-            // Breakpoint check: pause before executing the instruction at PC.
             if self.breakpoints.contains(&self.cpu.pc) {
                 self.paused = true;
                 return;
             }
 
-            // Instant-load trap: intercept LD_BYTES before executing the ROM routine.
             if Some(self.cpu.pc) == self.ld_bytes_addr && !self.tap_queue.is_empty() {
                 self.instant_load();
                 continue;
             }
 
-            // Split borrow: cpu, memory, and io are separate fields — Rust allows this.
-            elapsed += self.cpu.step(&mut self.memory, &mut self.io) as u32;
+            let tstates = self.cpu.step(&mut self.memory, &mut self.io) as u32;
+            elapsed += tstates;
+
+            self.audio_tstate_accum += tstates as f64;
+            while self.audio_tstate_accum >= tstates_per_sample {
+                self.audio_tstate_accum -= tstates_per_sample;
+                let sample = if self.io.beeper_state { 0.5_f32 } else { -0.5 };
+                self.audio_buffer.push(sample);
+            }
         }
 
-        // IM 1 interrupt: fire once per frame after ~69888 T-states if interrupts enabled.
-        // The ROM's handler at 0x0038 updates the frame counter and scans the keyboard.
         if self.cpu.iff1 && self.cpu.im == 1 {
             self.cpu.fire_interrupt(&mut self.memory);
         }
@@ -362,6 +392,11 @@ impl Spectrum {
     /// Render the current screen memory into an RGBA pixel buffer.
     pub fn render(&self) -> Vec<u8> {
         ula::render_frame(&self.memory, self.frame_count)
+    }
+
+    /// Drain accumulated audio samples (f32 at 44100 Hz). Call once per frame from JS.
+    pub fn drain_audio(&mut self) -> Vec<f32> {
+        std::mem::take(&mut self.audio_buffer)
     }
 
     /// Border colour index (0–7), sourced from the last OUT to port 0xFE bits 0–2.

@@ -115,6 +115,7 @@
       <button class="btn" id="boot-btn" disabled>Boot</button>
       <button class="btn" id="load-btn" disabled>LOAD ""</button>
       <button class="btn run" id="run-btn" disabled>Load &amp; Run</button>
+      <button class="btn" id="mute-btn">🔊</button>
     </div>
     <span id="status">load a .scr, or load ROM + TAP to run a program</span>
   </div>
@@ -128,6 +129,7 @@
 
   <script type="module">
     import init, { init as zxwInit, Emulator } from './pkg/zxw.js';
+    import { initAudio, feedAudio, resumeAudio, toggleMute, isMuted, audioStats } from './audio.js';
 
     await init();
     zxwInit('screen');
@@ -137,6 +139,12 @@
     const runBtn = document.getElementById('run-btn');
     const bootBtn = document.getElementById('boot-btn');
     const loadBtn = document.getElementById('load-btn');
+    const muteBtn = document.getElementById('mute-btn');
+
+    muteBtn.addEventListener('click', () => {
+      const muted = toggleMute();
+      muteBtn.textContent = muted ? '🔇' : '🔊';
+    });
 
     let romLoaded = false;
     let tapLoaded = false;
@@ -258,6 +266,7 @@
       watch:      (addr)          => emulator.add_watchpoint(addr),
       unwatch:    (addr)          => emulator.remove_watchpoint(addr),
       hits:       ()              => emulator.get_watchpoint_hits(),
+      audio:      ()              => audioStats(),
     };
     console.log('[zxw] debug API: window.zxw — try zxw.regs(), zxw.mem(0x4000, 16)');
 
@@ -326,6 +335,8 @@
       }
       emulator.reset();
       running = true;
+      initAudio();
+      resumeAudio();
       console.log('[zxw] booting ROM');
       status.textContent = 'Booting ROM…';
       function frame() {
@@ -334,6 +345,7 @@
             emulator.render_frame();
           } else {
             emulator.step_frame();
+            feedAudio(emulator.drain_audio());
           }
         } catch (err) {
           console.error('[zxw] frame error:', err);

@@ -116,6 +116,13 @@ impl Emulator {
         self.render_frame()
     }
 
+    /// Drain accumulated beeper audio samples (f32, 44100 Hz).
+    /// Call once per frame from the JS audio worklet/callback.
+    /// Returns an empty vec when paused or silent.
+    pub fn drain_audio(&mut self) -> Vec<f32> {
+        self.spectrum.drain_audio()
+    }
+
     /// Run CPU until HALT (or 10 million T-states as a safety cap), then render.
     /// Useful after loading a TAP to let the program boot before entering the RAF loop.
     pub fn run_until_halt(&mut self) -> Result<(), JsValue> {
