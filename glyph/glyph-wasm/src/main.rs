@@ -47,7 +47,7 @@ async fn main() {
 
 async fn load_image_texture() -> Texture2D {
     // Embedded fallback image — used by WASM and desktop when no argument is given.
-    const EMBEDDED: &[u8] = include_bytes!("../assets/loading.jpg");
+    const EMBEDDED: &[u8] = include_bytes!("../assets/embedded.jpg");
 
     #[cfg(not(target_arch = "wasm32"))]
     {

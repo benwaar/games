@@ -41,6 +41,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | ✅ M1–M7 complete |
 | [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly, ONNX → Z80 inference, binary protection PoC | ✅ M1–M10 complete |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
+| [Glyph](glyph/) | LLM-first presentation layer — cross-platform HAL, image-to-SCR converter, prompt-driven art pipeline | ▶ POC complete |
 
 ---
 
@@ -56,7 +57,7 @@ AI / ML
 │   ├── Decision trees, random forests ──────────── void-duel Ph 2b
 │   ├── Gradient boosting (XGBoost, LightGBM) ──── void-duel Ph 2b
 │   ├── SVM ─────────────────────────────────────── void-duel Ph 2b
-│   ├── k-means clustering ──────────────────────── void-duel Ph 2a
+│   ├── k-means clustering ──────────────────────── ✅ glyph POC + void-duel Ph 2a
 │   └── PCA ─────────────────────────────────────── void-duel Ph 2a
 │
 ├── Deep Learning
@@ -101,7 +102,7 @@ AI / ML
 ├── Domains
 │   ├── Audio / signal processing ───────────────── ✅ signal-hunt
 │   ├── Sequence / temporal ─────────────────────── ✅ signal-hunt Ph 4b
-│   ├── Computer vision ─────────────────────────── 🔶 NPR
+│   ├── Computer vision ─────────────────────────── 🔶 NPR + ✅ glyph POC (colour quantisation)
 │   ├── Binary / ROM data ───────────────────────── artefact/dig
 │   ├── Audio restoration ───────────────────────── artefact/bloom
 │   ├── Sequence generation (chip-tunes) ────────── artefact/dream

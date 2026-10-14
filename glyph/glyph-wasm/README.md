@@ -20,7 +20,7 @@ cargo run
 cargo run -- path/to/image.png
 ```
 
-Falls back to the embedded `assets/loading.jpg` if no argument is given.
+Falls back to the embedded `assets/embedded.jpg` if no argument is given.
 
 ## WASM
 
@@ -31,7 +31,7 @@ python3 -m http.server 8080 --directory web
 # open http://localhost:8080
 ```
 
-The WASM build embeds `assets/loading.jpg` at compile time. To swap the image, replace that file and rebuild.
+The WASM build embeds `assets/embedded.jpg` at compile time (optimised JPEG, 247KB). To swap the image, replace that file and rebuild.
 
 ## Dependencies
 
