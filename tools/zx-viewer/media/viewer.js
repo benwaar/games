@@ -100,7 +100,8 @@
     ctx.drawImage(tmp, 0, 0, SCREEN_WIDTH * SCALE, SCREEN_HEIGHT * SCALE);
   }
 
-  const b64 = window.__SCR_B64__;
+  const canvas = document.getElementById('screen');
+  const b64 = canvas ? canvas.getAttribute('data-scr') : null;
   if (!b64) {
     document.body.insertAdjacentHTML('afterbegin',
       '<p style="color:#f88">No screen data received.</p>');

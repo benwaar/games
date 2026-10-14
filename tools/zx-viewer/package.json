@@ -37,7 +37,10 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "tsc --noEmit -p ./",
+    "package": "npm run compile && npx @vscode/vsce package --no-dependencies",
+    "install-ext": "npm run package && code --install-extension zx-viewer-*.vsix"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

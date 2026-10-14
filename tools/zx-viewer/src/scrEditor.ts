@@ -122,7 +122,7 @@ export function buildHtml(
   </style>
 </head>
 <body>
-  <canvas id="screen" width="768" height="576"></canvas>
+  <canvas id="screen" width="768" height="576" data-scr="${scrBase64}"></canvas>
   <table>
     <tr><td>File</td><td>${escHtml(meta.filename)}</td></tr>
     <tr><td>Format</td><td>${escHtml(meta.format)}</td></tr>
@@ -130,9 +130,6 @@ export function buildHtml(
     <tr><td>Colours</td><td>${meta.colours}</td></tr>
     ${blocksRow}
   </table>
-  <script>
-    window.__SCR_B64__ = "${scrBase64}";
-  </script>
   <script src="${scriptUri}"></script>
 </body>
 </html>`;
