@@ -141,6 +141,8 @@ printf '{\n  "rom": [' > www/assets.json
 gen_assets rom >> www/assets.json
 printf '],\n  "tap": [' >> www/assets.json
 gen_assets tap >> www/assets.json
+printf '],\n  "pok": [' >> www/assets.json
+gen_assets pok >> www/assets.json
 printf '],\n  "scr": [' >> www/assets.json
 gen_assets scr >> www/assets.json
 printf ']\n}\n' >> www/assets.json
