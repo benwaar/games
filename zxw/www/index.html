@@ -267,6 +267,8 @@
       unwatch:    (addr)          => emulator.remove_watchpoint(addr),
       hits:       ()              => emulator.get_watchpoint_hits(),
       audio:      ()              => audioStats(),
+      pc:         (addr)          => emulator.set_pc(addr),
+      getpc:      ()              => emulator.get_pc(),
     };
     console.log('[zxw] debug API: window.zxw — try zxw.regs(), zxw.mem(0x4000, 16)');
 

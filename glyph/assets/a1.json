@@ -1,0 +1,20 @@
+{
+  "type": "glyph-audio",
+  "version": 1,
+  "pieces": [
+    {
+      "id": "scale_test",
+      "kind": "melody",
+      "bpm": 120,
+      "loop": false,
+      "notes": [
+        { "note": "C4", "ms": 500 },
+        { "note": "C4", "ms": 500 },
+        { "note": "D4", "ms": 500 },
+        { "note": "D4", "ms": 500 },
+        { "note": "E4", "ms": 500 },
+        { "note": "E4", "ms": 500 }
+      ]
+    }
+  ]
+}

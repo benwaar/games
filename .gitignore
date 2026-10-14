@@ -28,6 +28,16 @@ zxw/www/tap/
 zxw/www/scr/
 zxw/www/assets.json
 
+# glyph — Rust build artifacts and generated files
+glyph/glyphwasm/target/
+glyph/glyphwasm/pkg/
+glyph/glyphwasm/src/data.rs
+
+# wasm harness — generated output (pipeline overwrites these)
+wasm/debug.wasm
+wasm/debug.wat
+wasm/glyph_audio.js
+
 # IDE
 .vscode/
 .idea/

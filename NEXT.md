@@ -1,4 +1,30 @@
+# Next 
+
+Audio WASM: the wasm-pack/Rust approach produces a separate JS glue file — wrong pattern.
+Should follow the same pure WAT approach as images: embed freq/duration arrays as WAT data
+segments, compile with wat2wasm, HTML reads from WASM memory and plays via Web Audio.
+No Rust, no wasm-pack, no extra files. Need to decide the export contract:
+  - WASM exports `type()` (0=image, 1=audio) so the HTML knows which payload it's hosting
+  - Audio WASM exports `audio_count()` + `audio_offset()` for the note data in memory
+  - Image WASM exports `render()`, `width()`, `height()`, `memory` as now
+  - HTML stays static — just branches on `type()` to blit pixels or play oscillators
+
+wrap wasm with the cross or something 
+
+pretty much done the poc, 
+wrap both together,
+nail down the pipeline in docs
+check for any unused code and add tests
+
+incant to follow same debug pipeline as glph, with wrappers for testing
+
+do a better build pipeline later that combines stuff
+
+---
+
 # Next — Glyph Audio POC: Sound → Both Targets
+
+
 
 **Goal:** Play audio on both targets from one spec. Extends the HAL with sound — same principle as the image POC: same intent, native implementation per platform.
 
