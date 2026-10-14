@@ -16,6 +16,7 @@ games/
   void-duel/           — ZX Spectrum shooter: classic ML → multi-agent RL → extreme-edge distil
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
+  glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
 ```
 
 ---
@@ -73,3 +74,4 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Void Duel](void-duel/) | Planned |
 | [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
+| [Glyph](glyph/) | 🔜 Planning — LLM-first presentation layer, WASM + Z80 sprite rendering |
