@@ -1,0 +1,47 @@
+{
+  "name": "zx-viewer",
+  "displayName": "ZX Spectrum Viewer",
+  "description": "Readonly viewer for ZX Spectrum .scr and .tap files",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "zxViewer.scr",
+        "displayName": "ZX Spectrum Screen",
+        "selector": [
+          {
+            "filenamePattern": "*.scr"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "zxViewer.tap",
+        "displayName": "ZX Spectrum TAP",
+        "selector": [
+          {
+            "filenamePattern": "*.tap"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.3.0"
+  }
+}
