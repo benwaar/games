@@ -1,102 +1,115 @@
-# Next — Glyph POC: Image → Both Targets
+# Next — Glyph Audio POC: Sound → Both Targets
 
-**Goal:** Take an image, render it on both targets from one spec. Proves the HAL principle — same intent, native implementation per platform.
+**Goal:** Play audio on both targets from one spec. Extends the HAL with sound — same principle as the image POC: same intent, native implementation per platform.
 
 ```
-source image (any size, full colour)
-  ├── WASM: resize to canvas → render full colour (native)
-  └── Z80:  resize to 256×192 → k-means quantise per cell → SCR → load into ULA
+audio spec (tone, SFX, melody)
+  ├── WASM: Web Audio API — oscillators, envelopes, full fidelity
+  └── Z80:  Spectrum beeper — 1-bit audio, port 0xFE, timed loops
 ```
 
 ---
 
 ## Why this POC
 
-1. **Proves the HAL principle.** Same spec, different implementations. WASM gets the good version, Z80 gets the Spectrum version. Not a clone — each target plays to its hardware.
-2. **K-means clustering warm-up.** The image-to-SCR quantisation is a real clustering problem — 768 tiny k=2 optimisations, one per 8×8 cell. Currently a gap in the study guide (void-duel Ph 2a).
-3. **Computer vision touch.** Colour space, downscaling, palette mapping — small but hands-on CV work (currently only prior role experience).
-4. **SCR is the simplest glyph artefact.** No game loop, no input, no animation. Static image → both targets. Minimal surface to prove the pipeline.
+1. **Audio is required.** Void Duel, Artefact, and any game sigil needs sound. Can't ship games without it.
+2. **1-bit audio is a real constraint.** The Spectrum has no sound chip (48K) — just a speaker toggled via port 0xFE. Generating tones means cycle-counted loops. This is the audio equivalent of the colour-clash problem.
+3. **HAL audio surface.** Extends the HAL API with `tone_play`, `sfx_play`, `music_play` — same calls, radically different implementations.
+4. **Feeds into Artefact.** The beeper engine built here becomes the playback target for Artefact's generative chip-tunes.
 
 ---
 
 ## Milestones
 
-### P1 — Explainer: k-means clustering
+### A0 — zxw beeper support (prerequisite)
 
-Write the shared explainer at `explainers/k-means-clustering.md`.
+The emulator currently ignores beeper output. Add 1-bit audio so A2 can be tested.
 
-- [ ] Core concept: partition N points into k clusters by minimising within-cluster distance
-- [ ] Algorithm: initialise centroids → assign points → update centroids → repeat
-- [ ] Visual intuition: 2D colour-space example (plot pixels, show cluster assignment)
-- [ ] Coming from C/JS/TS: k-means is the grouping step in any "find natural categories" problem
-- [ ] In practice: customer segmentation, anomaly detection, colour quantisation, feature grouping
-- [ ] Connection to this POC: each 8×8 cell is a k=2 clustering in RGB space, centroids mapped to Spectrum palette
+- [ ] Rust: capture bit 4 from `port_write` on port 0xFE in `spectrum.rs`
+- [ ] Accumulate 1-bit samples per T-state into a ring buffer
+- [ ] Expose sample buffer to JS via wasm-bindgen
+- [ ] JS: Web Audio API playback — drain buffer into AudioWorklet/ScriptProcessor
+- [ ] Test: a known beeper program (simple tone) produces audible output in the browser
 
-**Gate:** Explainer reviewed. Someone could read it cold and understand what k-means does and why we're using it here.
-
----
-
-### P2 — Image-to-SCR converter (Python)
-
-The meaty bit. Quantise an image to the Spectrum's constraints.
-
-- [ ] Load image, resize to 256×192
-- [ ] For each 8×8 cell (768 cells total):
-  - Extract 64 pixels
-  - K-means with k=2 in RGB space → two cluster centroids
-  - Map each centroid to nearest Spectrum palette colour (15 colours: 7 normal + 7 bright + black)
-  - Assign each pixel to ink (1) or paper (0) based on cluster membership
-  - Pick bright flag from whether either mapped colour is in the bright set
-- [ ] Pack into SCR format: 6144 bitmap bytes (interleaved row order) + 768 attribute bytes
-- [ ] Write `.scr` file
-- [ ] Visual comparison: source image vs SCR rendered back to PNG (using ULA decode logic)
-- [ ] Test with a few images — photo, pixel art, high contrast, low contrast
-
-**Gate:** `python -m glyph.scr convert test.png --output test.scr` produces a valid 6912-byte SCR. Visual comparison shows recognisable output with expected colour clash.
+**Gate:** A simple `OUT (0xFE)` toggle loop in zxw produces audible sound in the browser.
 
 ---
 
-### P3 — Z80 SCR loader
+### A1 — Explainer: 1-bit audio + beeper engine
 
-Trivial asm — but proves the Z80 target pipeline.
+Write `glyph/explainers/beeper-audio.md`.
 
-- [ ] Z80 asm: `LD HL, scr_data` / `LD DE, 0x4000` / `LD BC, 6912` / `LDIR` / `HALT`
-- [ ] SCR data appended after code as raw bytes
-- [ ] Runs in zxw emulator — image visible on screen
-- [ ] Build script: assemble + append SCR → single binary
+- [ ] How the Spectrum beeper works: OUT (0xFE), bit 4, timed toggles
+- [ ] Frequency from cycle counting: `freq = 3,500,000 / (2 × loop_cycles)`
+- [ ] Pulse wave basics: duty cycle, volume is on/off only
+- [ ] Multi-channel illusion: interleaving (rapid switching between frequencies)
+- [ ] Connection to Web Audio: oscillator nodes, gain envelopes — same concepts, better hardware
+- [ ] "Coming from JS/TS": Web Audio API mapping to beeper equivalents
+- [ ] "In practice": embedded audio, resource-constrained playback, codec design
 
-**Gate:** Binary loads in zxw, screen shows the converted image.
-
----
-
-### P4 — WASM image renderer
-
-The WASM target doesn't use SCR — it renders the source image natively.
-
-- [x] Rust crate: `glyph-wasm/` with macroquad dependency
-- [x] Loads source image (PNG/JPEG) at build time (WASM) or runtime arg (desktop)
-- [x] Renders to canvas — full colour, scaled to window, centred
-- [x] No ULA decode, no colour clash, no Spectrum constraints
-- [x] Same spec as P3, different output
-
-**Gate:** `cargo build --target wasm32-unknown-unknown` → loads in browser, shows the source image at full colour.
-
-**Status:** DONE — both desktop (`cargo run`) and WASM (`./build.sh`) build clean. 1.5 MB .wasm.
+**Gate:** Explainer reviewed. Someone could read it and understand both targets.
 
 ---
 
-### P5 — One spec, both targets
+### A2 — Z80 beeper engine
 
-Wire it together. One spec file, two outputs.
+Build the Z80 tone generator. This is the hard target — WASM is easy once this works.
 
-- [ ] Define spec format (YAML): `type: display_image`, `source: path/to/image.png`
-- [ ] CLI: `python -m glyph cast spec.yaml --target z80` → SCR binary
-- [ ] CLI: `python -m glyph cast spec.yaml --target wasm` → WASM build
-- [ ] Both outputs from same spec, same source image
-- [ ] Side-by-side comparison: Z80 (colour clash, 256×192) vs WASM (full colour)
-- [ ] Document the HAL principle with this concrete example
+- [ ] Single tone: given frequency + duration, generate beeper output
+- [ ] Frequency table: map note names (C4, D4, ...) to cycle counts
+- [ ] Duration from frame count (50 Hz interrupt)
+- [ ] Simple SFX: ascending/descending sweep, noise burst
+- [ ] Simple melody: sequence of (note, duration) pairs, played in order
+- [ ] Test in zxw emulator — audible output
+- [ ] `glyph/z80/beeper.asm` — reusable beeper routines
+- [ ] `glyph/z80/build_audio.py` — assembler + test harness
 
-**Gate:** One command per target, same spec, visually correct output on both. The difference in quality demonstrates why the HAL doesn't emulate — each target is native.
+**Gate:** `python -m glyph.z80.build_audio melody.json --output melody.bin` produces a binary that plays a recognisable tune in zxw.
+
+---
+
+### A3 — WASM audio engine
+
+The WASM target uses Web Audio API — full fidelity, no constraints.
+
+- [ ] Rust crate or JS module: tone playback via Web Audio oscillators
+- [ ] Same frequency table as A2 (same notes, same API)
+- [ ] Envelope: attack/decay/sustain/release (ADSR) — luxury the beeper can't do
+- [ ] SFX: same sweep/noise as A2 but richer
+- [ ] Melody: same sequence format as A2
+- [ ] Runs in browser alongside glyph-wasm renderer
+
+**Gate:** Same melody JSON plays in browser with Web Audio. Richer than Z80 but same tune.
+
+---
+
+### A4 — HAL audio surface
+
+Define and document the audio API that game sigils will call.
+
+- [ ] `tone_play(note, duration_ms)` — play a single tone
+- [ ] `sfx_play(id)` — trigger a named sound effect
+- [ ] `music_play(melody_id)` — start a melody sequence
+- [ ] `music_stop()` — stop current melody
+- [ ] Document per-target behaviour: WASM gets envelopes, Z80 gets beeper approximation
+- [ ] Add to `glyph/knowledge/` for RAG embedding
+- [ ] Update `glyph/CLAUDE.md` HAL surface with audio calls
+
+**Gate:** HAL audio calls documented. Both targets implement the same interface.
+
+---
+
+### A5 — One spec, both targets (audio)
+
+Wire it together — same pattern as the image POC.
+
+- [ ] Spec format: `type: play_melody`, `notes: [{note: "C4", ms: 500}, ...]`
+- [ ] CLI: `python -m glyph cast spec.yaml --target z80` → beeper binary
+- [ ] CLI: `python -m glyph cast spec.yaml --target wasm` → Web Audio build
+- [ ] Side-by-side: Z80 beeper vs WASM Web Audio, same melody
+- [ ] Document the contrast: 1-bit vs full-fidelity from one spec
+
+**Gate:** One spec, two outputs, both audibly play the same tune.
 
 ---
 
@@ -104,20 +117,28 @@ Wire it together. One spec file, two outputs.
 
 | Skill | Study guide ref | Status before |
 |-------|----------------|---------------|
-| K-means clustering | Classic ML → k-means | Gap (void-duel Ph 2a) |
-| Colour quantisation | Computer vision | Gap (prior role only) |
-| Cross-platform HAL | New (glyph) | New |
-| SCR / ULA format | Systems / Emulation | Extends zxw |
-| WASM sprite rendering | New (glyph) | New |
+| 1-bit audio / beeper engine | Systems / Retro audio | New |
+| Web Audio API | Web platform | New |
+| Cycle-counted Z80 timing | Systems / Emulation | Extends zxw |
+| Audio HAL design | New (glyph) | New |
+| Cross-platform audio | New (glyph) | New |
+
+---
+
+## Feeds into
+
+- [Artefact](../artefact/) — beeper engine is the playback target for generative chip-tunes
+- [Void Duel](../void-duel/) — game SFX on both platforms
+- glyph M1–M5 — HAL audio calls used by game sigils
 
 ---
 
 ## Multi-agent build approach
 
-P2–P4 are independent and can run in parallel with separate Sonnet agents:
+A0 (zxw beeper) must come first. Then A1, A2, A3 can run in parallel:
 
-- **Agent A** — P2: image-to-SCR converter (Python, k-means, palette mapping)
-- **Agent B** — P3: Z80 SCR loader (asm, zxw integration)
-- **Agent C** — P4: WASM renderer (Rust, macroquad)
+- **Agent A** — A1: beeper explainer
+- **Agent B** — A2: Z80 beeper engine (depends on A0 for testing)
+- **Agent C** — A3: WASM Web Audio engine
 
-P1 (explainer) is done first. P5 (integration) is done after all three converge.
+A4 (HAL surface) and A5 (integration) run after all three converge.

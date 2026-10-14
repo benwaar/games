@@ -15,6 +15,7 @@ Everything is inspectable and hackable.
 
 ## Projects
 
+- [Glyph](glyph/) — LLM-first presentation layer: same spec → WASM (full colour) + Z80 (Spectrum constraints). K-means colour quantisation, prompt skeleton, HAL audio. POC complete ▶
 - [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation → Flutter, WASM, Z80 ✅
 - [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
 - [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration, for exploring ASM security, AI model deployment and more ✅
