@@ -105,7 +105,25 @@ Shows incant's `wrap_z80_checksum` in action on the live emulator.
 
 ---
 
-## Demo 3 — WASM self-verifying module
+## Demo 2 — POK file support
+
+Real-hardware simulation: load a protected TAP, apply pokes from a `.pok` file to bypass
+the startup check — the same technique used with Multiface hardware or magazine POKE listings.
+
+- [x] `zxw/src/pok.rs` — `parse_pok()` parser, `Poke` struct, 6 unit tests
+- [x] `zxw/src/lib.rs` — `apply_pok()` on `Emulator` WASM API
+- [x] `zxw/www/pok/j83.pok` — three sysvar pokes bypass the startup protection check
+- [x] `zxw/www/pok/protected.pok` — three NOPs disable our own Z80 XOR verifier (Demo 1 bypass)
+- [x] `zxw/www/index.html` — POK section in sidebar; Load & Run applies selected POK after boot
+- [x] `setup.sh` — `binaryen` (wasm-opt) and `cargo-audit` documented as required tools
+- [x] `setup.sh` — `www/pok/` included in `assets.json` generation
+
+**Gate:** Select ROM + TAP + POK in sidebar → Load & Run → boot, pokes applied, game selection screen renders. ✅
+Both POK files verified: `j83.pok` bypasses third-party protection; `protected.pok` bypasses our own. ✅
+
+---
+
+
 
 Shows incant's `generate_self_verify_wat` in a pure browser context.
 
