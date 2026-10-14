@@ -17,7 +17,30 @@ games/
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
+  wasm/                — WASM test harness: static HTML host + swappable debug.wasm
 ```
+
+---
+
+## Test harnesses
+
+Two static test containers for checking build output in the browser.
+
+### WASM harness (`wasm/`)
+
+- **Output path:** `wasm/debug.wasm`
+- **Source:** `wasm/debug.wat` (edit this, not the `.wasm`)
+- **Build:** `./build.sh` (runs `wat2wasm`)
+- **Serve:** `./serve.sh` → `http://localhost:8999`
+- **HTML is static** — never changes. Just swap the `.wasm` and refresh.
+- Canvas: 256×256 RGBA framebuffer, WASM exports `render()`, `width()`, `height()`, `memory`.
+- Memory: allocate enough pages (1 page = 64KB; 256×256×4 = 4 pages minimum).
+
+### Z80 TAP harness (`zxw/`)
+
+- **Output path:** `zxw/www/tap/debug.tap`
+- **Serve:** `zxw/serve.sh` → `http://localhost:8998`
+- Load `debug.tap` from the sidebar in the emulator UI.
 
 ---
 

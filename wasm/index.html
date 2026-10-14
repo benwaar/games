@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glyph WASM</title>
+  <style>
+    body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    canvas { width: 512px; height: 512px; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <canvas id="screen"></canvas>
+  <script type="module">
+    const response = await fetch('./debug.wasm');
+    const bytes = await response.arrayBuffer();
+    const { instance } = await WebAssembly.instantiate(bytes);
+
+    const w = instance.exports.width();
+    const h = instance.exports.height();
+    const canvas = document.getElementById('screen');
+    canvas.width = w;
+    canvas.height = h;
+
+    instance.exports.render();
+
+    const buffer = new Uint8ClampedArray(instance.exports.memory.buffer, 0, w * h * 4);
+    const ctx = canvas.getContext('2d');
+    const img = new ImageData(buffer, w, h);
+    ctx.putImageData(img, 0, 0);
+  </script>
+</body>
+</html>
