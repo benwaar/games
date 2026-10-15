@@ -51,15 +51,15 @@ Slim mirror DOM — scene description JSON → WAT data segment → player reads
 
 Browser preferences flow through to WASM via imports. Settings panel lets user override.
 
-- [ ] Settings gear icon in player UI
-- [ ] Toggle overrides: dark mode, reduced motion, high contrast
-- [ ] Show detected browser value vs override
-- [ ] `localStorage` persistence
-- [ ] CSS custom properties for player chrome (`--bg`, `--border`, `--text`)
-- [ ] Palette presets: default, high contrast, deuteranopia-friendly
-- [ ] Re-instantiate WASM when override changes (imports return new values)
-- [ ] Tests + docs
-- [ ] Commit: `feat(wasm): a11y settings panel + palette override`
+- [x] Settings gear icon in player UI
+- [x] Toggle overrides: dark mode, reduced motion, high contrast
+- [x] Show detected browser value vs override
+- [x] `localStorage` persistence
+- [x] CSS custom properties for player chrome (`--bg`, `--border`, `--text`)
+- [x] Palette presets: default, high contrast, deuteranopia-friendly
+- [x] Re-instantiate WASM when override changes (imports return new values)
+- [x] Tests + docs
+- [x] Commit: `feat(wasm): a11y settings panel + palette override`
 
 ### Phase 3: Sound customisation
 

@@ -74,7 +74,7 @@ glyph/
 
 ## Test harnesses
 
-- **WASM player** (`wasm/index.html`, `:8999`): generic player — handles image, audio, keyboard via `type()` bitmask. Shows X crosshair when no image.
+- **WASM player** (`wasm/index.html`, `:8999`): generic player — handles image, audio, keyboard via `type()` bitmask. Shows X crosshair when no image. Includes a settings panel (gear icon, top-right of canvas) with palette presets (default, high-contrast, deuteranopia-friendly), preference override toggles (dark mode, reduced motion, high contrast), and `localStorage` persistence under key `wasm-player-settings`. Player chrome uses CSS custom properties on `:root` (`--bg`, `--bg-panel`, `--border`, `--text`, `--text-muted`, `--accent`) — pipeline-generated WASM can inherit these for consistent theming.
 - **zxw debug** (`zxw/www/debug.html`, `:8998`): auto-loads ROM + TAP, boots, types `LOAD ""`. Zero clicks.
 - **zxw full** (`zxw/www/index.html`, `:8998`): full emulator with sidebar, file pickers, POK support.
 

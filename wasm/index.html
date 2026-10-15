@@ -6,35 +6,43 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23111'/><text x='2' y='13' font-family='monospace' font-size='14' font-weight='bold' fill='%230055ff'>G</text></svg>" />
   <title>Glyph WASM Player</title>
   <style>
+    :root {
+      --bg: #1a1a2e;
+      --bg-panel: #16213e;
+      --border: #0f3460;
+      --text: #e0e0e0;
+      --text-muted: #888;
+      --accent: #e94560;
+    }
     * { box-sizing: border-box; }
     body {
-      margin: 0; background: #111; min-height: 100vh;
+      margin: 0; background: var(--bg); min-height: 100vh;
       display: flex; flex-direction: column;
       justify-content: center; align-items: center;
-      font-family: monospace; color: #ccc; gap: 12px;
+      font-family: monospace; color: var(--text); gap: 12px;
     }
     canvas {
       max-width: calc(100vw - 24px);
       max-height: 80vh;
       image-rendering: pixelated;
-      border: 2px solid #333;
+      border: 2px solid var(--border);
     }
-    #status { font-size: 12px; color: #888; }
+    #status { font-size: 12px; color: var(--text-muted); }
     .controls { display: flex; gap: 8px; }
     button.btn {
-      cursor: pointer; background: #333; color: #ccc;
+      cursor: pointer; background: var(--bg-panel); color: var(--text);
       font-family: monospace; font-size: 13px;
-      padding: 5px 16px; border: 1px solid #666; border-radius: 3px;
+      padding: 5px 16px; border: 1px solid var(--border); border-radius: 3px;
     }
-    button.btn:hover { background: #444; }
+    button.btn:hover { background: var(--border); }
     #autoplay-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.8);
       display: none; justify-content: center; align-items: center;
       cursor: pointer; z-index: 10;
     }
     #autoplay-overlay span {
-      font-family: monospace; color: #ccc; font-size: 18px;
-      border: 1px solid #666; padding: 12px 24px; border-radius: 4px;
+      font-family: monospace; color: var(--text); font-size: 18px;
+      border: 1px solid var(--border); padding: 12px 24px; border-radius: 4px;
     }
     .canvas-wrap { position: relative; display: inline-block; }
     .mirror-dom {
@@ -45,12 +53,119 @@
       width: 1px; height: 1px; padding: 0; margin: -1px;
       clip: rect(0,0,0,0); border: 0;
     }
+    /* Settings gear button */
+    .settings-btn {
+      position: absolute; top: 6px; right: 6px; z-index: 20;
+      cursor: pointer; background: var(--bg-panel); color: var(--text);
+      font-size: 16px; line-height: 1;
+      padding: 4px 7px; border: 1px solid var(--border); border-radius: 3px;
+      opacity: 0.7;
+    }
+    .settings-btn:hover, .settings-btn:focus { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Settings panel */
+    .settings-panel {
+      position: absolute; inset: 0; z-index: 19;
+      background: var(--bg-panel); border: 1px solid var(--border);
+      overflow-y: auto; padding: 12px;
+      font-family: monospace; font-size: 13px; color: var(--text);
+    }
+    .settings-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .settings-header span { font-size: 14px; font-weight: bold; }
+    .settings-close {
+      cursor: pointer; background: transparent; color: var(--text-muted);
+      font-family: monospace; font-size: 14px;
+      padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px;
+    }
+    .settings-close:hover, .settings-close:focus { color: var(--text); outline: 2px solid var(--accent); outline-offset: 2px; }
+    .settings-section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); margin: 10px 0 6px; font-weight: normal;
+    }
+    .pref-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .pref-row:last-child { border-bottom: none; }
+    .palette-select {
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 3px;
+      font-family: monospace; font-size: 13px; padding: 3px 6px;
+      cursor: pointer;
+    }
+    .palette-select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .pref-controls { display: flex; align-items: center; gap: 8px; }
+    .pref-browser { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .pref-toggle {
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 3px;
+      font-family: monospace; font-size: 13px; padding: 3px 6px;
+      cursor: pointer;
+    }
+    .pref-toggle:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
   <div class="canvas-wrap">
     <canvas id="screen" role="img" aria-label="Game content"></canvas>
     <div id="mirror" class="mirror-dom" aria-hidden="false"></div>
+    <button id="settings-btn" class="settings-btn" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">⚙</button>
+    <div id="settings-panel" class="settings-panel" hidden>
+      <div class="settings-header">
+        <span>Settings</span>
+        <button id="settings-close" class="settings-close" aria-label="Close settings">✕</button>
+      </div>
+      <section aria-labelledby="prefs-heading">
+        <h2 id="prefs-heading" class="settings-section-title">Preferences</h2>
+        <div class="pref-row">
+          <label for="toggle-dark">Dark mode</label>
+          <span class="pref-controls">
+            <span class="pref-browser" id="browser-dark">Browser: —</span>
+            <select class="pref-toggle" id="toggle-dark" aria-label="Dark mode override">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </span>
+        </div>
+        <div class="pref-row">
+          <label for="toggle-motion">Reduced motion</label>
+          <span class="pref-controls">
+            <span class="pref-browser" id="browser-motion">Browser: —</span>
+            <select class="pref-toggle" id="toggle-motion" aria-label="Reduced motion override">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </span>
+        </div>
+        <div class="pref-row">
+          <label for="toggle-contrast">High contrast</label>
+          <span class="pref-controls">
+            <span class="pref-browser" id="browser-contrast">Browser: —</span>
+            <select class="pref-toggle" id="toggle-contrast" aria-label="High contrast override">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
+          </span>
+        </div>
+      </section>
+      <section aria-labelledby="palette-heading">
+        <h2 id="palette-heading" class="settings-section-title">Colour palette</h2>
+        <div class="pref-row">
+          <label for="palette-select">Theme</label>
+          <select id="palette-select" class="palette-select">
+            <option value="default">Default</option>
+            <option value="high-contrast">High contrast</option>
+            <option value="deuteranopia">Deuteranopia</option>
+          </select>
+        </div>
+      </section>
+    </div>
   </div>
   <div id="status" role="status" aria-live="polite">Loading…</div>
   <div class="controls">
@@ -59,6 +174,23 @@
   <div id="autoplay-overlay"><span>Click to start</span></div>
 
   <script type="module">
+    const PALETTES = {
+      default: { bg: '#1a1a2e', bgPanel: '#16213e', border: '#0f3460', text: '#e0e0e0', textMuted: '#888', accent: '#e94560' },
+      'high-contrast': { bg: '#000000', bgPanel: '#111111', border: '#ffffff', text: '#ffffff', textMuted: '#cccccc', accent: '#ffff00' },
+      deuteranopia: { bg: '#1a1a2e', bgPanel: '#16213e', border: '#0f3460', text: '#e0e0e0', textMuted: '#888', accent: '#4d9de0' },
+    };
+
+    function applyPalette(name) {
+      const p = PALETTES[name] || PALETTES.default;
+      const s = document.documentElement.style;
+      s.setProperty('--bg', p.bg);
+      s.setProperty('--bg-panel', p.bgPanel);
+      s.setProperty('--border', p.border);
+      s.setProperty('--text', p.text);
+      s.setProperty('--text-muted', p.textMuted);
+      s.setProperty('--accent', p.accent);
+    }
+
     const canvas = document.getElementById('screen');
     const ctx = canvas.getContext('2d');
     const status = document.getElementById('status');
@@ -67,6 +199,108 @@
 
     const overrides = { dark: null, motion: null, contrast: null };
     const mirror = document.getElementById('mirror');
+
+    // Settings panel
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const settingsClose = document.getElementById('settings-close');
+    const paletteSelect = document.getElementById('palette-select');
+
+    settingsBtn.addEventListener('click', () => {
+      const open = !settingsPanel.hidden;
+      settingsPanel.hidden = open;
+      settingsBtn.setAttribute('aria-expanded', String(!open));
+      if (!open) settingsClose.focus();
+    });
+
+    settingsClose.addEventListener('click', () => {
+      settingsPanel.hidden = true;
+      settingsBtn.setAttribute('aria-expanded', 'false');
+      settingsBtn.focus();
+    });
+
+    paletteSelect.addEventListener('change', () => {
+      applyPalette(paletteSelect.value);
+      saveSettings();
+    });
+
+    // --- Settings persistence ---
+    const STORAGE_KEY = 'wasm-player-settings';
+
+    function saveSettings() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          overrides: { dark: overrides.dark, motion: overrides.motion, contrast: overrides.contrast },
+          palette: paletteSelect.value,
+        }));
+      } catch (_) {}
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (saved.overrides) {
+          overrides.dark    = saved.overrides.dark    ?? null;
+          overrides.motion  = saved.overrides.motion  ?? null;
+          overrides.contrast = saved.overrides.contrast ?? null;
+        }
+        if (saved.palette && PALETTES[saved.palette]) {
+          paletteSelect.value = saved.palette;
+          applyPalette(saved.palette);
+        }
+      } catch (_) {}
+    }
+
+    // --- Browser preference detection ---
+    const mqDark     = matchMedia('(prefers-color-scheme: dark)');
+    const mqMotion   = matchMedia('(prefers-reduced-motion: reduce)');
+    const mqContrast = matchMedia('(prefers-contrast: more)');
+
+    function updateBrowserLabels() {
+      document.getElementById('browser-dark').textContent     = `Browser: ${mqDark.matches ? 'dark' : 'light'}`;
+      document.getElementById('browser-motion').textContent   = `Browser: ${mqMotion.matches ? 'reduced' : 'full'}`;
+      document.getElementById('browser-contrast').textContent = `Browser: ${mqContrast.matches ? 'more' : 'standard'}`;
+    }
+
+    mqDark.addEventListener('change',     updateBrowserLabels);
+    mqMotion.addEventListener('change',   updateBrowserLabels);
+    mqContrast.addEventListener('change', updateBrowserLabels);
+
+    // --- Toggle overrides ---
+    function initToggles() {
+      const toggleDark     = document.getElementById('toggle-dark');
+      const toggleMotion   = document.getElementById('toggle-motion');
+      const toggleContrast = document.getElementById('toggle-contrast');
+
+      const toSelectVal = v => v === null ? 'auto' : v ? 'on' : 'off';
+      toggleDark.value     = toSelectVal(overrides.dark);
+      toggleMotion.value   = toSelectVal(overrides.motion);
+      toggleContrast.value = toSelectVal(overrides.contrast);
+
+      function handleToggle(select, key) {
+        const v = select.value;
+        overrides[key] = v === 'auto' ? null : v === 'on' ? 1 : 0;
+        saveSettings();
+        reloadWasm();
+      }
+
+      toggleDark.addEventListener('change',     () => handleToggle(toggleDark,     'dark'));
+      toggleMotion.addEventListener('change',   () => handleToggle(toggleMotion,   'motion'));
+      toggleContrast.addEventListener('change', () => handleToggle(toggleContrast, 'contrast'));
+    }
+
+    // --- WASM reload on override change ---
+    async function reloadWasm() {
+      if (ac) { try { ac.close(); } catch (_) {} ac = null; }
+      playing = false;
+      audioNotes = null;
+      pauseBtn.style.display = 'none';
+      mirror.innerHTML = '';
+      status.textContent = 'Reloading…';
+      await load();
+    }
 
     function buildMirrorDom(nodes, cw, ch) {
       mirror.innerHTML = '';
@@ -251,6 +485,9 @@
       status.textContent = parts.join(' | ');
     }
 
+    loadSettings();
+    initToggles();
+    updateBrowserLabels();
     load();
   </script>
 </body>
