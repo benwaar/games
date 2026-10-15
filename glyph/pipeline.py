@@ -39,6 +39,8 @@ WAT_OUT = ROOT / "wex" / "debug.wat"
 TAP_OUT = ROOT / "zxw" / "www" / "tap" / "debug.tap"
 WAT_LIB = ROOT / "wex" / "wat"
 
+VALID_IMPORTS = {"prefers_dark", "prefers_reduced_motion", "prefers_high_contrast"}
+
 
 def _load_snippet(name: str, **kwargs) -> str:
     """Load a WAT snippet file and replace {{placeholder}} markers."""
@@ -46,6 +48,43 @@ def _load_snippet(name: str, **kwargs) -> str:
     for key, val in kwargs.items():
         template = template.replace("{{" + key + "}}", str(val))
     return template
+
+
+def _import_block(imports: list[str] | None) -> str:
+    """Return import lines or empty string."""
+    if not imports:
+        return ""
+    all_lines = (WAT_LIB / "import-prefs.wat").read_text().strip().split("\n")
+    lines = []
+    for name in imports:
+        if name not in VALID_IMPORTS:
+            raise ValueError(f"Unknown import: {name}. Valid: {sorted(VALID_IMPORTS)}")
+        lines.extend(l for l in all_lines if f"${name}" in l)
+    return "\n".join(lines) + "\n"
+
+
+def _a11y_block(a11y, offset: int) -> tuple[str, int]:
+    """Return (a11y WAT fragment + trailing newline, byte size). Empty string and 0 if no a11y."""
+    if a11y is None:
+        return ("", 0)
+    raw = json.dumps(a11y, separators=(',', ':')).encode('utf-8')
+    hex_str = "".join(f"\\{b:02x}" for b in raw)
+    fragment = _load_snippet("a11y-exports.wat",
+        a11y_offset=offset, a11y_hex=hex_str, a11y_size=len(raw))
+    return (fragment + "\n", len(raw))
+
+
+# Keep old names as aliases so existing callers and tests continue to work.
+def _a11y_segment(a11y_json: list[dict], offset: int) -> tuple[str, int]:
+    """Encode a11y scene nodes as a WAT data segment. Alias for _a11y_block."""
+    frag, size = _a11y_block(a11y_json, offset)
+    # _a11y_block adds a trailing \n; _a11y_segment historically did not.
+    return (frag.rstrip('\n'), size)
+
+
+def _import_declarations(imports: list[str] | None) -> str:
+    """Generate WAT import declarations. Alias for _import_block."""
+    return _import_block(imports)
 
 
 # ── Image pipeline ──────────────────────────────────────────────────
@@ -58,33 +97,26 @@ def image_to_rgba(img: Image.Image) -> tuple[bytes, int, int]:
     return bytes(np.array(rgba, dtype=np.uint8).tobytes()), w, h
 
 
+def _f64_hex(value: float) -> str:
+    """Encode an f64 as WAT hex escape string (8 bytes, little-endian)."""
+    return "".join(f"\\{b:02x}" for b in struct.pack("<d", value))
+
+
 def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None, imports=None) -> str:
     """Generate a WAT module with pixel data embedded as a data segment."""
     hex_str = "".join(f"\\{b:02x}" for b in rgba)
     type_val = 1 | (8 if a11y else 0)
-    imp = _import_declarations(imports)
+    a11y_fragment, a11y_size = _a11y_block(a11y, len(rgba))
+    pages = (len(rgba) + a11y_size + 65535) // 65536
 
-    if a11y is not None:
-        a11y_fragment, a11y_size = _a11y_segment(a11y, len(rgba))
-        pages = (len(rgba) + a11y_size + 65535) // 65536
-        mem = _load_snippet("memory.wat", pages=pages)
-        exports = _load_snippet("exports-image.wat", type_val=type_val, width=width, height=height)
-        return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{hex_str}")
-{exports}
-{a11y_fragment}
-)
-"""
-    pages = (len(rgba) + 65535) // 65536
-    mem = _load_snippet("memory.wat", pages=pages)
     exports = _load_snippet("exports-image.wat", type_val=type_val, width=width, height=height)
-    return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{hex_str}")
-{exports}
-)
-"""
+    return _load_snippet("module-image.wat",
+        imports=_import_block(imports),
+        memory=f"  (memory (export \"memory\") {pages})",
+        pixel_hex=hex_str,
+        exports=exports + "\n",
+        a11y=a11y_fragment,
+    )
 
 
 def build_image_wasm(img: Image.Image, a11y=None) -> None:
@@ -131,38 +163,6 @@ def build_image_tap(img: Image.Image) -> None:
 # ── Audio pipeline ──────────────────────────────────────────────────
 
 
-def _f64_hex(value: float) -> str:
-    """Encode an f64 as WAT hex escape string (8 bytes, little-endian)."""
-    return "".join(f"\\{b:02x}" for b in struct.pack("<d", value))
-
-
-def _a11y_segment(a11y_json: list[dict], offset: int) -> tuple[str, int]:
-    """Encode a11y scene nodes as a WAT data segment."""
-    raw = json.dumps(a11y_json, separators=(',', ':')).encode('utf-8')
-    hex_str = "".join(f"\\{b:02x}" for b in raw)
-    return (
-        _load_snippet("a11y-exports.wat", a11y_offset=offset, a11y_hex=hex_str, a11y_size=len(raw)),
-        len(raw),
-    )
-
-
-VALID_IMPORTS = {"prefers_dark", "prefers_reduced_motion", "prefers_high_contrast"}
-
-
-def _import_declarations(imports: list[str] | None) -> str:
-    """Generate WAT import declarations for browser preference queries."""
-    if not imports:
-        return ""
-    all_imports = (WAT_LIB / "import-prefs.wat").read_text().strip().split("\n")
-    lines = []
-    for name in imports:
-        if name not in VALID_IMPORTS:
-            raise ValueError(f"Unknown import: {name}. Valid: {sorted(VALID_IMPORTS)}")
-        matching = [l for l in all_imports if f'${name}' in l]
-        lines.extend(matching)
-    return "\n".join(lines) + "\n"
-
-
 def audio_to_wat(freqs: list[float], durations: list[float], a11y=None, imports=None) -> str:
     """Generate a WAT module with freq/duration arrays as data segments.
 
@@ -181,32 +181,20 @@ def audio_to_wat(freqs: list[float], durations: list[float], a11y=None, imports=
     dur_bytes = "".join(_f64_hex(d) for d in durations)
     dur_offset = count * 8
     type_val = 2 | (8 if a11y else 0)
-    imp = _import_declarations(imports)
+    a11y_offset = count * 8 * 2
+    a11y_fragment, a11y_size = _a11y_block(a11y, a11y_offset)
+    pages = max(1, (a11y_offset + a11y_size + 65535) // 65536)
 
-    if a11y is not None:
-        a11y_offset = count * 8 * 2
-        a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
-        pages = max(1, (a11y_offset + a11y_size + 65535) // 65536)
-        mem = _load_snippet("memory.wat", pages=pages)
-        exports = _load_snippet("exports-audio.wat", type_val=type_val, count=count, audio_offset=0)
-        return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{freq_bytes}")
-  (data (i32.const {dur_offset}) "{dur_bytes}")
-{exports}
-{a11y_fragment}
-)
-"""
-    pages = max(1, (count * 8 * 2 + 65535) // 65536)
-    mem = _load_snippet("memory.wat", pages=pages)
     exports = _load_snippet("exports-audio.wat", type_val=type_val, count=count, audio_offset=0)
-    return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{freq_bytes}")
-  (data (i32.const {dur_offset}) "{dur_bytes}")
-{exports}
-)
-"""
+    return _load_snippet("module-audio.wat",
+        imports=_import_block(imports),
+        memory=f"  (memory (export \"memory\") {pages})",
+        freq_hex=freq_bytes,
+        dur_offset=dur_offset,
+        dur_hex=dur_bytes,
+        exports=exports + "\n",
+        a11y=a11y_fragment,
+    )
 
 
 def build_audio_wasm(spec: dict, a11y=None) -> None:
@@ -285,36 +273,23 @@ def combined_to_wat(
     dur_hex = "".join(_f64_hex(d) for d in durations)
     dur_offset = audio_offset + count * 8
     type_val = 3 | (8 if a11y else 0)
-    imp = _import_declarations(imports)
-
-    if a11y is not None:
-        a11y_offset = pixel_bytes + count * 8 * 2
-        a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
-        total_bytes = pixel_bytes + count * 8 * 2 + a11y_size
-        pages = (total_bytes + 65535) // 65536
-        mem = _load_snippet("memory.wat", pages=pages)
-        exports = _load_snippet("exports-combined.wat", type_val=type_val, width=width, height=height, count=count, audio_offset=audio_offset)
-        return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{pixel_hex}")
-  (data (i32.const {audio_offset}) "{freq_hex}")
-  (data (i32.const {dur_offset}) "{dur_hex}")
-{exports}
-{a11y_fragment}
-)
-"""
-    total_bytes = pixel_bytes + count * 8 * 2
+    a11y_offset = pixel_bytes + count * 8 * 2
+    a11y_fragment, a11y_size = _a11y_block(a11y, a11y_offset)
+    total_bytes = pixel_bytes + count * 8 * 2 + a11y_size
     pages = (total_bytes + 65535) // 65536
-    mem = _load_snippet("memory.wat", pages=pages)
+
     exports = _load_snippet("exports-combined.wat", type_val=type_val, width=width, height=height, count=count, audio_offset=audio_offset)
-    return f"""(module
-{imp}{mem}
-  (data (i32.const 0) "{pixel_hex}")
-  (data (i32.const {audio_offset}) "{freq_hex}")
-  (data (i32.const {dur_offset}) "{dur_hex}")
-{exports}
-)
-"""
+    return _load_snippet("module-combined.wat",
+        imports=_import_block(imports),
+        memory=f"  (memory (export \"memory\") {pages})",
+        pixel_hex=pixel_hex,
+        audio_offset=audio_offset,
+        freq_hex=freq_hex,
+        dur_offset=dur_offset,
+        dur_hex=dur_hex,
+        exports=exports + "\n",
+        a11y=a11y_fragment,
+    )
 
 
 def build_combined_wasm(img: Image.Image, audio_spec: dict, a11y=None) -> None:
