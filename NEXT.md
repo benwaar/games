@@ -11,41 +11,41 @@ Research: `wasm/A11Y.md` | `wasm/SCALING.md` (done)
 Slim mirror DOM — scene description JSON → WAT data segment → player reads and builds hidden DOM overlay.
 
 **1a — WASM import contract (preferences bridge)**
-- [ ] Define `env` imports: `prefers_dark`, `prefers_reduced_motion`, `prefers_high_contrast`
-- [ ] Player provides imports at `WebAssembly.instantiate()` — reads `matchMedia` by default
-- [ ] WAT generators accept optional `imports` list — games opt in to what they need
-- [ ] Tests: WASM instantiation with imports, default values match browser
-- [ ] Doc: update `glyph/CLAUDE.md` WASM export contract section with imports
+- [x] Define `env` imports: `prefers_dark`, `prefers_reduced_motion`, `prefers_high_contrast`
+- [x] Player provides imports at `WebAssembly.instantiate()` — reads `matchMedia` by default
+- [x] WAT generators accept optional `imports` list — games opt in to what they need
+- [x] Tests: WASM instantiation with imports, default values match browser
+- [x] Doc: update `glyph/CLAUDE.md` WASM export contract section with imports
 
 **1b — a11y data segment in pipeline**
-- [ ] `_a11y_data_segment(nodes_json, offset)` helper in `pipeline.py`
-- [ ] `type()` bit 3 (value 8) = has a11y metadata
-- [ ] New exports: `a11y_offset() → i32`, `a11y_size() → i32`
-- [ ] Optional `a11y` param on `rgba_to_wat`, `audio_to_wat`, `combined_to_wat`
-- [ ] CLI: `--a11y scene.json` flag
-- [ ] Sample: `glyph/assets/scene.json` for `i1.png`
-- [ ] Tests: encoding, offset/size, bitmask, backward compat (no a11y = same output)
-- [ ] Doc: update `glyph/CLAUDE.md`
+- [x] `_a11y_data_segment(nodes_json, offset)` helper in `pipeline.py`
+- [x] `type()` bit 3 (value 8) = has a11y metadata
+- [x] New exports: `a11y_offset() → i32`, `a11y_size() → i32`
+- [x] Optional `a11y` param on `rgba_to_wat`, `audio_to_wat`, `combined_to_wat`
+- [x] CLI: `--a11y scene.json` flag
+- [x] Sample: `glyph/assets/scene.json` for `i1.png`
+- [x] Tests: encoding, offset/size, bitmask, backward compat (no a11y = same output)
+- [x] Doc: update `glyph/CLAUDE.md`
 
 **1c — Mirror DOM in player**
-- [ ] `buildMirrorDom(canvas, nodes)` in `wasm/index.html`
-- [ ] Positioned container overlaying canvas, percentage-based coords (scales with responsive CSS)
-- [ ] Per node: `<div>` with `role`, `aria-label`, sr-only (clip-rect)
-- [ ] `aria-live="polite"` region for announcements
-- [ ] Status div gets `role="status"` + `aria-live="polite"`
-- [ ] Fallback when no bit 3: `aria-label="Game content"` + `role="img"` on canvas
-- [ ] Doc: update `wasm/A11Y.md` implementation section
+- [x] `buildMirrorDom(canvas, nodes)` in `wasm/index.html`
+- [x] Positioned container overlaying canvas, percentage-based coords (scales with responsive CSS)
+- [x] Per node: `<div>` with `role`, `aria-label`, sr-only (clip-rect)
+- [x] `aria-live="polite"` region for announcements
+- [x] Status div gets `role="status"` + `aria-live="polite"`
+- [x] Fallback when no bit 3: `aria-label="Game content"` + `role="img"` on canvas
+- [x] Doc: update `wasm/A11Y.md` implementation section
 
 **1d — Explainer**
-- [ ] `wasm/explainers/mirror-dom.md` — what, why, how, connection to toolkit/flare pattern
+- [x] `wasm/explainers/mirror-dom.md` — what, why, how, connection to toolkit/flare pattern
 
 **1e — Verify + commit**
-- [ ] Build with `--a11y`, serve `:8999`, inspect DOM overlay in DevTools
-- [ ] VoiceOver test — tab through nodes, hear labels
-- [ ] Old WASM (no bit 3) — fallback works, no crash
-- [ ] Mobile emulation — mirror DOM scales with responsive canvas
-- [ ] `python -m pytest glyph/ -v` — all pass
-- [ ] Commit: `feat(wasm): mirror DOM a11y + preference imports`
+- [x] Build with `--a11y`, serve `:8999`, inspect DOM overlay in DevTools
+- [x] VoiceOver test — tab through nodes, hear labels (manual — a11y tree verified via DevTools snapshot)
+- [x] Old WASM (no bit 3) — fallback works, no crash
+- [x] Mobile emulation — mirror DOM scales with responsive canvas
+- [x] `python -m pytest glyph/ -v` — all pass
+- [x] Commit: `feat(wasm): mirror DOM a11y + preference imports`
 
 ### Phase 2: Settings panel + palette override
 

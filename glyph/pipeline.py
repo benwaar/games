@@ -49,16 +49,17 @@ def image_to_rgba(img: Image.Image) -> tuple[bytes, int, int]:
     return bytes(np.array(rgba, dtype=np.uint8).tobytes()), w, h
 
 
-def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None) -> str:
+def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None, imports=None) -> str:
     """Generate a WAT module with pixel data embedded as a data segment."""
     hex_str = "".join(f"\\{b:02x}" for b in rgba)
     type_val = 1 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
     if a11y is not None:
         a11y_fragment, a11y_size = _a11y_segment(a11y, len(rgba))
         pages = (len(rgba) + a11y_size + 65535) // 65536
         return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{hex_str}")
   (func (export "type") (result i32) (i32.const {type_val}))
   (func (export "render") (nop))
@@ -69,7 +70,7 @@ def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None) -> str:
 """
     pages = (len(rgba) + 65535) // 65536
     return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{hex_str}")
   (func (export "type") (result i32) (i32.const {type_val}))
   (func (export "render") (nop))
@@ -141,7 +142,22 @@ def _a11y_segment(a11y_json: list[dict], offset: int) -> tuple[str, int]:
     )
 
 
-def audio_to_wat(freqs: list[float], durations: list[float], a11y=None) -> str:
+VALID_IMPORTS = {"prefers_dark", "prefers_reduced_motion", "prefers_high_contrast"}
+
+
+def _import_declarations(imports: list[str] | None) -> str:
+    """Generate WAT import declarations for browser preference queries."""
+    if not imports:
+        return ""
+    lines = []
+    for name in imports:
+        if name not in VALID_IMPORTS:
+            raise ValueError(f"Unknown import: {name}. Valid: {sorted(VALID_IMPORTS)}")
+        lines.append(f'  (import "env" "{name}" (func ${name} (result i32)))')
+    return "\n".join(lines) + "\n"
+
+
+def audio_to_wat(freqs: list[float], durations: list[float], a11y=None, imports=None) -> str:
     """Generate a WAT module with freq/duration arrays as data segments.
 
     Layout:
@@ -159,13 +175,14 @@ def audio_to_wat(freqs: list[float], durations: list[float], a11y=None) -> str:
     dur_bytes = "".join(_f64_hex(d) for d in durations)
     dur_offset = count * 8
     type_val = 2 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
     if a11y is not None:
         a11y_offset = count * 8 * 2
         a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
         pages = max(1, (a11y_offset + a11y_size + 65535) // 65536)
         return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{freq_bytes}")
   (data (i32.const {dur_offset}) "{dur_bytes}")
   (func (export "type") (result i32) (i32.const {type_val}))
@@ -176,7 +193,7 @@ def audio_to_wat(freqs: list[float], durations: list[float], a11y=None) -> str:
 """
     pages = max(1, (count * 8 * 2 + 65535) // 65536)
     return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{freq_bytes}")
   (data (i32.const {dur_offset}) "{dur_bytes}")
   (func (export "type") (result i32) (i32.const {type_val}))
@@ -235,6 +252,7 @@ def combined_to_wat(
     freqs: list[float],
     durations: list[float],
     a11y=None,
+    imports=None,
 ) -> str:
     """Generate a WAT module with both pixel data and audio arrays embedded.
 
@@ -261,6 +279,7 @@ def combined_to_wat(
     dur_hex = "".join(_f64_hex(d) for d in durations)
     dur_offset = audio_offset + count * 8
     type_val = 3 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
     if a11y is not None:
         a11y_offset = pixel_bytes + count * 8 * 2
@@ -268,7 +287,7 @@ def combined_to_wat(
         total_bytes = pixel_bytes + count * 8 * 2 + a11y_size
         pages = (total_bytes + 65535) // 65536
         return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{pixel_hex}")
   (data (i32.const {audio_offset}) "{freq_hex}")
   (data (i32.const {dur_offset}) "{dur_hex}")
@@ -285,7 +304,7 @@ def combined_to_wat(
     pages = (total_bytes + 65535) // 65536
 
     return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{pixel_hex}")
   (data (i32.const {audio_offset}) "{freq_hex}")
   (data (i32.const {dur_offset}) "{dur_hex}")

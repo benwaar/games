@@ -82,6 +82,8 @@ These projects are about understanding algorithms by building them — seeing ho
 
 **AI attribution:** every commit includes the AI trailer lines per the global CLAUDE.md.
 
+**Subagents:** default to sonnet model. Prompts must be directive ("read this file, make this edit"), not descriptive. If `NEXT.md` has checkboxes for the current work, include the path in agent prompts and tell agents to tick `[x]` as they complete steps. Follow the `/research` skill loop: implement → test → tick → next.
+
 ---
 
 ## Projects and status

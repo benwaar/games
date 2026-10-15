@@ -16,7 +16,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "glyph"))
 
-from pipeline import _a11y_segment, _f64_hex, audio_to_wat, combined_to_wat, image_to_rgba, rgba_to_wat
+from pipeline import _a11y_segment, _f64_hex, _import_declarations, VALID_IMPORTS, audio_to_wat, combined_to_wat, image_to_rgba, rgba_to_wat
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -347,3 +347,61 @@ class TestCombinedToWatA11y:
         assert "i32.const 11" in wat
         assert '"a11y_offset"' in wat
         assert '"a11y_size"' in wat
+
+
+# ── Import declarations ─────────────────────────────────────────────
+
+
+class TestImportDeclarations:
+    def test_no_imports(self):
+        assert _import_declarations(None) == ""
+        assert _import_declarations([]) == ""
+
+    def test_single_import(self):
+        result = _import_declarations(["prefers_dark"])
+        assert '(import "env" "prefers_dark"' in result
+        assert "(func $prefers_dark (result i32))" in result
+
+    def test_multiple_imports(self):
+        result = _import_declarations(["prefers_dark", "prefers_reduced_motion"])
+        assert '(import "env" "prefers_dark"' in result
+        assert '(import "env" "prefers_reduced_motion"' in result
+
+    def test_invalid_import_raises(self):
+        with pytest.raises(ValueError, match="Unknown import"):
+            _import_declarations(["not_a_real_import"])
+
+    def test_all_valid_imports(self):
+        result = _import_declarations(sorted(VALID_IMPORTS))
+        for name in VALID_IMPORTS:
+            assert f'"env" "{name}"' in result
+
+
+class TestWatWithImports:
+    def test_rgba_to_wat_with_imports(self):
+        rgba = bytes([255, 0, 0, 255] * 4)
+        wat = rgba_to_wat(rgba, 2, 2, imports=["prefers_dark"])
+        assert '(import "env" "prefers_dark"' in wat
+        assert "i32.const 1)" in wat
+
+    def test_audio_to_wat_with_imports(self):
+        wat = audio_to_wat([440.0], [200.0], imports=["prefers_reduced_motion"])
+        assert '(import "env" "prefers_reduced_motion"' in wat
+
+    def test_combined_to_wat_with_imports(self):
+        rgba = bytes([255, 0, 0, 255] * 4)
+        wat = combined_to_wat(rgba, 2, 2, [440.0], [200.0], imports=["prefers_high_contrast"])
+        assert '(import "env" "prefers_high_contrast"' in wat
+
+    def test_imports_with_a11y(self):
+        rgba = bytes([255, 0, 0, 255] * 4)
+        a11y = [{"role": "img", "label": "test"}]
+        wat = rgba_to_wat(rgba, 2, 2, a11y=a11y, imports=["prefers_dark"])
+        assert '(import "env" "prefers_dark"' in wat
+        assert "i32.const 9" in wat
+        assert "a11y_offset" in wat
+
+    def test_no_imports_unchanged(self):
+        rgba = bytes([255, 0, 0, 255] * 4)
+        wat = rgba_to_wat(rgba, 2, 2)
+        assert "import" not in wat
