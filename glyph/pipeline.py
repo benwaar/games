@@ -7,7 +7,7 @@ Image (.png/.jpg):
   - TAP:  Spectrum-quantised (256x192, k-means) → zxw/www/tap/debug.tap
 
 Audio (.json glyph-audio):
-  - WASM: Web Audio oscillator via Rust + wasm-pack → wasm/debug.wasm
+  - WASM: freq/duration arrays embedded as WAT data segments → wasm/debug.wasm
   - TAP:  Z80 beeper binary → zxw/www/tap/debug.tap
 
 Usage:
@@ -17,6 +17,7 @@ Usage:
 
 import argparse
 import json
+import struct
 import subprocess
 import sys
 import tempfile
@@ -36,7 +37,6 @@ from incant.tap import write_spectrum_tap
 WASM_OUT = ROOT / "wasm" / "debug.wasm"
 WAT_OUT = ROOT / "wasm" / "debug.wat"
 TAP_OUT = ROOT / "zxw" / "www" / "tap" / "debug.tap"
-GLYPHWASM_DIR = ROOT / "glyph" / "glyphwasm"
 
 
 # ── Image pipeline ──────────────────────────────────────────────────
@@ -57,6 +57,7 @@ def rgba_to_wat(rgba: bytes, width: int, height: int) -> str:
     return f"""(module
   (memory (export "memory") {pages})
   (data (i32.const 0) "{hex_str}")
+  (func (export "type") (result i32) (i32.const 1))
   (func (export "render") (nop))
   (func (export "width") (result i32) (i32.const {width}))
   (func (export "height") (result i32) (i32.const {height}))
@@ -108,8 +109,43 @@ def build_image_tap(img: Image.Image) -> None:
 # ── Audio pipeline ──────────────────────────────────────────────────
 
 
-def generate_data_rs(spec: dict) -> str:
-    """Generate Rust data module from glyph-audio JSON spec."""
+def _f64_hex(value: float) -> str:
+    """Encode an f64 as WAT hex escape string (8 bytes, little-endian)."""
+    return "".join(f"\\{b:02x}" for b in struct.pack("<d", value))
+
+
+def audio_to_wat(freqs: list[float], durations: list[float]) -> str:
+    """Generate a WAT module with freq/duration arrays as data segments.
+
+    Layout:
+      offset 0              — f64[n] frequencies  (n * 8 bytes)
+      offset n * 8          — f64[n] durations    (n * 8 bytes)
+
+    Exports:
+      type()         → i32  2  (bit 1 = has audio, no image)
+      audio_count()  → i32  n
+      audio_offset() → i32  0
+      memory
+    """
+    count = len(freqs)
+    freq_bytes = "".join(_f64_hex(f) for f in freqs)
+    dur_bytes = "".join(_f64_hex(d) for d in durations)
+    dur_offset = count * 8
+    pages = max(1, (count * 8 * 2 + 65535) // 65536)
+
+    return f"""(module
+  (memory (export "memory") {pages})
+  (data (i32.const 0) "{freq_bytes}")
+  (data (i32.const {dur_offset}) "{dur_bytes}")
+  (func (export "type") (result i32) (i32.const 2))
+  (func (export "audio_count") (result i32) (i32.const {count}))
+  (func (export "audio_offset") (result i32) (i32.const 0))
+)
+"""
+
+
+def build_audio_wasm(spec: dict) -> None:
+    """glyph-audio JSON → freq/duration arrays → WAT → WASM."""
     from glyphz80.beeper import note_to_freq
 
     freqs: list[float] = []
@@ -122,62 +158,20 @@ def generate_data_rs(spec: dict) -> str:
             freqs.append(note_to_freq(entry["note"]))
             durations.append(float(entry["ms"]))
 
-    lines = [
-        f"pub const NOTE_COUNT: usize = {len(freqs)};",
-        "",
-        f"pub const FREQS: [f64; {len(freqs)}] = [",
-    ]
-    for f in freqs:
-        lines.append(f"    {f:.4f},")
-    lines.append("];")
-    lines.append("")
-    lines.append(f"pub const DURATIONS_MS: [f64; {len(durations)}] = [")
-    for d in durations:
-        lines.append(f"    {d:.1f},")
-    lines.append("];")
-    lines.append("")
+    count = len(freqs)
+    print(f"WASM: {count} notes → WAT data segments")
 
-    return "\n".join(lines)
-
-
-def build_audio_wasm(spec: dict) -> None:
-    """glyph-audio JSON → data.rs → wasm-pack → debug.wasm."""
-    data_rs = generate_data_rs(spec)
-    data_rs_path = GLYPHWASM_DIR / "src" / "data.rs"
-    data_rs_path.write_text(data_rs)
-    print(f"Generated {data_rs_path}")
+    wat = audio_to_wat(freqs, durations)
+    WAT_OUT.write_text(wat)
 
     result = subprocess.run(
-        ["wasm-pack", "build", "--target", "web", "--out-dir", "pkg"],
-        cwd=str(GLYPHWASM_DIR),
+        ["wat2wasm", str(WAT_OUT), "-o", str(WASM_OUT)],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
-        print(f"wasm-pack failed:\n{result.stderr}", file=sys.stderr)
+        print(f"wat2wasm failed:\n{result.stderr}", file=sys.stderr)
         sys.exit(1)
-
-    pkg_wasm = GLYPHWASM_DIR / "pkg" / "glyph_audio_bg.wasm"
-    if not pkg_wasm.exists():
-        wasm_files = list((GLYPHWASM_DIR / "pkg").glob("*.wasm"))
-        if not wasm_files:
-            print("No .wasm file found in pkg/", file=sys.stderr)
-            sys.exit(1)
-        pkg_wasm = wasm_files[0]
-
-    import shutil
-    shutil.copy2(pkg_wasm, WASM_OUT)
     print(f"Written {WASM_OUT} ({WASM_OUT.stat().st_size} bytes)")
-
-    # Also copy the JS glue for the HTML to import
-    pkg_js = pkg_wasm.with_suffix("").with_suffix(".js")
-    if not pkg_js.exists():
-        js_files = list((GLYPHWASM_DIR / "pkg").glob("*.js"))
-        if js_files:
-            pkg_js = js_files[0]
-    if pkg_js.exists():
-        js_out = WASM_OUT.parent / pkg_js.name
-        shutil.copy2(pkg_js, js_out)
-        print(f"Written {js_out}")
 
 
 def build_audio_tap(spec: dict) -> None:
