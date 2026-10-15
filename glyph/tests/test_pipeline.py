@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import struct
 import subprocess
 import sys
@@ -15,7 +16,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "glyph"))
 
-from pipeline import _f64_hex, audio_to_wat, image_to_rgba, rgba_to_wat
+from pipeline import _a11y_segment, _f64_hex, audio_to_wat, combined_to_wat, image_to_rgba, rgba_to_wat
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -267,3 +268,82 @@ class TestImageToRgba:
         # Each channel of greyscale maps to R=G=B=128, A=255
         assert raw[0] == 128
         assert raw[3] == 255
+
+
+# ── _a11y_segment ────────────────────────────────────────────────────
+
+
+class TestA11ySegment:
+    def test_a11y_segment_encoding(self):
+        """Hex in data segment must round-trip back to original JSON."""
+        import re
+        nodes = [{"role": "img", "label": "test"}]
+        fragment, size = _a11y_segment(nodes, 100)
+        # Extract the hex string from the data segment line
+        match = re.search(r'\(data \(i32\.const 100\) "([^"]+)"\)', fragment)
+        assert match is not None
+        hex_escaped = match.group(1)
+        # Decode \\XX escapes back to bytes
+        raw = bytes(int(hex_escaped[i+1:i+3], 16) for i in range(0, len(hex_escaped), 3))
+        assert json.loads(raw.decode("utf-8")) == nodes
+
+    def test_a11y_segment_size_matches_json(self):
+        nodes = [{"role": "region", "label": "test area"}]
+        raw = json.dumps(nodes, separators=(',', ':')).encode('utf-8')
+        _, size = _a11y_segment(nodes, 0)
+        assert size == len(raw)
+
+    def test_a11y_segment_exports_offset_and_size(self):
+        nodes = [{"role": "img", "label": "x"}]
+        fragment, _ = _a11y_segment(nodes, 256)
+        assert '"a11y_offset"' in fragment
+        assert '"a11y_size"' in fragment
+        assert "i32.const 256" in fragment
+
+
+# ── a11y in rgba_to_wat ──────────────────────────────────────────────
+
+
+class TestRgbaToWatA11y:
+    def test_rgba_to_wat_with_a11y(self):
+        """type bitmask: 1 | 8 = 9. a11y exports present."""
+        rgba = bytes([255, 0, 0, 255] * 4)  # 2x2 red
+        a11y = [{"role": "img", "label": "test"}]
+        wat = rgba_to_wat(rgba, 2, 2, a11y=a11y)
+        assert "i32.const 9" in wat
+        assert '"a11y_offset"' in wat
+        assert '"a11y_size"' in wat
+
+    def test_backward_compat_no_a11y(self):
+        """Without a11y: type=1, no a11y exports."""
+        rgba = bytes([255, 0, 0, 255] * 4)
+        wat = rgba_to_wat(rgba, 2, 2)
+        assert "i32.const 1" in wat
+        assert "a11y" not in wat
+
+
+# ── a11y in audio_to_wat ─────────────────────────────────────────────
+
+
+class TestAudioToWatA11y:
+    def test_audio_to_wat_with_a11y(self):
+        """type bitmask: 2 | 8 = 10. a11y exports present."""
+        a11y = [{"role": "img", "label": "test"}]
+        wat = audio_to_wat([440.0], [500.0], a11y=a11y)
+        assert "i32.const 10" in wat
+        assert '"a11y_offset"' in wat
+        assert '"a11y_size"' in wat
+
+
+# ── a11y in combined_to_wat ──────────────────────────────────────────
+
+
+class TestCombinedToWatA11y:
+    def test_combined_to_wat_with_a11y(self):
+        """type bitmask: 3 | 8 = 11. a11y exports present."""
+        rgba = bytes([255, 0, 0, 255] * 4)  # 2x2
+        a11y = [{"role": "img", "label": "test"}]
+        wat = combined_to_wat(rgba, 2, 2, [440.0], [500.0], a11y=a11y)
+        assert "i32.const 11" in wat
+        assert '"a11y_offset"' in wat
+        assert '"a11y_size"' in wat

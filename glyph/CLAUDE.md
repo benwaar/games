@@ -29,6 +29,19 @@ audio_offset() → i32    # byte offset of note data (audio only)
 memory                  # linear memory
 ```
 
+## WASM import contract (optional)
+
+Content WASM may import preference queries from the host:
+
+```
+(import "env" "prefers_dark" (func (result i32)))
+(import "env" "prefers_reduced_motion" (func (result i32)))
+(import "env" "prefers_high_contrast" (func (result i32)))
+```
+
+Returns 1 (true) or 0 (false). Browser default unless overridden by player settings.
+Games opt in by declaring the imports they need — unused imports are ignored.
+
 Audio data layout at `audio_offset()`:
 - `f64[audio_count]` frequencies in Hz
 - `f64[audio_count]` durations in ms

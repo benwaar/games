@@ -36,11 +36,23 @@
       font-family: monospace; color: #ccc; font-size: 18px;
       border: 1px solid #666; padding: 12px 24px; border-radius: 4px;
     }
+    .canvas-wrap { position: relative; display: inline-block; }
+    .mirror-dom {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    }
+    .sr-only {
+      position: absolute; overflow: hidden;
+      width: 1px; height: 1px; padding: 0; margin: -1px;
+      clip: rect(0,0,0,0); border: 0;
+    }
   </style>
 </head>
 <body>
-  <canvas id="screen"></canvas>
-  <div id="status">Loading…</div>
+  <div class="canvas-wrap">
+    <canvas id="screen" role="img" aria-label="Game content"></canvas>
+    <div id="mirror" class="mirror-dom" aria-hidden="false"></div>
+  </div>
+  <div id="status" role="status" aria-live="polite">Loading…</div>
   <div class="controls">
     <button id="pause-btn" class="btn" style="display:none">⏸ Pause (P)</button>
   </div>
@@ -52,6 +64,36 @@
     const status = document.getElementById('status');
     const pauseBtn = document.getElementById('pause-btn');
     const overlay = document.getElementById('autoplay-overlay');
+
+    const overrides = { dark: null, motion: null, contrast: null };
+    const mirror = document.getElementById('mirror');
+
+    function buildMirrorDom(nodes, cw, ch) {
+      mirror.innerHTML = '';
+      const announcer = document.createElement('div');
+      announcer.setAttribute('aria-live', 'polite');
+      announcer.className = 'sr-only';
+      announcer.id = 'announcer';
+      mirror.appendChild(announcer);
+
+      for (const node of nodes) {
+        const div = document.createElement('div');
+        div.setAttribute('role', node.role || 'img');
+        div.setAttribute('aria-label', node.label || '');
+        div.tabIndex = 0;
+        div.style.position = 'absolute';
+        div.style.left = ((node.x || 0) / cw * 100) + '%';
+        div.style.top = ((node.y || 0) / ch * 100) + '%';
+        div.style.width = ((node.w || cw) / cw * 100) + '%';
+        div.style.height = ((node.h || ch) / ch * 100) + '%';
+        div.className = 'sr-only';
+        mirror.appendChild(div);
+      }
+
+      if (nodes.length > 0) {
+        canvas.setAttribute('aria-label', nodes[0].label || 'Game content');
+      }
+    }
 
     function drawNoContent() {
       canvas.width = 256; canvas.height = 256;
@@ -129,7 +171,14 @@
         const res = await fetch('./debug.wasm');
         if (!res.ok) throw new Error('fetch failed');
         const bytes = await res.arrayBuffer();
-        ({ instance } = await WebAssembly.instantiate(bytes));
+        const imports = {
+          env: {
+            prefers_dark: () => overrides.dark ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 1 : 0),
+            prefers_reduced_motion: () => overrides.motion ?? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0),
+            prefers_high_contrast: () => overrides.contrast ?? (matchMedia('(prefers-contrast: more)').matches ? 1 : 0),
+          }
+        };
+        ({ instance } = await WebAssembly.instantiate(bytes, imports));
       } catch (_) {
         drawNoContent();
         status.textContent = 'No debug.wasm — run pipeline first';
@@ -181,6 +230,21 @@
         document.addEventListener('keydown', e => console.log('keydown', e.key));
         document.addEventListener('keyup', e => console.log('keyup', e.key));
         parts.push('Keyboard: active');
+      }
+
+      if (type & 8) {
+        const off = exp.a11y_offset();
+        const size = exp.a11y_size();
+        const raw = new Uint8Array(mem, off, size);
+        try {
+          const nodes = JSON.parse(new TextDecoder().decode(raw));
+          const cw = hasImage ? exp.width() : 256;
+          const ch = hasImage ? exp.height() : 256;
+          buildMirrorDom(nodes, cw, ch);
+          parts.push(`A11y: ${nodes.length} nodes`);
+        } catch (_) {
+          parts.push('A11y: parse error');
+        }
       }
 
       if (!parts.length) parts.push('No content');
