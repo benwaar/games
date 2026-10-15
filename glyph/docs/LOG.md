@@ -84,3 +84,26 @@ Removed `glyph/glyphwex/` Rust crate entirely. Updated gitignore, CLAUDE.md, pip
 - `tools/zx-viewer/` — VS Code extension: renders .scr files, TAP hex inspector with decoded headers + colour-coded SCR bytes
 - `tools/wasm-viewer/` — VS Code extension: WASM section breakdown, colour-coded hex dump, decoded exports/imports
 - `tools/EXTENSIONS.md` — catalogue of useful VS Code extensions for the repo
+
+---
+
+## a11y Phase 1: Mirror DOM ✅ (2026-10-15)
+
+**Goal:** Make canvas-based WASM content accessible to screen readers.
+
+- Pipeline encodes a11y scene JSON as UTF-8 data segment (`type()` bit 3). New exports: `a11y_offset()`, `a11y_size()`.
+- Player reads a11y data, builds hidden mirror DOM overlay with `role`, `aria-label`, percentage-based positioning.
+- `aria-live="polite"` region for announcements, sr-only clip-rect pattern.
+- Optional `env` imports: `prefers_dark`, `prefers_reduced_motion`, `prefers_high_contrast` — browser preferences bridged to WASM.
+- Fallback: no bit 3 → `aria-label="Game content"` + `role="region"` on canvas.
+- Explainer: `wex/explainers/mirror-dom.md`.
+
+## a11y Phase 2: Settings panel + palette override ✅ (2026-10-15)
+
+**Goal:** Let users override browser preferences and switch palettes.
+
+- Settings gear icon (top-right of canvas), toggle overrides: dark mode, reduced motion, high contrast (Auto/On/Off).
+- 3 palette presets: default, high-contrast, deuteranopia-friendly. CSS custom properties on `:root`.
+- `localStorage` persistence under `wasm-player-settings`.
+- `reloadWasm()` re-instantiates WASM when overrides change (imports return new values).
+- Multi-agent code review found and fixed: keyboard listener leak (AbortController), redundant matchMedia, dead code.
