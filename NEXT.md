@@ -1,12 +1,8 @@
 # Next
 
-## wex — extract JS modules
+## ~~wex — extract JS modules~~ ✅
 
-- `wex/a11y.js` — `buildMirrorDom()`, `speak()`, `spatialAudio()`, mirror DOM focus handlers
-- `wex/settings.js` — settings panel, palette switching, localStorage persistence
-- `wex/player.js` — WASM loading, canvas rendering, audio scheduling
-- `index.html` becomes a static shell (HTML + CSS) that imports the modules
-- Do this first — cleaner base for the indexed colour and rendering work that follows
+Done. Split into `player.css`, `a11y.js`, `audio.js`, `settings.js`, `player.js`. HTML is a static shell.
 
 ## wex — indexed colour pipeline (256-colour LUT)
 
@@ -27,11 +23,9 @@ Steps:
 - [ ] Update player JS to call `render()` on palette change instead of full `reloadWasm()` — cheaper, just re-renders with new LUT
 - [ ] Fallback: matrix transform path for content exceeding 256 colours
 
-## wex — shared WAT library extraction
+## ~~wex — shared WAT library extraction~~ ✅
 
-- Extract shared WAT functions from pipeline: `render_with_palette()`, a11y segment builder, import declarations
-- Pipeline composes modules by stitching WAT fragments — the Python generator is the linker
-- Ties into WAT template dedup below — `rgba_to_wat`, `audio_to_wat`, `combined_to_wat` share identical structure; extract shared builder
+Done. 6 snippet files in `wex/wat/`. Pipeline uses `_load_snippet()` with `{{placeholder}}` templates. `render_with_palette()` deferred to indexed colour phase.
 
 ## Glyph — deferred from audio POC
 
