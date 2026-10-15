@@ -14,7 +14,9 @@
       font-family: monospace; color: #ccc; gap: 12px;
     }
     canvas {
-      width: 512px; image-rendering: pixelated;
+      max-width: calc(100vw - 24px);
+      max-height: 80vh;
+      image-rendering: pixelated;
       border: 2px solid #333;
     }
     #status { font-size: 12px; color: #888; }
@@ -53,6 +55,7 @@
 
     function drawNoContent() {
       canvas.width = 256; canvas.height = 256;
+      canvas.style.aspectRatio = '1 / 1';
       ctx.strokeStyle = '#0055ff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(256,0); ctx.lineTo(0,256); ctx.stroke();
@@ -139,6 +142,7 @@
       if (typeof exp.type !== 'function') {
         const w = exp.width(); const h = exp.height();
         canvas.width = w; canvas.height = h;
+        canvas.style.aspectRatio = `${w} / ${h}`;
         exp.render();
         ctx.putImageData(new ImageData(new Uint8ClampedArray(mem, 0, w * h * 4), w, h), 0, 0);
         status.textContent = `Image: ${w}×${h} (legacy)`;
@@ -153,6 +157,7 @@
       if (hasImage) {
         const w = exp.width(); const h = exp.height();
         canvas.width = w; canvas.height = h;
+        canvas.style.aspectRatio = `${w} / ${h}`;
         exp.render();
         ctx.putImageData(new ImageData(new Uint8ClampedArray(mem, 0, w * h * 4), w, h), 0, 0);
         parts.push(`Image: ${w}×${h}`);
