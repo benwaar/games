@@ -4,11 +4,11 @@
 
 Research: `wex/A11Y.md` | `wex/SCALING.md`
 
-- [ ] Separate volume controls (SFX / narration / music) when multiple audio channels exist
-- [ ] Web Speech API self-voicing toggle — player speaks scene descriptions
-- [ ] Spatial audio via `PannerNode` when game provides positional data
-- [ ] `localStorage` persistence
-- [ ] Tests + docs
+- [x] Separate volume controls (SFX / narration / music) when multiple audio channels exist
+- [x] Web Speech API self-voicing toggle — player speaks scene descriptions
+- [x] Spatial audio via `PannerNode` when game provides positional data
+- [x] `localStorage` persistence
+- [x] Tests + docs
 - [ ] Commit: `feat(wex): a11y sound customisation`
 
 ---

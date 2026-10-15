@@ -165,6 +165,25 @@
           </select>
         </div>
       </section>
+      <section aria-labelledby="audio-heading">
+        <h2 id="audio-heading" class="settings-section-title">Audio</h2>
+        <div class="pref-row">
+          <label for="volume-slider">Volume</label>
+          <span class="pref-controls">
+            <input type="range" id="volume-slider" min="0" max="100" value="30" class="pref-toggle" style="width:80px" aria-label="Volume">
+            <span id="volume-label" class="pref-browser">30%</span>
+          </span>
+        </div>
+        <div class="pref-row">
+          <label for="toggle-voice">Self-voicing</label>
+          <span class="pref-controls">
+            <select class="pref-toggle" id="toggle-voice" aria-label="Self-voicing">
+              <option value="off">Off</option>
+              <option value="on">On</option>
+            </select>
+          </span>
+        </div>
+      </section>
     </div>
   </div>
   <div id="status" role="status" aria-live="polite">Loading…</div>
@@ -205,6 +224,9 @@
     const settingsPanel = document.getElementById('settings-panel');
     const settingsClose = document.getElementById('settings-close');
     const paletteSelect = document.getElementById('palette-select');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeLabel = document.getElementById('volume-label');
+    const toggleVoice = document.getElementById('toggle-voice');
 
     settingsBtn.addEventListener('click', () => {
       const open = !settingsPanel.hidden;
@@ -224,6 +246,18 @@
       saveSettings();
     });
 
+    volumeSlider.addEventListener('input', () => {
+      const val = volumeSlider.value;
+      volumeLabel.textContent = val + '%';
+      if (masterGain) masterGain.gain.value = val / 100;
+      saveSettings();
+    });
+
+    toggleVoice.addEventListener('change', () => {
+      voiceEnabled = toggleVoice.value === 'on';
+      saveSettings();
+    });
+
     // --- Settings persistence ---
     const STORAGE_KEY = 'wasm-player-settings';
 
@@ -232,6 +266,8 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           overrides: { dark: overrides.dark, motion: overrides.motion, contrast: overrides.contrast },
           palette: paletteSelect.value,
+          volume: volumeSlider.value,
+          voice: toggleVoice.value,
         }));
       } catch (_) {}
     }
@@ -249,6 +285,14 @@
         if (saved.palette && PALETTES[saved.palette]) {
           paletteSelect.value = saved.palette;
           applyPalette(saved.palette);
+        }
+        if (saved.volume !== undefined) {
+          volumeSlider.value = saved.volume;
+          volumeLabel.textContent = saved.volume + '%';
+        }
+        if (saved.voice) {
+          toggleVoice.value = saved.voice;
+          voiceEnabled = saved.voice === 'on';
         }
       } catch (_) {}
     }
@@ -294,6 +338,7 @@
     // --- WASM reload on override change ---
     async function reloadWasm() {
       if (ac) { try { ac.close(); } catch (_) {} ac = null; }
+      masterGain = null;
       if (kbAbort) { kbAbort.abort(); kbAbort = null; }
       playing = false;
       audioNotes = null;
@@ -322,6 +367,7 @@
         div.style.width = ((node.w || cw) / cw * 100) + '%';
         div.style.height = ((node.h || ch) / ch * 100) + '%';
         div.className = 'sr-only';
+        div.addEventListener('focus', () => { if (voiceEnabled) speak(node.label || ''); });
         mirror.appendChild(div);
       }
 
@@ -339,15 +385,41 @@
     }
 
     let ac = null;
+    let masterGain = null;
+    let voiceEnabled = false;
     let playing = false;
     let audioNotes = null;
     let kbAbort = null;
 
+    function speak(text) {
+      if (!window.speechSynthesis || !text) return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+
+    function spatialAudio(x, canvasWidth) {
+      const panner = ac.createPanner();
+      panner.panningModel = 'HRTF';
+      panner.distanceModel = 'inverse';
+      panner.refDistance = 1;
+      panner.maxDistance = 10;
+      const pan = (x / canvasWidth - 0.5) * 2;
+      panner.positionX.value = pan;
+      panner.positionY.value = 0;
+      panner.positionZ.value = -1;
+      panner.connect(masterGain || ac.destination);
+      return panner;
+    }
+
     function scheduleAudio() {
       if (!audioNotes || !ac) return;
-      const gain = ac.createGain();
-      gain.gain.value = 0.3;
-      gain.connect(ac.destination);
+      if (!masterGain) {
+        masterGain = ac.createGain();
+        masterGain.gain.value = volumeSlider.value / 100;
+        masterGain.connect(ac.destination);
+      }
+      const positions = audioNotes.positions;
+      const canvasWidth = canvas.width || 256;
       let t = ac.currentTime + 0.05;
       for (let i = 0; i < audioNotes.freqs.length; i++) {
         const freq = audioNotes.freqs[i];
@@ -356,7 +428,12 @@
           const osc = ac.createOscillator();
           osc.type = 'square';
           osc.frequency.value = freq;
-          osc.connect(gain);
+          if (positions && positions[i]) {
+            const panner = spatialAudio(positions[i].x, canvasWidth);
+            osc.connect(panner);
+          } else {
+            osc.connect(masterGain);
+          }
           osc.start(t);
           osc.stop(t + dur);
         }
@@ -477,7 +554,17 @@
           const cw = hasImage ? exp.width() : 256;
           const ch = hasImage ? exp.height() : 256;
           buildMirrorDom(nodes, cw, ch);
+          if (voiceEnabled && nodes.length > 0) speak(nodes[0].label || '');
           parts.push(`A11y: ${nodes.length} nodes`);
+          if (audioNotes && nodes.length > 0) {
+            audioNotes.positions = nodes
+              .filter(n => n.x !== undefined)
+              .map(n => ({ x: n.x, y: n.y || 0 }));
+            if (audioNotes.positions.length > 0) {
+              const audioIdx = parts.findIndex(p => p.startsWith('Audio:'));
+              if (audioIdx >= 0) parts[audioIdx] += ' (spatial)';
+            }
+          }
         } catch (_) {
           parts.push('A11y: parse error');
         }
