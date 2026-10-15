@@ -363,7 +363,16 @@ def main() -> None:
     parser.add_argument("--a11y", help="Path to a11y scene description JSON")
     args = parser.parse_args()
 
-    a11y = json.loads(Path(args.a11y).read_text()) if args.a11y else None
+    a11y = None
+    if args.a11y:
+        a11y_path = Path(args.a11y)
+        if not a11y_path.exists():
+            print(f"a11y file not found: {a11y_path}", file=sys.stderr)
+            sys.exit(1)
+        a11y = json.loads(a11y_path.read_text())
+        if not isinstance(a11y, list):
+            print(f"a11y JSON must be an array, got {type(a11y).__name__}", file=sys.stderr)
+            sys.exit(1)
 
     path = Path(args.input)
     suffix = path.suffix.lower()

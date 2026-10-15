@@ -361,7 +361,6 @@
         div.setAttribute('role', node.role || 'region');
         div.setAttribute('aria-label', node.label || '');
         div.tabIndex = 0;
-        div.style.position = 'absolute';
         div.style.left = ((node.x || 0) / cw * 100) + '%';
         div.style.top = ((node.y || 0) / ch * 100) + '%';
         div.style.width = ((node.w || cw) / cw * 100) + '%';
@@ -480,7 +479,11 @@
       let instance;
       try {
         const res = await fetch('./debug.wasm');
-        if (!res.ok) throw new Error('fetch failed');
+        if (!res.ok) {
+          drawNoContent();
+          status.textContent = 'No debug.wasm — run pipeline first';
+          return;
+        }
         const bytes = await res.arrayBuffer();
         const imports = {
           env: {
@@ -490,9 +493,12 @@
           }
         };
         ({ instance } = await WebAssembly.instantiate(bytes, imports));
-      } catch (_) {
+      } catch (err) {
+        console.warn('WASM load error:', err);
         drawNoContent();
-        status.textContent = 'No debug.wasm — run pipeline first';
+        status.textContent = err instanceof WebAssembly.LinkError
+          ? `WASM import error: ${err.message}`
+          : 'No debug.wasm — run pipeline first';
         return;
       }
 
@@ -534,7 +540,6 @@
         audioNotes = { freqs: Array.from(freqs), durs: Array.from(durs) };
         parts.push(`Audio: ${count} notes`);
         pauseBtn.style.display = 'block';
-        startAudio();
       }
 
       if (type & 4) {
@@ -557,10 +562,10 @@
           if (voiceEnabled && nodes.length > 0) speak(nodes[0].label || '');
           parts.push(`A11y: ${nodes.length} nodes`);
           if (audioNotes && nodes.length > 0) {
-            audioNotes.positions = nodes
-              .filter(n => n.x !== undefined)
-              .map(n => ({ x: n.x, y: n.y || 0 }));
-            if (audioNotes.positions.length > 0) {
+            audioNotes.positions = nodes.map(n =>
+              n.x !== undefined ? { x: n.x, y: n.y || 0 } : null
+            );
+            if (audioNotes.positions.some(p => p !== null)) {
               const audioIdx = parts.findIndex(p => p.startsWith('Audio:'));
               if (audioIdx >= 0) parts[audioIdx] += ' (spatial)';
             }
@@ -569,6 +574,8 @@
           parts.push('A11y: parse error');
         }
       }
+
+      if (hasAudio) startAudio();
 
       status.textContent = parts.join(' | ');
     }
