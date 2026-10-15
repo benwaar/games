@@ -97,4 +97,4 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Void Duel](void-duel/) | Planned |
 | [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
-| [Glyph](glyph/) | ▶ POC complete — image → both targets, k-means quantiser, prompt skeleton |
+| [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
