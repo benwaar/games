@@ -54,8 +54,8 @@ glyph/
   assets/                — test inputs (i1.png, a1.json)
   scr/                   — shared image processing: quantise, pack, palette, render
   glyphz80/              — Z80 target: beeper compiler, SCR loader, assembler
+  tests/                 — 34 pipeline tests (WAT generation, type bitmask, f64 encoding)
   glyphz80/tests/        — 34 beeper + 6 scr_loader tests
-  glyphwasm/             — Rust Web Audio crate (legacy, unused — pipeline uses pure WAT)
   explainers/            — beeper-audio.md, hal-principle.md
 ```
 
@@ -69,4 +69,4 @@ glyph/
 
 - Pure WAT → `wat2wasm` for all WASM output. No Rust/wasm-pack in the pipeline.
 - TAP files via `incant.tap.write_spectrum_tap()` — canonical TAP writer.
-- Tests: `python -m pytest glyph/ -v` (79 tests).
+- Tests: `python -m pytest glyph/ -v` (113 tests).

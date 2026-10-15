@@ -35,12 +35,12 @@ audio spec (glyph-audio JSON)
 
 ## Remaining
 
-- [ ] Verify audio playback in browser (Play button on WASM player)
+- [x] Verify audio playback in browser (Play button on WASM player)
 - [ ] Verify TAP audio in zxw debug mode (needs ROM file)
-- [ ] Remove `glyph/glyphwasm/` Rust crate (no longer used by pipeline)
-- [ ] Add pipeline tests (audio WAT generation, type bitmask)
+- [x] Add pipeline tests (audio WAT generation, type bitmask) — 34 tests in `glyph/tests/test_pipeline.py`
 - [ ] WASM player: keyboard input mechanism (store key state in WASM memory)
-- [ ] Combined image+audio WASM (type=3: image with soundtrack)
+- [x] Combined image+audio WASM (type=3: image with soundtrack)
+- [x] Remove glyphwasm Rust crate (replaced by pure WAT)
 
 ## Deferred
 
