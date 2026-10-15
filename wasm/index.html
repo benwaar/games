@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23111'/><text x='2' y='13' font-family='monospace' font-size='14' font-weight='bold' fill='%230055ff'>G</text></svg>" />
+  <title>Glyph WASM Player</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #111; min-height: 100vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      font-family: monospace; color: #ccc; gap: 12px;
+    }
+    canvas {
+      width: 512px; image-rendering: pixelated;
+      border: 2px solid #333;
+    }
+    #status { font-size: 12px; color: #888; }
+    .controls { display: flex; gap: 8px; }
+    button.btn {
+      cursor: pointer; background: #333; color: #ccc;
+      font-family: monospace; font-size: 13px;
+      padding: 5px 16px; border: 1px solid #666; border-radius: 3px;
+    }
+    button.btn:hover { background: #444; }
+    #autoplay-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      display: none; justify-content: center; align-items: center;
+      cursor: pointer; z-index: 10;
+    }
+    #autoplay-overlay span {
+      font-family: monospace; color: #ccc; font-size: 18px;
+      border: 1px solid #666; padding: 12px 24px; border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="screen"></canvas>
+  <div id="status">Loading…</div>
+  <div class="controls">
+    <button id="pause-btn" class="btn" style="display:none">⏸ Pause (P)</button>
+  </div>
+  <div id="autoplay-overlay"><span>Click to start</span></div>
+
+  <script type="module">
+    const canvas = document.getElementById('screen');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const pauseBtn = document.getElementById('pause-btn');
+    const overlay = document.getElementById('autoplay-overlay');
+
+    function drawNoContent() {
+      canvas.width = 256; canvas.height = 256;
+      ctx.strokeStyle = '#0055ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(256,0); ctx.lineTo(0,256); ctx.stroke();
+    }
+
+    let ac = null;
+    let gainNode = null;
+    let playing = false;
+    let audioNotes = null;
+
+    function scheduleAudio() {
+      if (!audioNotes || !ac) return;
+      const gain = ac.createGain();
+      gain.gain.value = 0.3;
+      gain.connect(ac.destination);
+      gainNode = gain;
+      let t = ac.currentTime + 0.05;
+      for (let i = 0; i < audioNotes.freqs.length; i++) {
+        const freq = audioNotes.freqs[i];
+        const dur  = audioNotes.durs[i] / 1000;
+        if (freq > 0) {
+          const osc = ac.createOscillator();
+          osc.type = 'square';
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          osc.start(t);
+          osc.stop(t + dur);
+        }
+        t += dur;
+      }
+      playing = true;
+      pauseBtn.textContent = '⏸ Pause (P)';
+    }
+
+    function togglePause() {
+      if (!ac) return;
+      if (ac.state === 'running') {
+        ac.suspend();
+        playing = false;
+        pauseBtn.textContent = '▶ Play (P)';
+      } else {
+        ac.resume();
+        playing = true;
+        pauseBtn.textContent = '⏸ Pause (P)';
+      }
+    }
+
+    pauseBtn.addEventListener('click', togglePause);
+    document.addEventListener('keydown', e => {
+      if (e.code === 'KeyP') togglePause();
+    });
+
+    async function startAudio() {
+      ac = new AudioContext();
+      if (ac.state === 'suspended') {
+        overlay.style.display = 'flex';
+        await new Promise(resolve => {
+          overlay.addEventListener('click', async () => {
+            await ac.resume();
+            overlay.style.display = 'none';
+            resolve();
+          }, { once: true });
+        });
+      }
+      scheduleAudio();
+    }
+
+    async function load() {
+      let instance;
+      try {
+        const res = await fetch('./debug.wasm');
+        if (!res.ok) throw new Error('fetch failed');
+        const bytes = await res.arrayBuffer();
+        ({ instance } = await WebAssembly.instantiate(bytes));
+      } catch (_) {
+        drawNoContent();
+        status.textContent = 'No debug.wasm — run pipeline first';
+        return;
+      }
+
+      const exp = instance.exports;
+      const mem = exp.memory?.buffer;
+
+      if (typeof exp.type !== 'function') {
+        const w = exp.width(); const h = exp.height();
+        canvas.width = w; canvas.height = h;
+        exp.render();
+        ctx.putImageData(new ImageData(new Uint8ClampedArray(mem, 0, w * h * 4), w, h), 0, 0);
+        status.textContent = `Image: ${w}×${h} (legacy)`;
+        return;
+      }
+
+      const type = exp.type();
+      const hasImage = type & 1;
+      const hasAudio = type & 2;
+      const parts = [];
+
+      if (hasImage) {
+        const w = exp.width(); const h = exp.height();
+        canvas.width = w; canvas.height = h;
+        exp.render();
+        ctx.putImageData(new ImageData(new Uint8ClampedArray(mem, 0, w * h * 4), w, h), 0, 0);
+        parts.push(`Image: ${w}×${h}`);
+      } else {
+        drawNoContent();
+        parts.push('No image');
+      }
+
+      if (hasAudio) {
+        const count = exp.audio_count();
+        const off = exp.audio_offset();
+        const freqs = new Float64Array(mem, off, count);
+        const durs = new Float64Array(mem, off + count * 8, count);
+        audioNotes = { freqs: Array.from(freqs), durs: Array.from(durs) };
+        parts.push(`Audio: ${count} notes`);
+        pauseBtn.style.display = 'block';
+        startAudio();
+      }
+
+      if (type & 4) {
+        document.addEventListener('keydown', e => console.log('keydown', e.key));
+        document.addEventListener('keyup', e => console.log('keyup', e.key));
+        parts.push('Keyboard: active');
+      }
+
+      if (!parts.length) parts.push('No content');
+      status.textContent = parts.join(' | ');
+    }
+
+    load();
+  </script>
+</body>
+</html>

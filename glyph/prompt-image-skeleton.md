@@ -1,4 +1,4 @@
-# Glyph Art Prompt Skeleton
+# Glyph Image Prompt Skeleton
 
 Template for generating art via image LLMs (Midjourney, DALL-E, Flux, etc.)
 that renders well on both WASM (full colour) and Z80 (Spectrum constraints).

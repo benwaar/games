@@ -17,7 +17,30 @@ games/
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
+  wasm/                — WASM test harness: static HTML host + swappable debug.wasm
 ```
+
+---
+
+## Test harnesses
+
+Two static test containers for checking build output in the browser.
+
+### WASM player (`wasm/`)
+
+- **Output path:** `wasm/debug.wasm`
+- **Serve:** `./serve.sh` → `http://localhost:8999`
+- **HTML is static** — generic player that handles image, audio, and keyboard via `type()` bitmask.
+- WASM exports: `type()` (bitmask), `width()`, `height()`, `render()`, `audio_count()`, `audio_offset()`, `memory`.
+- No image → shows blue X crosshair. Audio → Play button. Both → image + Play button.
+- Pipeline generates WAT → `wat2wasm` → `debug.wasm`. No Rust/wasm-pack.
+
+### Z80 TAP harness (`zxw/`)
+
+- **Output path:** `zxw/www/tap/debug.tap`
+- **Serve:** `zxw/serve.sh` → `http://localhost:8998`
+- **Debug mode:** `http://localhost:8998/debug.html` — auto-loads ROM + TAP, boots, types `LOAD ""`. Zero clicks.
+- **Full mode:** `http://localhost:8998/` — sidebar with file pickers, POK support.
 
 ---
 
@@ -74,4 +97,4 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Void Duel](void-duel/) | Planned |
 | [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
-| [Glyph](glyph/) | ▶ POC complete — image → both targets, k-means quantiser, prompt skeleton |
+| [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
