@@ -92,11 +92,12 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 
 | Project | Status |
 |---------|--------|
-| [Signal Hunt](signal-hunt/) | ✅ Complete (Ph 1–5) |
 | [Utala: KAOS 9](utala/kaos9/) | ✅ Complete |
+| [Signal Hunt](signal-hunt/) | ✅ Complete (Ph 1–5) |
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned |
 | [Artefact](artefact/) | Planned |
-| [Void Duel](void-duel/) | Planned |
 | [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
+| [wex](wex/) | ▶ Active — WASM executor, responsive canvas, a11y (mirror DOM, settings, palettes) |
 | [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
+| [Void Duel](void-duel/) | Planned |

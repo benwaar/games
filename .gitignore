@@ -28,10 +28,10 @@ zxw/www/tap/
 zxw/www/scr/
 zxw/www/assets.json
 
-# wasm harness — generated output (pipeline overwrites these)
-wasm/debug.wasm
-wasm/debug.wat
-wasm/glyph_audio.js
+# wex — generated output (pipeline overwrites these)
+wex/debug.wasm
+wex/debug.wat
+wex/glyph_audio.js
 
 # IDE
 .vscode/
