@@ -37,6 +37,15 @@ from incant.tap import write_spectrum_tap
 WASM_OUT = ROOT / "wex" / "debug.wasm"
 WAT_OUT = ROOT / "wex" / "debug.wat"
 TAP_OUT = ROOT / "zxw" / "www" / "tap" / "debug.tap"
+WAT_LIB = ROOT / "wex" / "wat"
+
+
+def _load_snippet(name: str, **kwargs) -> str:
+    """Load a WAT snippet file and replace {{placeholder}} markers."""
+    template = (WAT_LIB / name).read_text().rstrip('\n')
+    for key, val in kwargs.items():
+        template = template.replace("{{" + key + "}}", str(val))
+    return template
 
 
 # ── Image pipeline ──────────────────────────────────────────────────
@@ -58,24 +67,22 @@ def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None, imports=None) -
     if a11y is not None:
         a11y_fragment, a11y_size = _a11y_segment(a11y, len(rgba))
         pages = (len(rgba) + a11y_size + 65535) // 65536
+        mem = _load_snippet("memory.wat", pages=pages)
+        exports = _load_snippet("exports-image.wat", type_val=type_val, width=width, height=height)
         return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{hex_str}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "render") (nop))
-  (func (export "width") (result i32) (i32.const {width}))
-  (func (export "height") (result i32) (i32.const {height}))
+{exports}
 {a11y_fragment}
 )
 """
     pages = (len(rgba) + 65535) // 65536
+    mem = _load_snippet("memory.wat", pages=pages)
+    exports = _load_snippet("exports-image.wat", type_val=type_val, width=width, height=height)
     return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{hex_str}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "render") (nop))
-  (func (export "width") (result i32) (i32.const {width}))
-  (func (export "height") (result i32) (i32.const {height}))
+{exports}
 )
 """
 
@@ -133,12 +140,9 @@ def _a11y_segment(a11y_json: list[dict], offset: int) -> tuple[str, int]:
     """Encode a11y scene nodes as a WAT data segment."""
     raw = json.dumps(a11y_json, separators=(',', ':')).encode('utf-8')
     hex_str = "".join(f"\\{b:02x}" for b in raw)
-    size = len(raw)
     return (
-        f'  (data (i32.const {offset}) "{hex_str}")\n'
-        f'  (func (export "a11y_offset") (result i32) (i32.const {offset}))\n'
-        f'  (func (export "a11y_size") (result i32) (i32.const {size}))',
-        size,
+        _load_snippet("a11y-exports.wat", a11y_offset=offset, a11y_hex=hex_str, a11y_size=len(raw)),
+        len(raw),
     )
 
 
@@ -149,11 +153,13 @@ def _import_declarations(imports: list[str] | None) -> str:
     """Generate WAT import declarations for browser preference queries."""
     if not imports:
         return ""
+    all_imports = (WAT_LIB / "import-prefs.wat").read_text().strip().split("\n")
     lines = []
     for name in imports:
         if name not in VALID_IMPORTS:
             raise ValueError(f"Unknown import: {name}. Valid: {sorted(VALID_IMPORTS)}")
-        lines.append(f'  (import "env" "{name}" (func ${name} (result i32)))')
+        matching = [l for l in all_imports if f'${name}' in l]
+        lines.extend(matching)
     return "\n".join(lines) + "\n"
 
 
@@ -181,24 +187,24 @@ def audio_to_wat(freqs: list[float], durations: list[float], a11y=None, imports=
         a11y_offset = count * 8 * 2
         a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
         pages = max(1, (a11y_offset + a11y_size + 65535) // 65536)
+        mem = _load_snippet("memory.wat", pages=pages)
+        exports = _load_snippet("exports-audio.wat", type_val=type_val, count=count, audio_offset=0)
         return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{freq_bytes}")
   (data (i32.const {dur_offset}) "{dur_bytes}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "audio_count") (result i32) (i32.const {count}))
-  (func (export "audio_offset") (result i32) (i32.const 0))
+{exports}
 {a11y_fragment}
 )
 """
     pages = max(1, (count * 8 * 2 + 65535) // 65536)
+    mem = _load_snippet("memory.wat", pages=pages)
+    exports = _load_snippet("exports-audio.wat", type_val=type_val, count=count, audio_offset=0)
     return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{freq_bytes}")
   (data (i32.const {dur_offset}) "{dur_bytes}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "audio_count") (result i32) (i32.const {count}))
-  (func (export "audio_offset") (result i32) (i32.const 0))
+{exports}
 )
 """
 
@@ -286,34 +292,27 @@ def combined_to_wat(
         a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
         total_bytes = pixel_bytes + count * 8 * 2 + a11y_size
         pages = (total_bytes + 65535) // 65536
+        mem = _load_snippet("memory.wat", pages=pages)
+        exports = _load_snippet("exports-combined.wat", type_val=type_val, width=width, height=height, count=count, audio_offset=audio_offset)
         return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{pixel_hex}")
   (data (i32.const {audio_offset}) "{freq_hex}")
   (data (i32.const {dur_offset}) "{dur_hex}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "render") (nop))
-  (func (export "width") (result i32) (i32.const {width}))
-  (func (export "height") (result i32) (i32.const {height}))
-  (func (export "audio_count") (result i32) (i32.const {count}))
-  (func (export "audio_offset") (result i32) (i32.const {audio_offset}))
+{exports}
 {a11y_fragment}
 )
 """
     total_bytes = pixel_bytes + count * 8 * 2
     pages = (total_bytes + 65535) // 65536
-
+    mem = _load_snippet("memory.wat", pages=pages)
+    exports = _load_snippet("exports-combined.wat", type_val=type_val, width=width, height=height, count=count, audio_offset=audio_offset)
     return f"""(module
-{imp}  (memory (export "memory") {pages})
+{imp}{mem}
   (data (i32.const 0) "{pixel_hex}")
   (data (i32.const {audio_offset}) "{freq_hex}")
   (data (i32.const {dur_offset}) "{dur_hex}")
-  (func (export "type") (result i32) (i32.const {type_val}))
-  (func (export "render") (nop))
-  (func (export "width") (result i32) (i32.const {width}))
-  (func (export "height") (result i32) (i32.const {height}))
-  (func (export "audio_count") (result i32) (i32.const {count}))
-  (func (export "audio_offset") (result i32) (i32.const {audio_offset}))
+{exports}
 )
 """
 
