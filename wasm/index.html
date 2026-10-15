@@ -111,7 +111,7 @@
 <body>
   <div class="canvas-wrap">
     <canvas id="screen" role="img" aria-label="Game content"></canvas>
-    <div id="mirror" class="mirror-dom" aria-hidden="false"></div>
+    <div id="mirror" class="mirror-dom"></div>
     <button id="settings-btn" class="settings-btn" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">⚙</button>
     <div id="settings-panel" class="settings-panel" hidden>
       <div class="settings-header">
@@ -294,6 +294,7 @@
     // --- WASM reload on override change ---
     async function reloadWasm() {
       if (ac) { try { ac.close(); } catch (_) {} ac = null; }
+      if (kbAbort) { kbAbort.abort(); kbAbort = null; }
       playing = false;
       audioNotes = null;
       pauseBtn.style.display = 'none';
@@ -312,7 +313,7 @@
 
       for (const node of nodes) {
         const div = document.createElement('div');
-        div.setAttribute('role', node.role || 'img');
+        div.setAttribute('role', node.role || 'region');
         div.setAttribute('aria-label', node.label || '');
         div.tabIndex = 0;
         div.style.position = 'absolute';
@@ -338,16 +339,15 @@
     }
 
     let ac = null;
-    let gainNode = null;
     let playing = false;
     let audioNotes = null;
+    let kbAbort = null;
 
     function scheduleAudio() {
       if (!audioNotes || !ac) return;
       const gain = ac.createGain();
       gain.gain.value = 0.3;
       gain.connect(ac.destination);
-      gainNode = gain;
       let t = ac.currentTime + 0.05;
       for (let i = 0; i < audioNotes.freqs.length; i++) {
         const freq = audioNotes.freqs[i];
@@ -407,9 +407,9 @@
         const bytes = await res.arrayBuffer();
         const imports = {
           env: {
-            prefers_dark: () => overrides.dark ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 1 : 0),
-            prefers_reduced_motion: () => overrides.motion ?? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0),
-            prefers_high_contrast: () => overrides.contrast ?? (matchMedia('(prefers-contrast: more)').matches ? 1 : 0),
+            prefers_dark: () => overrides.dark ?? (mqDark.matches ? 1 : 0),
+            prefers_reduced_motion: () => overrides.motion ?? (mqMotion.matches ? 1 : 0),
+            prefers_high_contrast: () => overrides.contrast ?? (mqContrast.matches ? 1 : 0),
           }
         };
         ({ instance } = await WebAssembly.instantiate(bytes, imports));
@@ -461,8 +461,10 @@
       }
 
       if (type & 4) {
-        document.addEventListener('keydown', e => console.log('keydown', e.key));
-        document.addEventListener('keyup', e => console.log('keyup', e.key));
+        kbAbort = new AbortController();
+        const sig = { signal: kbAbort.signal };
+        document.addEventListener('keydown', e => { /* TODO: store key state in WASM memory */ }, sig);
+        document.addEventListener('keyup', e => { /* TODO: clear key state in WASM memory */ }, sig);
         parts.push('Keyboard: active');
       }
 
@@ -481,7 +483,6 @@
         }
       }
 
-      if (!parts.length) parts.push('No content');
       status.textContent = parts.join(' | ');
     }
 
