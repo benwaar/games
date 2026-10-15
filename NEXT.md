@@ -1,18 +1,5 @@
 # Next
 
-## wex — a11y Phase 3: Sound customisation (feature/no-ticket-wasm-responsive)
-
-Research: `wex/A11Y.md` | `wex/SCALING.md`
-
-- [x] Separate volume controls (SFX / narration / music) when multiple audio channels exist
-- [x] Web Speech API self-voicing toggle — player speaks scene descriptions
-- [x] Spatial audio via `PannerNode` when game provides positional data
-- [x] `localStorage` persistence
-- [x] Tests + docs
-- [ ] Commit: `feat(wex): a11y sound customisation`
-
----
-
 ## Glyph — deferred from audio POC
 
 - HAL audio surface (`tone_play`, `sfx_play`) — needed for game sigils

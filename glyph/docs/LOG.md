@@ -107,3 +107,21 @@ Removed `glyph/glyphwex/` Rust crate entirely. Updated gitignore, CLAUDE.md, pip
 - `localStorage` persistence under `wasm-player-settings`.
 - `reloadWasm()` re-instantiates WASM when overrides change (imports return new values).
 - Multi-agent code review found and fixed: keyboard listener leak (AbortController), redundant matchMedia, dead code.
+
+## a11y Phase 3: Sound customisation ✅ (2026-10-15)
+
+**Goal:** Volume control, self-voicing, and spatial audio for blind/low-vision players.
+
+- Volume slider (range 0–100) with master `GainNode` — persisted to localStorage.
+- Self-voicing toggle: Web Speech API reads scene descriptions on load and mirror DOM node focus.
+- Spatial audio: `PannerNode` with HRTF model positions audio per-note using a11y node x coordinates.
+- All settings saved/loaded alongside existing preferences under `wasm-player-settings` key.
+- Review fix: replaced deprecated `setPosition()` with `positionX/Y/Z` AudioParams.
+
+**Goal:** Let users override browser preferences and switch palettes.
+
+- Settings gear icon (top-right of canvas), toggle overrides: dark mode, reduced motion, high contrast (Auto/On/Off).
+- 3 palette presets: default, high-contrast, deuteranopia-friendly. CSS custom properties on `:root`.
+- `localStorage` persistence under `wasm-player-settings`.
+- `reloadWasm()` re-instantiates WASM when overrides change (imports return new values).
+- Multi-agent code review found and fixed: keyboard listener leak (AbortController), redundant matchMedia, dead code.
