@@ -1,0 +1,5 @@
+[
+  {"role": "img", "label": "Game scene: castle on a hilltop at sunset", "x": 0, "y": 0, "w": 1024, "h": 1536},
+  {"role": "region", "label": "Castle towers, upper portion", "x": 200, "y": 100, "w": 624, "h": 500},
+  {"role": "region", "label": "Hillside and foreground", "x": 0, "y": 800, "w": 1024, "h": 736}
+]

@@ -17,7 +17,7 @@ games/
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
-  wasm/                — WASM test harness: static HTML host + swappable debug.wasm
+  wex/                 — WASM executor: static HTML host + swappable debug.wasm
 ```
 
 ---
@@ -26,9 +26,9 @@ games/
 
 Two static test containers for checking build output in the browser.
 
-### WASM player (`wasm/`)
+### WASM player (`wex/`)
 
-- **Output path:** `wasm/debug.wasm`
+- **Output path:** `wex/debug.wasm`
 - **Serve:** `./serve.sh` → `http://localhost:8999`
 - **HTML is static** — generic player that handles image, audio, and keyboard via `type()` bitmask.
 - WASM exports: `type()` (bitmask), `width()`, `height()`, `render()`, `audio_count()`, `audio_offset()`, `memory`.
@@ -82,6 +82,8 @@ These projects are about understanding algorithms by building them — seeing ho
 
 **AI attribution:** every commit includes the AI trailer lines per the global CLAUDE.md.
 
+**Subagents:** default to sonnet model. Prompts must be directive ("read this file, make this edit"), not descriptive. If `NEXT.md` has checkboxes for the current work, include the path in agent prompts and tell agents to tick `[x]` as they complete steps. Follow the `/research` skill loop: implement → test → tick → next.
+
 ---
 
 ## Projects and status
@@ -90,11 +92,12 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 
 | Project | Status |
 |---------|--------|
-| [Signal Hunt](signal-hunt/) | ✅ Complete (Ph 1–5) |
 | [Utala: KAOS 9](utala/kaos9/) | ✅ Complete |
+| [Signal Hunt](signal-hunt/) | ✅ Complete (Ph 1–5) |
 | [Acoustic Odyssey](acoustic-odyssey/) | Planned |
 | [Artefact](artefact/) | Planned |
-| [Void Duel](void-duel/) | Planned |
 | [zxw](zxw/) | ✅ M1–M7 complete — Rust → WASM Spectrum emulator + CDP debug |
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
+| [wex](wex/) | ▶ Active — WASM executor, responsive canvas, a11y (mirror DOM, settings, palettes) |
 | [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
+| [Void Duel](void-duel/) | Planned |

@@ -3,11 +3,11 @@
 Two parallel paths from one input:
 
 Image (.png/.jpg):
-  - WASM: full-colour RGBA at original resolution → wasm/debug.wasm
+  - WASM: full-colour RGBA at original resolution → wex/debug.wasm
   - TAP:  Spectrum-quantised (256x192, k-means) → zxw/www/tap/debug.tap
 
 Audio (.json glyph-audio):
-  - WASM: freq/duration arrays embedded as WAT data segments → wasm/debug.wasm
+  - WASM: freq/duration arrays embedded as WAT data segments → wex/debug.wasm
   - TAP:  Z80 beeper binary → zxw/www/tap/debug.tap
 
 Usage:
@@ -34,8 +34,8 @@ from scr.quantise import quantise_image
 from scr.pack import pack_scr
 from incant.tap import write_spectrum_tap
 
-WASM_OUT = ROOT / "wasm" / "debug.wasm"
-WAT_OUT = ROOT / "wasm" / "debug.wat"
+WASM_OUT = ROOT / "wex" / "debug.wasm"
+WAT_OUT = ROOT / "wex" / "debug.wat"
 TAP_OUT = ROOT / "zxw" / "www" / "tap" / "debug.tap"
 
 
@@ -49,15 +49,30 @@ def image_to_rgba(img: Image.Image) -> tuple[bytes, int, int]:
     return bytes(np.array(rgba, dtype=np.uint8).tobytes()), w, h
 
 
-def rgba_to_wat(rgba: bytes, width: int, height: int) -> str:
+def rgba_to_wat(rgba: bytes, width: int, height: int, a11y=None, imports=None) -> str:
     """Generate a WAT module with pixel data embedded as a data segment."""
     hex_str = "".join(f"\\{b:02x}" for b in rgba)
-    pages = (len(rgba) + 65535) // 65536
+    type_val = 1 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
-    return f"""(module
-  (memory (export "memory") {pages})
+    if a11y is not None:
+        a11y_fragment, a11y_size = _a11y_segment(a11y, len(rgba))
+        pages = (len(rgba) + a11y_size + 65535) // 65536
+        return f"""(module
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{hex_str}")
-  (func (export "type") (result i32) (i32.const 1))
+  (func (export "type") (result i32) (i32.const {type_val}))
+  (func (export "render") (nop))
+  (func (export "width") (result i32) (i32.const {width}))
+  (func (export "height") (result i32) (i32.const {height}))
+{a11y_fragment}
+)
+"""
+    pages = (len(rgba) + 65535) // 65536
+    return f"""(module
+{imp}  (memory (export "memory") {pages})
+  (data (i32.const 0) "{hex_str}")
+  (func (export "type") (result i32) (i32.const {type_val}))
   (func (export "render") (nop))
   (func (export "width") (result i32) (i32.const {width}))
   (func (export "height") (result i32) (i32.const {height}))
@@ -65,12 +80,12 @@ def rgba_to_wat(rgba: bytes, width: int, height: int) -> str:
 """
 
 
-def build_image_wasm(img: Image.Image) -> None:
+def build_image_wasm(img: Image.Image, a11y=None) -> None:
     """Image → RGBA → WAT → WASM at original resolution."""
     rgba, w, h = image_to_rgba(img)
     print(f"WASM: {w}x{h} ({len(rgba)} bytes RGBA)")
 
-    wat = rgba_to_wat(rgba, w, h)
+    wat = rgba_to_wat(rgba, w, h, a11y=a11y)
     WAT_OUT.write_text(wat)
 
     result = subprocess.run(
@@ -114,7 +129,35 @@ def _f64_hex(value: float) -> str:
     return "".join(f"\\{b:02x}" for b in struct.pack("<d", value))
 
 
-def audio_to_wat(freqs: list[float], durations: list[float]) -> str:
+def _a11y_segment(a11y_json: list[dict], offset: int) -> tuple[str, int]:
+    """Encode a11y scene nodes as a WAT data segment."""
+    raw = json.dumps(a11y_json, separators=(',', ':')).encode('utf-8')
+    hex_str = "".join(f"\\{b:02x}" for b in raw)
+    size = len(raw)
+    return (
+        f'  (data (i32.const {offset}) "{hex_str}")\n'
+        f'  (func (export "a11y_offset") (result i32) (i32.const {offset}))\n'
+        f'  (func (export "a11y_size") (result i32) (i32.const {size}))',
+        size,
+    )
+
+
+VALID_IMPORTS = {"prefers_dark", "prefers_reduced_motion", "prefers_high_contrast"}
+
+
+def _import_declarations(imports: list[str] | None) -> str:
+    """Generate WAT import declarations for browser preference queries."""
+    if not imports:
+        return ""
+    lines = []
+    for name in imports:
+        if name not in VALID_IMPORTS:
+            raise ValueError(f"Unknown import: {name}. Valid: {sorted(VALID_IMPORTS)}")
+        lines.append(f'  (import "env" "{name}" (func ${name} (result i32)))')
+    return "\n".join(lines) + "\n"
+
+
+def audio_to_wat(freqs: list[float], durations: list[float], a11y=None, imports=None) -> str:
     """Generate a WAT module with freq/duration arrays as data segments.
 
     Layout:
@@ -131,20 +174,36 @@ def audio_to_wat(freqs: list[float], durations: list[float]) -> str:
     freq_bytes = "".join(_f64_hex(f) for f in freqs)
     dur_bytes = "".join(_f64_hex(d) for d in durations)
     dur_offset = count * 8
-    pages = max(1, (count * 8 * 2 + 65535) // 65536)
+    type_val = 2 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
-    return f"""(module
-  (memory (export "memory") {pages})
+    if a11y is not None:
+        a11y_offset = count * 8 * 2
+        a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
+        pages = max(1, (a11y_offset + a11y_size + 65535) // 65536)
+        return f"""(module
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{freq_bytes}")
   (data (i32.const {dur_offset}) "{dur_bytes}")
-  (func (export "type") (result i32) (i32.const 2))
+  (func (export "type") (result i32) (i32.const {type_val}))
+  (func (export "audio_count") (result i32) (i32.const {count}))
+  (func (export "audio_offset") (result i32) (i32.const 0))
+{a11y_fragment}
+)
+"""
+    pages = max(1, (count * 8 * 2 + 65535) // 65536)
+    return f"""(module
+{imp}  (memory (export "memory") {pages})
+  (data (i32.const 0) "{freq_bytes}")
+  (data (i32.const {dur_offset}) "{dur_bytes}")
+  (func (export "type") (result i32) (i32.const {type_val}))
   (func (export "audio_count") (result i32) (i32.const {count}))
   (func (export "audio_offset") (result i32) (i32.const 0))
 )
 """
 
 
-def build_audio_wasm(spec: dict) -> None:
+def build_audio_wasm(spec: dict, a11y=None) -> None:
     """glyph-audio JSON → freq/duration arrays → WAT → WASM."""
     from glyphz80.beeper import note_to_freq
 
@@ -161,7 +220,7 @@ def build_audio_wasm(spec: dict) -> None:
     count = len(freqs)
     print(f"WASM: {count} notes → WAT data segments")
 
-    wat = audio_to_wat(freqs, durations)
+    wat = audio_to_wat(freqs, durations, a11y=a11y)
     WAT_OUT.write_text(wat)
 
     result = subprocess.run(
@@ -192,6 +251,8 @@ def combined_to_wat(
     height: int,
     freqs: list[float],
     durations: list[float],
+    a11y=None,
+    imports=None,
 ) -> str:
     """Generate a WAT module with both pixel data and audio arrays embedded.
 
@@ -217,16 +278,37 @@ def combined_to_wat(
     freq_hex = "".join(_f64_hex(f) for f in freqs)
     dur_hex = "".join(_f64_hex(d) for d in durations)
     dur_offset = audio_offset + count * 8
+    type_val = 3 | (8 if a11y else 0)
+    imp = _import_declarations(imports)
 
+    if a11y is not None:
+        a11y_offset = pixel_bytes + count * 8 * 2
+        a11y_fragment, a11y_size = _a11y_segment(a11y, a11y_offset)
+        total_bytes = pixel_bytes + count * 8 * 2 + a11y_size
+        pages = (total_bytes + 65535) // 65536
+        return f"""(module
+{imp}  (memory (export "memory") {pages})
+  (data (i32.const 0) "{pixel_hex}")
+  (data (i32.const {audio_offset}) "{freq_hex}")
+  (data (i32.const {dur_offset}) "{dur_hex}")
+  (func (export "type") (result i32) (i32.const {type_val}))
+  (func (export "render") (nop))
+  (func (export "width") (result i32) (i32.const {width}))
+  (func (export "height") (result i32) (i32.const {height}))
+  (func (export "audio_count") (result i32) (i32.const {count}))
+  (func (export "audio_offset") (result i32) (i32.const {audio_offset}))
+{a11y_fragment}
+)
+"""
     total_bytes = pixel_bytes + count * 8 * 2
     pages = (total_bytes + 65535) // 65536
 
     return f"""(module
-  (memory (export "memory") {pages})
+{imp}  (memory (export "memory") {pages})
   (data (i32.const 0) "{pixel_hex}")
   (data (i32.const {audio_offset}) "{freq_hex}")
   (data (i32.const {dur_offset}) "{dur_hex}")
-  (func (export "type") (result i32) (i32.const 3))
+  (func (export "type") (result i32) (i32.const {type_val}))
   (func (export "render") (nop))
   (func (export "width") (result i32) (i32.const {width}))
   (func (export "height") (result i32) (i32.const {height}))
@@ -236,7 +318,7 @@ def combined_to_wat(
 """
 
 
-def build_combined_wasm(img: Image.Image, audio_spec: dict) -> None:
+def build_combined_wasm(img: Image.Image, audio_spec: dict, a11y=None) -> None:
     """Image + audio → combined WAT → WASM."""
     from glyphz80.beeper import note_to_freq
 
@@ -254,7 +336,7 @@ def build_combined_wasm(img: Image.Image, audio_spec: dict) -> None:
     count = len(freqs)
     print(f"WASM: {w}x{h} image + {count} audio notes → combined WAT")
 
-    wat = combined_to_wat(rgba, w, h, freqs, durations)
+    wat = combined_to_wat(rgba, w, h, freqs, durations, a11y=a11y)
     WAT_OUT.write_text(wat)
 
     result = subprocess.run(
@@ -278,7 +360,19 @@ def main() -> None:
         metavar="JSON",
         help="Audio spec (.json) to combine with an image input (produces type=3 WASM)",
     )
+    parser.add_argument("--a11y", help="Path to a11y scene description JSON")
     args = parser.parse_args()
+
+    a11y = None
+    if args.a11y:
+        a11y_path = Path(args.a11y)
+        if not a11y_path.exists():
+            print(f"a11y file not found: {a11y_path}", file=sys.stderr)
+            sys.exit(1)
+        a11y = json.loads(a11y_path.read_text())
+        if not isinstance(a11y, list):
+            print(f"a11y JSON must be an array, got {type(a11y).__name__}", file=sys.stderr)
+            sys.exit(1)
 
     path = Path(args.input)
     suffix = path.suffix.lower()
@@ -294,10 +388,10 @@ def main() -> None:
                 sys.exit(1)
             notes = sum(len(p.get("notes", [])) for p in spec.get("pieces", []))
             print(f"Audio: {audio_path.name} ({notes} notes)")
-            build_combined_wasm(img, spec)
+            build_combined_wasm(img, spec, a11y=a11y)
             build_image_tap(img)
         else:
-            build_image_wasm(img)
+            build_image_wasm(img, a11y=a11y)
             build_image_tap(img)
     elif suffix == ".json":
         if args.audio:
@@ -309,7 +403,7 @@ def main() -> None:
             sys.exit(1)
         notes = sum(len(p.get("notes", [])) for p in spec.get("pieces", []))
         print(f"Audio: {path.name} ({notes} notes)")
-        build_audio_wasm(spec)
+        build_audio_wasm(spec, a11y=a11y)
         build_audio_tap(spec)
     else:
         print(f"Unknown file type: {suffix}", file=sys.stderr)

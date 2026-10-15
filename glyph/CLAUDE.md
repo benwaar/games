@@ -12,7 +12,7 @@ python glyph/pipeline.py glyph/assets/a1.json   # audio → both targets
 ```
 
 Output:
-- `wasm/debug.wasm` — loaded by WASM player on `:8999`
+- `wex/debug.wasm` — loaded by WASM player on `:8999`
 - `zxw/www/tap/debug.tap` — loaded by zxw debug mode on `:8998/debug.html`
 
 ## WASM export contract
@@ -29,6 +29,19 @@ audio_offset() → i32    # byte offset of note data (audio only)
 memory                  # linear memory
 ```
 
+## WASM import contract (optional)
+
+Content WASM may import preference queries from the host:
+
+```
+(import "env" "prefers_dark" (func (result i32)))
+(import "env" "prefers_reduced_motion" (func (result i32)))
+(import "env" "prefers_high_contrast" (func (result i32)))
+```
+
+Returns 1 (true) or 0 (false). Browser default unless overridden by player settings.
+Games opt in by declaring the imports they need — unused imports are ignored.
+
 Audio data layout at `audio_offset()`:
 - `f64[audio_count]` frequencies in Hz
 - `f64[audio_count]` durations in ms
@@ -37,7 +50,7 @@ Audio data layout at `audio_offset()`:
 
 ```
 input (png/jpg/json)
-  ├── WASM: full-colour/full-fidelity → WAT → wat2wasm → wasm/debug.wasm
+  ├── WASM: full-colour/full-fidelity → WAT → wat2wasm → wex/debug.wasm
   └── TAP:  Spectrum-constrained → Z80 binary → incant.tap → zxw/www/tap/debug.tap
 ```
 
@@ -61,7 +74,7 @@ glyph/
 
 ## Test harnesses
 
-- **WASM player** (`wasm/index.html`, `:8999`): generic player — handles image, audio, keyboard via `type()` bitmask. Shows X crosshair when no image.
+- **WASM player** (`wex/index.html`, `:8999`): generic player — handles image, audio, keyboard via `type()` bitmask. Shows X crosshair when no image. Includes a settings panel (gear icon, top-right of canvas) with palette presets (default, high-contrast, deuteranopia-friendly), preference override toggles (dark mode, reduced motion, high contrast), and `localStorage` persistence under key `wasm-player-settings`. Player chrome uses CSS custom properties on `:root` (`--bg`, `--bg-panel`, `--border`, `--text`, `--text-muted`, `--accent`) — pipeline-generated WASM can inherit these for consistent theming.
 - **zxw debug** (`zxw/www/debug.html`, `:8998`): auto-loads ROM + TAP, boots, types `LOAD ""`. Zero clicks.
 - **zxw full** (`zxw/www/index.html`, `:8998`): full emulator with sidebar, file pickers, POK support.
 

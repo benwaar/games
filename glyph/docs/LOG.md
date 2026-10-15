@@ -24,7 +24,7 @@ Shared explainer at `explainers/k-means-clustering.md`. Core concept, algorithm,
 
 ### P4 — WASM image renderer ✅
 
-`glyph/glyph-wasm/` — Rust + macroquad. Loads image (embedded for WASM, CLI arg for desktop), renders centred/scaled to window. No Spectrum constraints — full colour native rendering.
+`glyph/glyph-wex/` — Rust + macroquad. Loads image (embedded for WASM, CLI arg for desktop), renders centred/scaled to window. No Spectrum constraints — full colour native rendering.
 
 ### P5 — Design iteration + prompt skeleton ✅
 
@@ -57,7 +57,7 @@ Replaced wasm-pack/Rust approach with pure WAT generation. Freq/duration arrays 
 
 ### A4 — WASM player ✅
 
-Rewrote `wasm/index.html` as a generic player. Handles image, audio, keyboard via `type()` bitmask export. X crosshair when no image. Web Audio oscillators (square wave) with click-to-start overlay for autoplay policy. Pause (P) button.
+Rewrote `wex/index.html` as a generic player. Handles image, audio, keyboard via `type()` bitmask export. X crosshair when no image. Web Audio oscillators (square wave) with click-to-start overlay for autoplay policy. Pause (P) button.
 
 ### A5 — zxw debug mode ✅
 
@@ -69,7 +69,7 @@ Rewrote `wasm/index.html` as a generic player. Handles image, audio, keyboard vi
 
 ### A7 — Cleanup ✅
 
-Removed `glyph/glyphwasm/` Rust crate entirely. Updated gitignore, CLAUDE.md, pipeline docs. 113 tests total (34 beeper + 6 scr_loader + 39 scr + 34 pipeline).
+Removed `glyph/glyphwex/` Rust crate entirely. Updated gitignore, CLAUDE.md, pipeline docs. 113 tests total (34 beeper + 6 scr_loader + 39 scr + 34 pipeline).
 
 **Key learnings:**
 - Pure WAT is vastly smaller and simpler than wasm-pack for data-embedding use cases
@@ -84,3 +84,44 @@ Removed `glyph/glyphwasm/` Rust crate entirely. Updated gitignore, CLAUDE.md, pi
 - `tools/zx-viewer/` — VS Code extension: renders .scr files, TAP hex inspector with decoded headers + colour-coded SCR bytes
 - `tools/wasm-viewer/` — VS Code extension: WASM section breakdown, colour-coded hex dump, decoded exports/imports
 - `tools/EXTENSIONS.md` — catalogue of useful VS Code extensions for the repo
+
+---
+
+## a11y Phase 1: Mirror DOM ✅ (2026-10-15)
+
+**Goal:** Make canvas-based WASM content accessible to screen readers.
+
+- Pipeline encodes a11y scene JSON as UTF-8 data segment (`type()` bit 3). New exports: `a11y_offset()`, `a11y_size()`.
+- Player reads a11y data, builds hidden mirror DOM overlay with `role`, `aria-label`, percentage-based positioning.
+- `aria-live="polite"` region for announcements, sr-only clip-rect pattern.
+- Optional `env` imports: `prefers_dark`, `prefers_reduced_motion`, `prefers_high_contrast` — browser preferences bridged to WASM.
+- Fallback: no bit 3 → `aria-label="Game content"` + `role="region"` on canvas.
+- Explainer: `wex/explainers/mirror-dom.md`.
+
+## a11y Phase 2: Settings panel + palette override ✅ (2026-10-15)
+
+**Goal:** Let users override browser preferences and switch palettes.
+
+- Settings gear icon (top-right of canvas), toggle overrides: dark mode, reduced motion, high contrast (Auto/On/Off).
+- 3 palette presets: default, high-contrast, deuteranopia-friendly. CSS custom properties on `:root`.
+- `localStorage` persistence under `wasm-player-settings`.
+- `reloadWasm()` re-instantiates WASM when overrides change (imports return new values).
+- Multi-agent code review found and fixed: keyboard listener leak (AbortController), redundant matchMedia, dead code.
+
+## a11y Phase 3: Sound customisation ✅ (2026-10-15)
+
+**Goal:** Volume control, self-voicing, and spatial audio for blind/low-vision players.
+
+- Volume slider (range 0–100) with master `GainNode` — persisted to localStorage.
+- Self-voicing toggle: Web Speech API reads scene descriptions on load and mirror DOM node focus.
+- Spatial audio: `PannerNode` with HRTF model positions audio per-note using a11y node x coordinates.
+- All settings saved/loaded alongside existing preferences under `wasm-player-settings` key.
+- Review fix: replaced deprecated `setPosition()` with `positionX/Y/Z` AudioParams.
+
+**Goal:** Let users override browser preferences and switch palettes.
+
+- Settings gear icon (top-right of canvas), toggle overrides: dark mode, reduced motion, high contrast (Auto/On/Off).
+- 3 palette presets: default, high-contrast, deuteranopia-friendly. CSS custom properties on `:root`.
+- `localStorage` persistence under `wasm-player-settings`.
+- `reloadWasm()` re-instantiates WASM when overrides change (imports return new values).
+- Multi-agent code review found and fixed: keyboard listener leak (AbortController), redundant matchMedia, dead code.

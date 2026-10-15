@@ -15,17 +15,18 @@ Everything is inspectable and hackable.
 
 ## Projects
 
-- [Glyph](glyph/) — LLM-first presentation layer: same spec → WASM (full colour) + Z80 (Spectrum constraints). K-means colour quantisation, prompt skeleton, HAL audio. POC complete ▶
 - [Utala: KAOS 9](utala/kaos9/) — card game AI: TD learning, deep RL, distillation → Flutter, WASM, Z80 ✅
 - [Signal Hunt](signal-hunt/) — audio classifier: data pipelines, CNN, transfer learning, chords, CNN-RNN ✅
-- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration, for exploring ASM security, AI model deployment and more ✅
-- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly ✅
 - [Acoustic Odyssey: cast](acoustic-odyssey/cast/) — edge deployment: ONNX, quantisation, sub-100ms on-device inference
 - [Acoustic Odyssey: echo](acoustic-odyssey/echo/) — adaptive RL: personalises task difficulty to the user
 - [Artefact: dig](artefact/dig/) — ROM audio scanner: find hidden music/SFX in ROM dumps using autoencoders
 - [Artefact: bloom](artefact/bloom/) — 8-bit audio restoration: lo-fi → hi-fi using U-Net and STFT loss
 - [Artefact: dream](artefact/dream/) — generative chip-tunes: sequence model fine-tuned on VGM/SID data
 - [Artefact: drift](artefact/drift/) — diffusion chip-tune generator: DDPM/DDIM on spectrograms, head-to-head with dream
+- [zxw](zxw/) — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration ✅
+- [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly ✅
+- [wex](wex/) — WASM executor: responsive player, a11y (mirror DOM, settings panel, palette presets) ▶
+- [Glyph](glyph/) — LLM-first presentation layer: same spec → WASM (full colour) + Z80 (Spectrum constraints) ▶
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
 
 
