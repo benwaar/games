@@ -26,21 +26,21 @@ games/
 
 Two static test containers for checking build output in the browser.
 
-### WASM harness (`wasm/`)
+### WASM player (`wasm/`)
 
 - **Output path:** `wasm/debug.wasm`
-- **Source:** `wasm/debug.wat` (edit this, not the `.wasm`)
-- **Build:** `./build.sh` (runs `wat2wasm`)
 - **Serve:** `./serve.sh` → `http://localhost:8999`
-- **HTML is static** — never changes. Just swap the `.wasm` and refresh.
-- Canvas: 256×256 RGBA framebuffer, WASM exports `render()`, `width()`, `height()`, `memory`.
-- Memory: allocate enough pages (1 page = 64KB; 256×256×4 = 4 pages minimum).
+- **HTML is static** — generic player that handles image, audio, and keyboard via `type()` bitmask.
+- WASM exports: `type()` (bitmask), `width()`, `height()`, `render()`, `audio_count()`, `audio_offset()`, `memory`.
+- No image → shows blue X crosshair. Audio → Play button. Both → image + Play button.
+- Pipeline generates WAT → `wat2wasm` → `debug.wasm`. No Rust/wasm-pack.
 
 ### Z80 TAP harness (`zxw/`)
 
 - **Output path:** `zxw/www/tap/debug.tap`
 - **Serve:** `zxw/serve.sh` → `http://localhost:8998`
-- Load `debug.tap` from the sidebar in the emulator UI.
+- **Debug mode:** `http://localhost:8998/debug.html` — auto-loads ROM + TAP, boots, types `LOAD ""`. Zero clicks.
+- **Full mode:** `http://localhost:8998/` — sidebar with file pickers, POK support.
 
 ---
 

@@ -2,63 +2,71 @@
 
 ## What this is
 
-An LLM-first presentation layer. Extends incant with a `game` sigil type that generates sprite-based programs targeting WASM (macroquad) and Z80 (ULA) from one spec.
+An LLM-first presentation layer. Takes image or audio specs and outputs to two targets: WASM (full fidelity) and Z80 TAP (Spectrum-constrained). The pipeline generates pure WAT/WASM — no Rust, no wasm-pack, no JS glue.
 
-The library is designed for LLMs to write against, not humans. Minimal, consistent API — the LLM learns it via RAG.
+## Pipeline
+
+```
+python glyph/pipeline.py glyph/assets/i1.png    # image → both targets
+python glyph/pipeline.py glyph/assets/a1.json   # audio → both targets
+```
+
+Output:
+- `wasm/debug.wasm` — loaded by WASM player on `:8999`
+- `zxw/www/tap/debug.tap` — loaded by zxw debug mode on `:8998/debug.html`
+
+## WASM export contract
+
+Content WASM (`debug.wasm`) exports:
+
+```
+type()         → i32    # bitmask: bit 0=image, bit 1=audio, bit 2=keyboard
+width()        → i32    # canvas width (image only)
+height()       → i32    # canvas height (image only)
+render()                # populate framebuffer (image only)
+audio_count()  → i32    # number of notes (audio only)
+audio_offset() → i32    # byte offset of note data (audio only)
+memory                  # linear memory
+```
+
+Audio data layout at `audio_offset()`:
+- `f64[audio_count]` frequencies in Hz
+- `f64[audio_count]` durations in ms
 
 ## Architecture
 
 ```
-game sigil → rag.py (--collection glyph) → gen.py → gate
-                                                       ↓
-                                          wasm-glyph: Rust + macroquad → .wasm
-                                          z80-glyph:  Z80 asm + ULA writes → .bin
+input (png/jpg/json)
+  ├── WASM: full-colour/full-fidelity → WAT → wat2wasm → wasm/debug.wasm
+  └── TAP:  Spectrum-constrained → Z80 binary → incant.tap → zxw/www/tap/debug.tap
 ```
 
-## HAL surface (what the LLM writes against)
+Image WASM: RGBA pixels embedded as WAT data segments at native resolution.
+Audio WASM: freq/duration f64 arrays embedded as WAT data segments.
+Image TAP: k-means quantised to 256×192 Spectrum palette → SCR → Z80 LDIR loader.
+Audio TAP: Z80 beeper binary — cycle-counted loops toggling port 0xFE bit 4.
 
-```
-screen_clear()
-sprite_draw(id, x, y)
-sprite_move(id, dx, dy)
-input_read() → u8          // UP=0x01 DOWN=0x02 LEFT=0x04 RIGHT=0x08 FIRE=0x10
-collision(id_a, id_b) → bool
-screen_width() → u16
-screen_height() → u16
-```
-
-Both targets implement this surface. Game logic only calls HAL functions — no platform code in sigils.
-
-## Conventions
-
-- One sigil = one game loop or one game function. Same rule as incant.
-- Sprites are 8×8, 1-bit (black + 1 colour). Same constraint on both targets.
-- Z80 screen is 256×192. WASM screen matches (or scales).
-- No audio in M1–M4. Separate HAL extension later.
-
-## Tech stack
-
-- **WASM**: Rust, macroquad, wasm-pack
-- **Z80**: z80 pip package (assembler + emulator), ULA memory map
-- **RAG**: nomic-embed-text via Ollama, JSONL store (shared with incant)
-- **LLM**: qwen3-coder via Ollama (shared with incant)
-
-## Running
-
-```bash
-# (setup coming in M2)
-python -m incant cast sigils/examples/sprite_move.sigil.yaml --target wasm-glyph
-python -m incant cast sigils/examples/sprite_move.sigil.yaml --target z80-glyph
-python -m incant rag query "draw sprite" --collection glyph
-```
-
-## Key files (planned)
+## Key files
 
 ```
 glyph/
-  knowledge/         — HAL docs embedded into RAG
-  glyph-wasm/        — Rust crate: macroquad HAL implementation
-  sigils/examples/   — example game sigils
-  plan.md            — milestones
-  explainers/        — glyph-specific concepts
+  pipeline.py            — main pipeline: input → debug.wasm + debug.tap
+  assets/                — test inputs (i1.png, a1.json)
+  scr/                   — shared image processing: quantise, pack, palette, render
+  glyphz80/              — Z80 target: beeper compiler, SCR loader, assembler
+  glyphz80/tests/        — 34 beeper + 6 scr_loader tests
+  glyphwasm/             — Rust Web Audio crate (legacy, unused — pipeline uses pure WAT)
+  explainers/            — beeper-audio.md, hal-principle.md
 ```
+
+## Test harnesses
+
+- **WASM player** (`wasm/index.html`, `:8999`): generic player — handles image, audio, keyboard via `type()` bitmask. Shows X crosshair when no image.
+- **zxw debug** (`zxw/www/debug.html`, `:8998`): auto-loads ROM + TAP, boots, types `LOAD ""`. Zero clicks.
+- **zxw full** (`zxw/www/index.html`, `:8998`): full emulator with sidebar, file pickers, POK support.
+
+## Conventions
+
+- Pure WAT → `wat2wasm` for all WASM output. No Rust/wasm-pack in the pipeline.
+- TAP files via `incant.tap.write_spectrum_tap()` — canonical TAP writer.
+- Tests: `python -m pytest glyph/ -v` (79 tests).
