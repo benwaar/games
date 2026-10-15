@@ -24,7 +24,7 @@ Shared explainer at `explainers/k-means-clustering.md`. Core concept, algorithm,
 
 ### P4 — WASM image renderer ✅
 
-`glyph/glyph-wasm/` — Rust + macroquad. Loads image (embedded for WASM, CLI arg for desktop), renders centred/scaled to window. No Spectrum constraints — full colour native rendering.
+`glyph/glyph-wex/` — Rust + macroquad. Loads image (embedded for WASM, CLI arg for desktop), renders centred/scaled to window. No Spectrum constraints — full colour native rendering.
 
 ### P5 — Design iteration + prompt skeleton ✅
 
@@ -57,7 +57,7 @@ Replaced wasm-pack/Rust approach with pure WAT generation. Freq/duration arrays 
 
 ### A4 — WASM player ✅
 
-Rewrote `wasm/index.html` as a generic player. Handles image, audio, keyboard via `type()` bitmask export. X crosshair when no image. Web Audio oscillators (square wave) with click-to-start overlay for autoplay policy. Pause (P) button.
+Rewrote `wex/index.html` as a generic player. Handles image, audio, keyboard via `type()` bitmask export. X crosshair when no image. Web Audio oscillators (square wave) with click-to-start overlay for autoplay policy. Pause (P) button.
 
 ### A5 — zxw debug mode ✅
 
@@ -69,7 +69,7 @@ Rewrote `wasm/index.html` as a generic player. Handles image, audio, keyboard vi
 
 ### A7 — Cleanup ✅
 
-Removed `glyph/glyphwasm/` Rust crate entirely. Updated gitignore, CLAUDE.md, pipeline docs. 113 tests total (34 beeper + 6 scr_loader + 39 scr + 34 pipeline).
+Removed `glyph/glyphwex/` Rust crate entirely. Updated gitignore, CLAUDE.md, pipeline docs. 113 tests total (34 beeper + 6 scr_loader + 39 scr + 34 pipeline).
 
 **Key learnings:**
 - Pure WAT is vastly smaller and simpler than wasm-pack for data-embedding use cases

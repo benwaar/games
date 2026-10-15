@@ -3,11 +3,11 @@
 Two parallel paths from one input:
 
 Image (.png/.jpg):
-  - WASM: full-colour RGBA at original resolution → wasm/debug.wasm
+  - WASM: full-colour RGBA at original resolution → wex/debug.wasm
   - TAP:  Spectrum-quantised (256x192, k-means) → zxw/www/tap/debug.tap
 
 Audio (.json glyph-audio):
-  - WASM: freq/duration arrays embedded as WAT data segments → wasm/debug.wasm
+  - WASM: freq/duration arrays embedded as WAT data segments → wex/debug.wasm
   - TAP:  Z80 beeper binary → zxw/www/tap/debug.tap
 
 Usage:
@@ -34,8 +34,8 @@ from scr.quantise import quantise_image
 from scr.pack import pack_scr
 from incant.tap import write_spectrum_tap
 
-WASM_OUT = ROOT / "wasm" / "debug.wasm"
-WAT_OUT = ROOT / "wasm" / "debug.wat"
+WASM_OUT = ROOT / "wex" / "debug.wasm"
+WAT_OUT = ROOT / "wex" / "debug.wat"
 TAP_OUT = ROOT / "zxw" / "www" / "tap" / "debug.tap"
 
 

@@ -4,7 +4,7 @@
 
 Phased a11y for web game content. Reusable lib: pipeline-side WAT encoding + player-side mirror DOM.
 
-Research: `wasm/A11Y.md` | `wasm/SCALING.md` (done)
+Research: `wex/A11Y.md` | `wex/SCALING.md` (done)
 
 ### Phase 1: Mirror DOM POC
 
@@ -28,16 +28,16 @@ Slim mirror DOM — scene description JSON → WAT data segment → player reads
 - [x] Doc: update `glyph/CLAUDE.md`
 
 **1c — Mirror DOM in player**
-- [x] `buildMirrorDom(canvas, nodes)` in `wasm/index.html`
+- [x] `buildMirrorDom(canvas, nodes)` in `wex/index.html`
 - [x] Positioned container overlaying canvas, percentage-based coords (scales with responsive CSS)
 - [x] Per node: `<div>` with `role`, `aria-label`, sr-only (clip-rect)
 - [x] `aria-live="polite"` region for announcements
 - [x] Status div gets `role="status"` + `aria-live="polite"`
 - [x] Fallback when no bit 3: `aria-label="Game content"` + `role="img"` on canvas
-- [x] Doc: update `wasm/A11Y.md` implementation section
+- [x] Doc: update `wex/A11Y.md` implementation section
 
 **1d — Explainer**
-- [x] `wasm/explainers/mirror-dom.md` — what, why, how, connection to toolkit/flare pattern
+- [x] `wex/explainers/mirror-dom.md` — what, why, how, connection to toolkit/flare pattern
 
 **1e — Verify + commit**
 - [x] Build with `--a11y`, serve `:8999`, inspect DOM overlay in DevTools

@@ -17,7 +17,7 @@ games/
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
-  wasm/                — WASM test harness: static HTML host + swappable debug.wasm
+  wex/                 — WASM executor: static HTML host + swappable debug.wasm
 ```
 
 ---
@@ -26,9 +26,9 @@ games/
 
 Two static test containers for checking build output in the browser.
 
-### WASM player (`wasm/`)
+### WASM player (`wex/`)
 
-- **Output path:** `wasm/debug.wasm`
+- **Output path:** `wex/debug.wasm`
 - **Serve:** `./serve.sh` → `http://localhost:8999`
 - **HTML is static** — generic player that handles image, audio, and keyboard via `type()` bitmask.
 - WASM exports: `type()` (bitmask), `width()`, `height()`, `render()`, `audio_count()`, `audio_offset()`, `memory`.

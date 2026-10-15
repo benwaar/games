@@ -1,6 +1,6 @@
 # SCALING.md — WASM player responsive scaling
 
-Research notes for making `wasm/index.html` work across screen sizes, mobile, and HiDPI.
+Research notes for making `wex/index.html` work across screen sizes, mobile, and HiDPI.
 
 ## Core principle
 

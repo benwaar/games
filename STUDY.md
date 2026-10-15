@@ -22,6 +22,8 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | Spec-driven code generation | LLM pipeline: spec → RAG → generate → assemble → test. Verifiably correct binary output | Automated code generation with quality gates; compliance-checkable output; any pipeline where "compiles and passes tests" replaces "looks right" |
 | Wasm / binary security | Package and verify binary artifacts (SRI hashes, supply chain, size optimisation). Understand the attack surface — CDP exposes WASM linear memory the same way a Spectrum debugger exposes RAM | Shipping ML models or Wasm modules with integrity guarantees; security review of client-side WASM (licence checks, auth tokens, feature gates); defensive architecture that assumes the client is compromised |
 | Synthetic data generation (diffusion) | Generate realistic synthetic data to augment imbalanced datasets, stress-test models, or satisfy privacy constraints — no real PII needed | Synthetic transaction data for fraud model training; rare-event augmentation (money laundering patterns too sparse to train on); privacy-safe test datasets for dev/QA; stress-test scenarios that haven't happened yet |
+| Web game accessibility | Make canvas-based content accessible to screen readers and low-vision users — mirror DOM, preference bridging, palette override, spatial audio | Accessible data visualisations; inclusive dashboards; any canvas/WebGL app that needs WCAG compliance; user preference detection and adaptation |
+| Agent orchestration | Coordinate multiple AI agents to plan, build, review, and verify work — with checkpointed progress and multi-agent code review | CI/CD-integrated AI review pipelines; automated multi-pass code generation; supervised task delegation; quality-gated AI workflows |
 
 ---
 
@@ -41,7 +43,7 @@ The focus is applied: every skill maps to a class of real problem. The business 
 | [zxw](zxw/) | ZX Spectrum 48K emulator — Rust → WASM, CDP debug integration, shared emulator for Void Duel + binary security research | ✅ M1–M7 complete |
 | [Incant](incant/) | Spec-driven code gen — local LLM + RAG → WAT/WASM + Z80 assembly, ONNX → Z80 inference, binary protection PoC | ✅ M1–M10 complete |
 | TPP | LLM engineering — RAG, MCP, deterministic evals, agent orchestration | 🔷 Complete (separate repo) |
-| [Glyph](glyph/) | LLM-first presentation layer — cross-platform HAL, image-to-SCR converter, prompt-driven art pipeline | ▶ POC complete |
+| [Glyph](glyph/) | LLM-first presentation layer — cross-platform HAL, image-to-SCR converter, prompt-driven art pipeline, a11y (mirror DOM, preference imports, settings panel) | ▶ POC + a11y Phase 1–2 complete |
 
 ---
 
@@ -117,7 +119,8 @@ AI / ML
 │   └── Multi-agent / offline RL ────────────────── void-duel Ph 3
 │
 ├── LLM Engineering ─────────────────────────────── 🔷 all covered (TPP)
-│   └── RAG, MCP, skills, evals, agent orchestration
+│   ├── RAG, MCP, skills, evals ────────────────── 🔷 TPP
+│   └── Agent orchestration ────────────────────── 🔷 TPP + ✅ /forge skill (this repo)
 │
 ├── Code Generation
 │   ├── Spec → assembly (WAT, Z80) ────────────── ✅ incant M1–M3
@@ -136,6 +139,14 @@ AI / ML
 │   ├── Browser/WASM interop (wasm-bindgen) ────── ✅ zxw M1, M3–M5
 │   ├── CDP / browser debug protocol ──────────── ✅ zxw M7
 │   └── Emulator architecture ──────────────────── ✅ zxw M2–M6
+│
+├── Web Accessibility (a11y)
+│   ├── Mirror DOM (canvas → screen reader) ────── ✅ glyph/wasm a11y Ph 1
+│   ├── ARIA roles, live regions, sr-only ──────── ✅ glyph/wasm a11y Ph 1
+│   ├── Browser preference imports to WASM ─────── ✅ glyph/wasm a11y Ph 1
+│   ├── Settings panel + palette override ──────── ✅ glyph/wasm a11y Ph 2
+│   ├── Self-voicing (Web Speech API) ──────────── glyph/wasm a11y Ph 3
+│   └── Spatial audio (PannerNode) ─────────────── glyph/wasm a11y Ph 3
 │
 └── Production / MLOps
     ├── Inference pipeline ──────────────────────── ✅ signal-hunt Ph 2
