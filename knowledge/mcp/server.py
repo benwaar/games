@@ -1,28 +1,21 @@
 """
 MCP server for the knowledge corpus.
 Exposes search and read tools so Claude can query Z80/Spectrum/WASM chunks mid-session.
+
+Requires mcp >= 2.0 (MCPServer API).
 """
 
-import asyncio
-import os
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, Resource, TextContent
+from mcp.server.mcpserver import MCPServer
 
 CHUNKS_DIR = Path(__file__).parent.parent / "chunks"
 
-app = Server("knowledge-corpus")
+app = MCPServer("knowledge-corpus")
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
-    """Return (frontmatter_dict, body) from a markdown string with YAML front matter."""
     fm: dict = {}
     body = text
     if text.startswith("---"):
@@ -36,18 +29,17 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
     return fm, body
 
 
-def _score_chunk(path: Path, query: str, category_filter: str | None) -> int:
-    """Return relevance score for a chunk file; 0 = skip."""
-    ql = query.lower()
+def _chunk_id(path: Path) -> str:
+    return f"{path.parent.name}/{path.stem}"
 
-    # Category filter: only search within that subdirectory
+
+def _score_chunk(path: Path, query: str, category_filter: str | None) -> int:
+    ql = query.lower()
     if category_filter and path.parent.name != category_filter:
         return 0
-
     text = path.read_text(encoding="utf-8", errors="ignore")
     fm, body = _parse_frontmatter(text)
     topic = fm.get("topic", "").lower()
-
     score = 0
     if ql in topic:
         score += 10
@@ -58,71 +50,13 @@ def _score_chunk(path: Path, query: str, category_filter: str | None) -> int:
     return score
 
 
-def _chunk_id(path: Path) -> str:
-    """category/stem — used as a stable chunk_id."""
-    return f"{path.parent.name}/{path.stem}"
-
-
-# ---------------------------------------------------------------------------
-# Tools
-# ---------------------------------------------------------------------------
-
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
-        Tool(
-            name="search",
-            description="Search the knowledge corpus for Z80, Spectrum, or WASM chunks.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Search term (instruction mnemonic, topic name, keyword)",
-                    },
-                    "category": {
-                        "type": "string",
-                        "description": (
-                            "Optional category filter. One of: z80-instruction, z80-pattern, "
-                            "spectrum-rom, spectrum-hardware, wasm-spec, wasm-pattern, wasi"
-                        ),
-                    },
-                },
-                "required": ["query"],
-            },
-        ),
-        Tool(
-            name="read",
-            description="Read the full content of a specific knowledge chunk by its chunk_id.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "chunk_id": {
-                        "type": "string",
-                        "description": "chunk_id in the form category/filename (e.g. z80-instruction/ld)",
-                    },
-                },
-                "required": ["chunk_id"],
-            },
-        ),
-    ]
-
-
-@app.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    if name == "search":
-        return await _search(arguments.get("query", ""), arguments.get("category"))
-    if name == "read":
-        return await _read(arguments.get("chunk_id", ""))
-    return [TextContent(type="text", text=f"Unknown tool: {name}")]
-
-
-async def _search(query: str, category: str | None) -> list[TextContent]:
+@app.tool()
+def search(query: str, category: str | None = None) -> str:
+    """Search the knowledge corpus for Z80, Spectrum, or WASM chunks."""
     if not query.strip():
-        return [TextContent(type="text", text="Query cannot be empty.")]
-
+        return "Query cannot be empty."
     if not CHUNKS_DIR.exists():
-        return [TextContent(type="text", text="Chunks directory not found. Run the normaliser first.")]
+        return "Chunks directory not found. Run the normaliser first."
 
     scored: list[tuple[int, Path]] = []
     for md in CHUNKS_DIR.rglob("*.md"):
@@ -137,7 +71,7 @@ async def _search(query: str, category: str | None) -> list[TextContent]:
     top5 = scored[:5]
 
     if not top5:
-        return [TextContent(type="text", text=f"No chunks found for query: {query!r}")]
+        return f"No chunks found for query: {query!r}"
 
     lines: list[str] = [f"Top {len(top5)} results for '{query}':\n"]
     for score, path in top5:
@@ -148,62 +82,34 @@ async def _search(query: str, category: str | None) -> list[TextContent]:
         preview = body[:200].replace("\n", " ").strip()
         lines.append(f"**{cid}** (score {score})\n  topic: {topic}\n  {preview}\n")
 
-    return [TextContent(type="text", text="\n".join(lines))]
+    return "\n".join(lines)
 
 
-async def _read(chunk_id: str) -> list[TextContent]:
+@app.tool()
+def read(chunk_id: str) -> str:
+    """Read the full content of a specific knowledge chunk by its chunk_id (e.g. z80-instruction/LD)."""
     if not chunk_id.strip():
-        return [TextContent(type="text", text="chunk_id cannot be empty.")]
+        return "chunk_id cannot be empty."
 
-    # chunk_id = category/stem
     parts = chunk_id.strip("/").split("/", 1)
     if len(parts) != 2:
-        return [TextContent(type="text", text="chunk_id must be category/filename (e.g. z80-instruction/ld)")]
+        return "chunk_id must be category/filename (e.g. z80-instruction/LD)"
 
     category, stem = parts
     target = (CHUNKS_DIR / category / f"{stem}.md").resolve()
 
     if not target.is_relative_to(CHUNKS_DIR.resolve()):
-        return [TextContent(type="text", text=f"Invalid chunk_id: {chunk_id}")]
+        return f"Invalid chunk_id: {chunk_id}"
 
     if not target.exists():
-        return [TextContent(type="text", text=f"Chunk not found: {chunk_id}")]
+        return f"Chunk not found: {chunk_id}"
 
-    return [TextContent(type="text", text=target.read_text(encoding="utf-8", errors="ignore"))]
-
-
-# ---------------------------------------------------------------------------
-# Resources
-# ---------------------------------------------------------------------------
-
-@app.list_resources()
-async def list_resources():
-    return [
-        Resource(
-            uri="corpus://categories",
-            name="Corpus categories",
-            description="List of chunk categories with file counts",
-            mimeType="text/plain",
-        ),
-        Resource(
-            uri="corpus://stats",
-            name="Corpus stats",
-            description="Total chunk count and last rebuild timestamp",
-            mimeType="text/plain",
-        ),
-    ]
+    return target.read_text(encoding="utf-8", errors="ignore")
 
 
-@app.read_resource()
-async def read_resource(uri: str) -> str:
-    if uri == "corpus://categories":
-        return _categories_text()
-    if uri == "corpus://stats":
-        return _stats_text()
-    return f"Unknown resource: {uri}"
-
-
-def _categories_text() -> str:
+@app.resource("corpus://categories")
+def categories() -> str:
+    """List of chunk categories with file counts."""
     if not CHUNKS_DIR.exists():
         return "Chunks directory not found."
     lines = ["Categories:\n"]
@@ -214,11 +120,12 @@ def _categories_text() -> str:
     return "\n".join(lines)
 
 
-def _stats_text() -> str:
+@app.resource("corpus://stats")
+def stats() -> str:
+    """Total chunk count and last rebuild timestamp."""
     if not CHUNKS_DIR.exists():
         return "Chunks directory not found."
     total = sum(1 for _ in CHUNKS_DIR.rglob("*.md"))
-    # Use the most recent mtime across all chunks as "last rebuild"
     mtimes = [p.stat().st_mtime for p in CHUNKS_DIR.rglob("*.md")]
     if mtimes:
         last = datetime.fromtimestamp(max(mtimes), tz=timezone.utc).isoformat()
@@ -227,14 +134,5 @@ def _stats_text() -> str:
     return f"Total chunks: {total}\nLast rebuild: {last}"
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-async def main() -> None:
-    async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run(transport="stdio")
