@@ -35,20 +35,20 @@ Transform raw fetched content into uniform, searchable chunks.
 
 Slash command so the user can query the corpus from the terminal.
 
-- [ ] Skill file: `.claude/skills/z80.md` (or `specref`)
-- [ ] Skill searches chunks by keyword/topic, returns formatted result
-- [ ] Handles multi-word queries, category filters (`/z80 rom CHAN-OPEN`, `/z80 wasm memory.grow`)
-- [ ] Test: manual — query returns relevant chunks
+- [x] Skill file: `.claude/skills/z80.md` (or `specref`)
+- [x] Skill searches chunks by keyword/topic, returns formatted result
+- [x] Handles multi-word queries, category filters (`/z80 rom CHAN-OPEN`, `/z80 wasm memory.grow`)
+- [x] Test: manual — query returns relevant chunks
 
 ## M4 — MCP server (Claude query interface)
 
 Expose the corpus as an MCP server so Claude can query it mid-session.
 
-- [ ] MCP server in `knowledge/mcp/` — Python (FastAPI or stdio)
-- [ ] Tools: `search(query, category?)` → ranked chunks, `read(chunk_id)` → full content
-- [ ] Resources: corpus metadata, category list
-- [ ] Register in `.claude/settings.json` as MCP server
-- [ ] Test: Claude can query Z80 instructions, Spectrum ROM routines, WASM specs mid-session
+- [x] MCP server in `knowledge/mcp/` — Python (FastAPI or stdio)
+- [x] Tools: `search(query, category?)` → ranked chunks, `read(chunk_id)` → full content
+- [x] Resources: corpus metadata, category list
+- [x] Register in `.claude/settings.json` as MCP server
+- [x] Test: Claude can query Z80 instructions, Spectrum ROM routines, WASM specs mid-session
 
 ## M5 — Incant integration (RAG pipeline)
 
