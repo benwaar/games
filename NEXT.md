@@ -24,12 +24,12 @@ Set up the directory structure and write fetch scripts for public sources.
 
 Transform raw fetched content into uniform, searchable chunks.
 
-- [ ] `scripts/normalise.py` — reads `raw/`, writes uniform markdown to `chunks/`
-- [ ] Chunks split by topic (one concept per file, ~500-1000 tokens)
-- [ ] Frontmatter on every chunk: `topic`, `category`, `source_url`, `licence`, `tags`
-- [ ] Categories: `z80-instruction`, `z80-pattern`, `spectrum-rom`, `spectrum-hardware`, `wasm-spec`, `wasm-pattern`, `wasi`
-- [ ] Test: normaliser produces valid chunks, frontmatter parses, no empty files
-- [ ] Docs: `knowledge/README.md` — what's in the corpus, how to rebuild, licence audit
+- [x] `scripts/normalise.py` — reads `raw/`, writes uniform markdown to `chunks/`
+- [x] Chunks split by topic (one concept per file, ~500-1000 tokens)
+- [x] Frontmatter on every chunk: `topic`, `category`, `source_url`, `licence`, `tags`
+- [x] Categories: `z80-instruction`, `z80-pattern`, `spectrum-rom`, `spectrum-hardware`, `wasm-spec`, `wasm-pattern`, `wasi`
+- [x] Test: normaliser produces valid chunks, frontmatter parses, no empty files
+- [x] Docs: `knowledge/README.md` — what's in the corpus, how to rebuild, licence audit
 
 ## M3 — Skill (user query interface)
 
