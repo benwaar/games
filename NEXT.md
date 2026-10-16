@@ -54,11 +54,11 @@ Expose the corpus as an MCP server so Claude can query it mid-session.
 
 Wire the corpus into Incant's local LLM code generation pipeline.
 
-- [ ] Embedding script: `scripts/embed.py` — generates vector index from chunks
-- [ ] Vector store: FAISS or ChromaDB index in `knowledge/index/` (gitignored)
+- [x] Embedding script: `scripts/embed.py` — generates vector index from chunks
+- [x] Vector store: FAISS or ChromaDB index in `knowledge/index/` (gitignored)
 - [ ] Incant queries the index during code gen for Z80/WASM context
 - [ ] Test: Incant generates better Z80/WASM with corpus vs without
-- [ ] `knowledge/index/` added to `.gitignore`
+- [x] `knowledge/index/` added to `.gitignore`
 
 ---
 
