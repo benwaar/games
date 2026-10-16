@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "knowledge-corpus": {
+      "type": "stdio",
+      "command": "./knowledge-mcp/target/release/knowledge-mcp",
+      "args": []
+    }
+  }
+}
