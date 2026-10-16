@@ -1,3 +1,11 @@
+---
+topic: "Z80 Memory Map (ZX Spectrum 48K)"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, memory, curated]
+---
+
 # Z80 Memory Map (ZX Spectrum 48K)
 
 ## Address space

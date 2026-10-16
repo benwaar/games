@@ -1,3 +1,11 @@
+---
+topic: "Z80 Common Patterns"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, patterns, curated]
+---
+
 # Z80 Common Patterns
 
 ## Loop N times (DJNZ)

@@ -36,8 +36,8 @@ fi
 # Embed knowledge (when RAG module exists)
 if [ -f incant/rag.py ]; then
     echo "Embedding knowledge..."
-    python -m incant rag embed knowledge/z80 z80
-    python -m incant rag embed knowledge/wat wat
+    python -m incant rag embed ../knowledge/curated/z80 z80
+    python -m incant rag embed ../knowledge/curated/wat wat
 fi
 
 echo "=== setup complete ==="

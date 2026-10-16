@@ -93,7 +93,7 @@ RAG only works if the reference material is correct. This sounds obvious, but it
 
 ### What happened here
 
-The knowledge docs in `knowledge/z80/` and `knowledge/wat/` were originally written by Claude from training data — not copied from authoritative sources. They were plausible, well-structured, and completely unverified. The assumption was that the model "knows" Z80 and WAT well enough to write accurate reference material.
+The knowledge docs in `knowledge/curated/z80/` and `knowledge/curated/wat/` (at repo root) were originally written by Claude from training data — not copied from authoritative sources. They were plausible, well-structured, and completely unverified. The assumption was that the model "knows" Z80 and WAT well enough to write accurate reference material.
 
 That assumption was wrong. When we cross-checked against the real specs, we found:
 

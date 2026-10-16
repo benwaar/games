@@ -1,3 +1,11 @@
+---
+topic: "WAT Common Patterns"
+category: wasm-pattern
+source_url: "curated"
+licence: "curated"
+tags: [wat, patterns, curated]
+---
+
 # WAT Common Patterns
 
 ## Exported function (the basic pattern)

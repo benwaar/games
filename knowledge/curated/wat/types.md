@@ -1,3 +1,11 @@
+---
+topic: "WAT Types"
+category: wasm-pattern
+source_url: "curated"
+licence: "curated"
+tags: [wat, types, curated]
+---
+
 # WAT Types
 
 WebAssembly has four value types.

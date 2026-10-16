@@ -1,3 +1,11 @@
+---
+topic: "WAT Instructions"
+category: wasm-pattern
+source_url: "curated"
+licence: "curated"
+tags: [wat, instructions, curated]
+---
+
 # WAT Instructions
 
 ## Constants

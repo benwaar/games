@@ -44,7 +44,7 @@ Stops at the shorter sequence. Used heavily in the cosine similarity calculation
 Object-oriented filesystem paths. Used throughout instead of string manipulation.
 
 ```python
-path = Path("knowledge/z80")
+path = Path("../../knowledge/curated/z80")
 for md_file in path.glob("*.md"):   # find all .md files
     text = md_file.read_text()       # read file content
     name = md_file.stem              # filename without extension

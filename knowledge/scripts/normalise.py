@@ -23,6 +23,7 @@ from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = REPO_ROOT / "knowledge" / "raw"
+CURATED_DIR = REPO_ROOT / "knowledge" / "curated"
 CHUNKS_DIR = REPO_ROOT / "knowledge" / "chunks"
 
 VALID_CATEGORIES = {
@@ -237,6 +238,8 @@ def main() -> None:
         sys.exit(1)
 
     raw_files = sorted(RAW_DIR.rglob("*.md"))
+    if CURATED_DIR.exists():
+        raw_files += sorted(CURATED_DIR.rglob("*.md"))
 
     total_input = len(raw_files)
     total_chunks = 0
@@ -246,7 +249,10 @@ def main() -> None:
         n, err = process_file(src)
         if err:
             skipped.append((src, err))
-            rel = src.relative_to(RAW_DIR)
+            try:
+                rel = src.relative_to(RAW_DIR)
+            except ValueError:
+                rel = src.relative_to(CURATED_DIR)
             print(f"  SKIP {rel}: {err}")
         else:
             total_chunks += n
