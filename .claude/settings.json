@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.claude/skills/asm/z80-query.sh *)"
+      "Bash(.claude/skills/asm/z80-query.sh *)",
+      "Bash(rustup target *)",
+      "mcp__chrome-devtools__*",
+      "mcp__knowledge-corpus__search",
+      "mcp__knowledge-corpus__read"
     ]
+  },
+  "enabledMcpjsonServers": [
+    "chrome-devtools",
+    "knowledge-corpus"
+  ],
+  "mcpServers": {
+    "knowledge-corpus": {
+      "command": "./knowledge-mcp/target/release/knowledge-mcp",
+      "cwd": "/Users/DBenoy/src/b/games"
+    }
   }
 }
