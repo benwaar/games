@@ -1,21 +1,4 @@
-# Knowledge Corpus — Deferred Work
-
-## Content gaps
-
-Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heaven), WASM spec, MDN WAT reference, WASI preview1.
-
-Still missing:
-- [ ] Spectrum hardware content — skoolkid/WoS pages had different structure than expected, only stubs fetched
-- [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
-- [ ] Undocumented Z80 opcodes — Sean Young doc not yet integrated
-- [ ] 1-bit music routines (utz82) — beeper engine patterns: pulse interleaving, PWM, sample playback
-- [ ] Z80 library routines (breakintoprogram / Dean Belfield) — game routines: sound, sprites, vectors
-
----
-
 # Next
-
-https://skoolkid.github.io/rom/asm/03B5.html
 
 ## zxw — fix emulator audio pipeline
 

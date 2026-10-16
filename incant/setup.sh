@@ -40,11 +40,11 @@ if [ -f incant/rag.py ]; then
     python -m incant rag embed ../knowledge/curated/wat wat
 
     echo "Embedding knowledge corpus chunks..."
-    for dir in ../knowledge/chunks/z80-instruction ../knowledge/chunks/z80-pattern ../knowledge/chunks/spectrum-rom; do
-        python -m incant rag embed "$dir" z80 --append
+    for dir in ../knowledge/chunks/z80-instruction ../knowledge/chunks/z80-pattern ../knowledge/chunks/spectrum-rom ../knowledge/chunks/z80-undocumented ../knowledge/chunks/z80-beeper ../knowledge/chunks/z80-library; do
+        [ -d "$dir" ] && python -m incant rag embed "$dir" z80 --append
     done
-    for dir in ../knowledge/chunks/wasm-spec ../knowledge/chunks/wasm-pattern ../knowledge/chunks/wasi; do
-        python -m incant rag embed "$dir" wat --append
+    for dir in ../knowledge/chunks/wasm-spec ../knowledge/chunks/wasm-pattern ../knowledge/chunks/wasi ../knowledge/chunks/wasm-binary; do
+        [ -d "$dir" ] && python -m incant rag embed "$dir" wat --append
     done
 fi
 

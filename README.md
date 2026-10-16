@@ -27,6 +27,7 @@ Everything is inspectable and hackable.
 - [Incant](incant/) — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly ✅
 - [wex](wex/) — WASM executor: responsive player, a11y (mirror DOM, settings panel, palette presets) ▶
 - [Glyph](glyph/) — LLM-first presentation layer: same spec → WASM (full colour) + Z80 (Spectrum constraints) ▶
+- [Grimoire](grimoire/) — debug maps for LLM-first toolchains: spec → binary composition graph, LLM debug loop
 - [Void Duel](void-duel/) — ZX Spectrum shooter: classic ML, multi-agent RL, extreme-edge distillation
 
 

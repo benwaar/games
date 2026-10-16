@@ -21,6 +21,27 @@ One corpus, three access methods. Built fetch → normalise → serve pipeline f
 
 **Branch:** `feature/no-ticket-knowledge-corpus`
 
+## 2026-10-16 — Content gaps + semantic search
+
+Filled all deferred content gaps from the initial corpus build and added semantic search to the Rust MCP server.
+
+**Content gaps filled (6 commits):**
+
+- **Spectrum hardware** — fixed `fetch_spectrum.py` selectors, fetched 22 priority ROM routines + 274 stubs + system variables + I/O ports/ULA. Real content, not stubs.
+- **Z80 extras** (`fetch_z80_extras.py`) — undocumented opcodes (Sean Young PDF, GFDL, 17 sections → 57 chunks), 1-bit beeper engines (utz82 GitHub, MIT, 37 engines → 138 chunks), library routines (Dean Belfield GitHub, 14 routines → 32 chunks).
+- **WASM binary format** — W3C spec sections (values, types, instructions, modules) → 23 chunks.
+- **MDN WAT pages** — 210 per-instruction pages fetched. Fixed fragment-URL redirect issue (MDN redirects `#section` anchors, so fetch once and extract by heading ID instead).
+
+**Semantic search:**
+
+- ONNX embedding pipeline: `embed.py` generates `vectors.npy` + `metadata.json`, `export_onnx.py` exports all-MiniLM-L6-v2 to ONNX + tokenizer.
+- Rust MCP server gains `search_semantic` tool — loads ONNX model at startup, cosine similarity ranking. No Python dependency at query time.
+- 7 acceptance tests verified (beeper engines, binary format, LEB128, category filter, keyword vs semantic comparison, tape loading, corpus stats).
+
+**Corpus totals:** ~800 chunks across 10 categories (z80-instruction, z80-pattern, z80-undocumented, z80-beeper, z80-library, spectrum-rom, spectrum-hardware, wasm-spec, wasm-pattern, wasi).
+
+**Branch:** `feature/no-ticket-knowledge-content-gaps`
+
 ## 2026-10-16 — MCP server rewrite + Incant pipeline integration
 
 Rewrote MCP server in Rust, wired knowledge corpus into incant's RAG store, added embeddings explainer.

@@ -186,8 +186,17 @@ def main() -> None:
     tmp_index.rename(FAISS_INDEX_PATH)
     tmp_meta.rename(METADATA_PATH)
 
+    # Export raw vectors as .npy for the Rust MCP server
+    VECTORS_PATH = INDEX_DIR / "vectors.npy"
+    vecs = np.zeros((index.ntotal, index.d), dtype=np.float32)
+    index.reconstruct_n(0, index.ntotal, vecs)
+    tmp_npy = VECTORS_PATH.with_suffix(".tmp.npy")
+    np.save(str(tmp_npy), vecs)
+    tmp_npy.rename(VECTORS_PATH)
+
     print(f"\nFAISS index saved → {FAISS_INDEX_PATH}")
     print(f"Metadata saved   → {METADATA_PATH}")
+    print(f"Vectors saved    → {VECTORS_PATH}  shape={vecs.shape}")
 
     dim = index.d
     print(f"\nDone. {index.ntotal} vectors, dim={dim}.")

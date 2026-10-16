@@ -5,16 +5,23 @@ deps: requests beautifulsoup4
 
 Sources:
   - https://skoolkid.github.io/rom/  (GPL — Skoolkit ROM disassembly)
-  - https://worldofspectrum.org/faq/reference/z80reference.htm  (community archive)
 
 Output:
   knowledge/raw/spectrum/rom/       — ROM routines (one .md per entry point)
   knowledge/raw/spectrum/hardware/  — system variables, ULA timing, I/O ports
+
+Changes from v1:
+  - Fixed map selector: `td.map-c/map-s/map-u` cells, `a.map-entry-title` for labels
+  - Fixed URL resolution: urllib.parse.urljoin instead of string concat
+  - Fixed detail page parsing: `div.paragraph`, correct assembly cell classes
+  - Fixed hardware pages: sysvars at buffers/sysvars.html, I/O ports curated
+  - Fixed KNOWN_ENTRY_POINTS: corrected wrong addresses (BEEPER at 03B5 not 007D)
 """
 
 import re
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 import requests
@@ -30,13 +37,42 @@ OUT_ROM = REPO_ROOT / "knowledge" / "raw" / "spectrum" / "rom"
 OUT_HW = REPO_ROOT / "knowledge" / "raw" / "spectrum" / "hardware"
 
 SKOOLKID_BASE = "https://skoolkid.github.io/rom"
-SKOOLKID_ASM_INDEX = f"{SKOOLKID_BASE}/asm/0000.html"  # first page of ROM listing
-SKOOLKID_MAP = f"{SKOOLKID_BASE}/maps/all.html"         # entry-point map
-
-WOS_REF = "https://worldofspectrum.org/faq/reference/z80reference.htm"
+SKOOLKID_ROUTINES_MAP = f"{SKOOLKID_BASE}/maps/routines.html"
+SKOOLKID_SYSVARS = f"{SKOOLKID_BASE}/buffers/sysvars.html"
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (knowledge-corpus-fetcher/1.0; educational use)"}
-DELAY = 0.4  # seconds between requests
+DELAY = 0.5  # seconds between requests
+
+# Routines to fetch in detail (curated — covers all projects: beeper, tape, display, memory)
+PRIORITY_ROUTINES = {
+    "03B5",  # BEEPER subroutine
+    "03F8",  # BEEP command
+    "028E",  # KEYBOARD SCANNING
+    "02BF",  # KEYBOARD
+    "031E",  # K-TEST
+    "0333",  # KEYBOARD DECODING
+    "04C2",  # SA-BYTES (save to tape)
+    "053F",  # SA/LD-RET
+    "0556",  # LD-BYTES (load from tape)
+    "05E3",  # LD-EDGE-2/LD-EDGE-1
+    "0605",  # SAVE/LOAD/VERIFY/MERGE
+    "0D6B",  # DISPLAY routines
+    "1601",  # CLS
+    "1605",  # CLS-LOWER
+    "1B17",  # PLOT
+    "1B5B",  # DRAW
+    "1EAC",  # CIRCLE
+    "229B",  # PRINT-OUT
+    "0010",  # PRINT-A CHARACTER restart
+    "0000",  # START
+    "0038",  # MASKABLE INTERRUPT
+    "0030",  # MAKE-BC-SPACES
+    "0556",  # LD-BYTES
+    "2AB1",  # SA-BYTES alias
+    "1795",  # LOOK-VARS
+    "11B7",  # NEW
+    "12AC",  # MAIN-EXEC
+}
 
 
 # ---------------------------------------------------------------------------
@@ -78,307 +114,446 @@ def frontmatter(topic: str, category: str, source_url: str, tags: list[str], lic
     )
 
 
+def _clean_text(el) -> str:
+    """Extract text from a BS4 element, collapsing whitespace."""
+    if el is None:
+        return ""
+    return re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
+
+
 # ---------------------------------------------------------------------------
-# Skoolkid ROM — entry-point map
+# Skoolkid ROM — routines map
 # ---------------------------------------------------------------------------
 
 
-def fetch_rom_entry_map() -> list[dict]:
+def fetch_routines_map() -> list[dict]:
     """
-    Parse the Skoolkid 'all routines' map page.
-    Returns list of {name, addr, url, description}.
-    """
-    print(f"Fetching ROM map: {SKOOLKID_MAP}")
-    soup = get(SKOOLKID_MAP)
+    Parse the Skoolkid routines map page.
+    Returns list of {name, addr, url, desc}.
+
+    HTML structure:
+      <table class="map">
+        <tr>
+          <td class="map-c"><a href="../asm/0000.html">0000</a></td>
+          <td class="map-c-desc">
+            <div class="map-entry-title-10">
+              <a class="map-entry-title" href="../asm/0000.html">THE 'START'</a>
+            </div>
+          </td>
+        </tr>
+      """
+    print(f"Fetching routines map: {SKOOLKID_ROUTINES_MAP}")
+    soup = get(SKOOLKID_ROUTINES_MAP)
     if soup is None:
         return []
 
     entries = []
-    # The map page has a table with columns: address, label, description
-    for row in soup.select("table tr"):
-        cells = row.find_all("td")
-        if len(cells) < 3:
+    for row in soup.select("table.map tr"):
+        # Address cell can be map-c, map-s, map-u, map-g etc.
+        addr_cell = row.select_one("td[class]")
+        if addr_cell is None:
             continue
-        addr_cell = cells[0].get_text(strip=True)
-        label_cell = cells[1]
-        desc_cell = cells[2]
-        name = label_cell.get_text(strip=True)
-        desc = desc_cell.get_text(strip=True)
-        link = label_cell.find("a")
-        href = link["href"] if link and link.get("href") else None
-        if not name or not addr_cell:
+        addr_link = addr_cell.select_one("a[href]")
+        if addr_link is None:
             continue
-        url = f"{SKOOLKID_BASE}/asm/{href}" if href else None
-        entries.append({"name": name, "addr": addr_cell, "url": url, "desc": desc})
 
-    print(f"  Found {len(entries)} map entries")
+        # Label is in the sibling desc cell
+        desc_cell = row.select_one("a.map-entry-title")
+        if desc_cell is None:
+            continue
+
+        addr = addr_link.get_text(strip=True)
+        name = desc_cell.get_text(strip=True)
+        href = desc_cell.get("href", "")
+        # Resolve relative URL against the map page URL
+        url = urllib.parse.urljoin(SKOOLKID_ROUTINES_MAP, href) if href else None
+
+        if addr and name:
+            entries.append({"name": name, "addr": addr, "url": url})
+
+    print(f"  Found {len(entries)} routines")
     return entries
 
 
-def fetch_rom_routine(entry: dict) -> str | None:
+# ---------------------------------------------------------------------------
+# Skoolkid ROM — routine detail pages
+# ---------------------------------------------------------------------------
+
+
+def fetch_routine_detail(entry: dict) -> str | None:
     """
-    Fetch the detail page for one ROM routine and return markdown body, or None.
+    Fetch a ROM routine detail page and return markdown body, or None.
+
+    HTML structure:
+      <div class="description">03B5: THE 'BEEPER' SUBROUTINE</div>
+      <table class="disassembly">
+        <td class="routine-comment"><div class="details"><div class="paragraph">...</div></div></td>
+        <tr>
+          <td class="asm-label">BEEPER</td>
+          <td class="address-2">03B5</td>
+          <td class="instruction">DI</td>
+          <td class="comment-1">Disable the interrupt...</td>
+        </tr>
+      </table>
+      <table class="input"><tr><td class="register">DE</td><td>...</td></tr></table>
+      <table class="output">...</table>
     """
-    if not entry.get("url"):
+    url = entry.get("url")
+    if not url:
         return None
-    soup = get(entry["url"])
+    soup = get(url)
     if soup is None:
         return None
 
-    # Extract the main comment block and instruction table
-    comments: list[str] = []
-    instructions: list[str] = []
+    # Description heading
+    desc_div = soup.select_one("div.description")
+    page_title = _clean_text(desc_div) if desc_div else entry.get("name", "")
 
-    # Skoolkid pages: <div class="comment"> paragraphs + <table class="disassembly">
-    for p in soup.select("div.comment p, div.description p"):
-        txt = p.get_text(" ", strip=True)
+    # Comment paragraphs
+    paragraphs: list[str] = []
+    for p in soup.select("td.routine-comment div.details div.paragraph"):
+        txt = _clean_text(p)
         if txt:
-            comments.append(txt)
+            paragraphs.append(txt)
 
+    # Input/output register tables
+    reg_sections: list[str] = []
+    for table_cls, heading in [("input", "Input"), ("output", "Output")]:
+        table = soup.select_one(f"table.{table_cls}")
+        if table is None:
+            continue
+        rows = []
+        for row in table.select("tr"):
+            cells = row.find_all(["td", "th"])
+            if len(cells) >= 2:
+                reg = _clean_text(cells[0])
+                desc = _clean_text(cells[1])
+                if reg and desc:
+                    rows.append(f"  {reg}: {desc}")
+        if rows:
+            reg_sections.append(f"\n## {heading}\n\n" + "\n".join(rows))
+
+    # Assembly listing
+    instructions: list[str] = []
     for row in soup.select("table.disassembly tr"):
-        cells = row.find_all("td")
-        if len(cells) >= 3:
-            addr = cells[0].get_text(strip=True)
-            mnemonic = cells[1].get_text(strip=True) if len(cells) > 1 else ""
-            comment = cells[-1].get_text(strip=True) if len(cells) > 2 else ""
-            if addr:
-                line = f"  {addr}  {mnemonic}"
-                if comment:
-                    line += f"  ; {comment}"
-                instructions.append(line)
+        label_cell = row.select_one("td.asm-label")
+        addr_cell = row.select_one("td[class^='address-']")
+        instr_cell = row.select_one("td.instruction")
+        comment_cell = row.select_one("td[class^='comment-']")
 
-    # Collect "Related" links
-    related: list[str] = []
-    for a in soup.select("a[href]"):
-        href = a["href"]
-        if href.endswith(".html") and a.get_text(strip=True) not in (entry["name"], ""):
-            related.append(a.get_text(strip=True))
-    related = list(dict.fromkeys(related))[:10]  # dedupe, cap at 10
+        if addr_cell is None and instr_cell is None:
+            continue
 
-    body = "\n".join(comments) if comments else entry.get("desc", "")
-    asm_block = ""
+        label = _clean_text(label_cell) if label_cell else ""
+        addr = _clean_text(addr_cell) if addr_cell else ""
+        instr = _clean_text(instr_cell) if instr_cell else ""
+        comment = _clean_text(comment_cell) if comment_cell else ""
+
+        if not addr and not instr:
+            continue
+
+        line = f"{addr:<6}  {instr:<20}"
+        if label:
+            line = f"{label:<12} " + line
+        if comment:
+            line += f"  ; {comment}"
+        instructions.append(line.rstrip())
+
+    # Build body
+    body = "\n\n".join(paragraphs) if paragraphs else ""
+    if reg_sections:
+        body += "\n" + "\n".join(reg_sections)
     if instructions:
-        asm_block = "\n## Assembly\n\n```asm\n" + "\n".join(instructions[:40]) + "\n```\n"
-        if len(instructions) > 40:
-            asm_block += f"\n_(truncated — {len(instructions)} lines total)_\n"
+        shown = instructions[:60]
+        asm = "\n## Assembly\n\n```asm\n" + "\n".join(shown) + "\n```\n"
+        if len(instructions) > 60:
+            asm += f"\n_(truncated — {len(instructions)} instructions total)_\n"
+        body += asm
 
-    related_block = ""
-    if related:
-        related_block = "\n## Related routines\n\n" + "".join(f"- {r}\n" for r in related)
-
-    return body + asm_block + related_block
+    return body.strip() if body.strip() else None
 
 
 def build_rom_routine_md(entry: dict, body: str) -> str:
     name = entry["name"]
     addr = entry["addr"]
-    desc = entry.get("desc", "")
-    url = entry.get("url") or SKOOLKID_MAP
+    url = entry.get("url") or SKOOLKID_ROUTINES_MAP
 
-    fm = frontmatter(name, "spectrum-rom", url, ["rom", "routine", slug(name).lower()])
-    header = f"# {name}\n\n**Address:** `{addr}`\n\n"
-    if desc:
-        header += f"**Description:** {desc}\n\n"
+    # Derive a short label from the full name (strip "THE '...' SUBROUTINE" boilerplate)
+    short = re.sub(r"^THE '(.+?)'\s*(SUBROUTINE|ROUTINE|RESTART|COMMAND.*)?$", r"\1", name, flags=re.IGNORECASE).strip()
+
+    fm = frontmatter(short or name, "spectrum-rom", url, ["rom", "routine", slug(short or name).lower()])
+    header = f"# {short or name}\n\n**Address:** `{addr}H`\n\n**Full title:** {name}\n\n"
     return fm + header + body
 
 
-def fetch_all_rom_routines(entries: list[dict]) -> None:
-    print(f"\nFetching {len(entries)} ROM routines → {OUT_ROM}/")
+def fetch_selected_routines(entries: list[dict]) -> None:
+    """Fetch detail pages for priority routines (skip already-fetched)."""
+    priority = {e["addr"] for e in entries if e["addr"] in PRIORITY_ROUTINES}
+    to_fetch = [e for e in entries if e["addr"] in PRIORITY_ROUTINES]
+
+    print(f"\nFetching {len(to_fetch)} priority ROM routines → {OUT_ROM}/")
     written = 0
-    for i, entry in enumerate(entries):
-        name = entry["name"]
-        if not name:
-            continue
-        filename = OUT_ROM / f"{slug(name)}.md"
-        # Skip if already fetched in this run
-        if filename.exists():
-            continue
-        print(f"  [{i+1}/{len(entries)}] {name} ({entry['addr']})")
-        body = fetch_rom_routine(entry)
-        if body is None:
-            # Fallback: just the map description
-            body = entry.get("desc", "")
+    for i, entry in enumerate(to_fetch):
+        # Derive a safe label for the file
+        short = re.sub(r"^THE '(.+?)'\s*(SUBROUTINE|ROUTINE|RESTART|COMMAND.*)?$", r"\1", entry["name"], flags=re.IGNORECASE).strip()
+        label = short or entry["name"]
+        filename = OUT_ROM / f"{slug(label)}.md"
+
+        print(f"  [{i+1}/{len(to_fetch)}] {label} ({entry['addr']})")
+        body = fetch_routine_detail(entry)
+        if not body:
+            body = f"_See {entry.get('url', SKOOLKID_ROUTINES_MAP)} for full disassembly._\n"
         md = build_rom_routine_md(entry, body)
         write_md(filename, md)
         written += 1
         time.sleep(DELAY)
+
     print(f"  Done — {written} files written")
 
 
 # ---------------------------------------------------------------------------
-# World of Spectrum — system variables + hardware
+# Fallback stubs for non-priority routines
 # ---------------------------------------------------------------------------
 
-# Known section anchors / headings on the WoS reference page
-HW_SECTIONS = {
-    "system-variables": ("System Variables", "spectrum-hardware", ["sysvar", "memory-map"]),
-    "io-ports": ("I/O Ports", "spectrum-hardware", ["io", "ports", "ula"]),
-    "ula": ("ULA", "spectrum-hardware", ["ula", "display", "timing"]),
-}
+def write_stub(entry: dict) -> None:
+    """Write a stub .md for a routine, only if no file exists yet."""
+    name = entry["name"]
+    short = re.sub(r"^THE '(.+?)'\s*(SUBROUTINE|ROUTINE|RESTART|COMMAND.*)?$", r"\1", name, flags=re.IGNORECASE).strip()
+    label = short or name
+    filename = OUT_ROM / f"{slug(label)}.md"
+    if filename.exists():
+        return
+    url = entry.get("url") or SKOOLKID_ROUTINES_MAP
+    fm = frontmatter(label, "spectrum-rom", url, ["rom", "entry-point", slug(label).lower()])
+    content = (
+        fm
+        + f"# {label}\n\n"
+        + f"**Address:** `{entry['addr']}H`\n\n"
+        + f"**Full title:** {name}\n\n"
+        + "_See source URL for full disassembly and register usage._\n"
+    )
+    write_md(filename, content)
 
 
-def fetch_wos_reference() -> None:
+# ---------------------------------------------------------------------------
+# System variables from buffers/sysvars.html
+# ---------------------------------------------------------------------------
+
+
+def fetch_system_variables() -> None:
     """
-    Fetch WoS reference page and split into per-category markdown files.
+    Fetch the system variables index and write a single comprehensive chunk.
+
+    HTML structure (same as routines map but with 3 columns):
+      <td class="map-g"><a href="../asm/5C00.html">5C00</a></td>
+      <td class="map-length">8</td>
+      <td class="map-g-desc">
+        <div class="map-entry-title-10">
+          <a class="map-entry-title" href="../asm/5C00.html">KSTATE - Used in reading the keyboard</a>
+        </div>
+      </td>
     """
-    print(f"\nFetching WoS reference: {WOS_REF}")
-    soup = get(WOS_REF)
+    print(f"\nFetching system variables: {SKOOLKID_SYSVARS}")
+    soup = get(SKOOLKID_SYSVARS)
     if soup is None:
-        print("  [skip] WoS reference unavailable — skipping hardware section")
+        print("  [skip] sysvars unavailable")
         return
 
-    body_text = soup.get_text("\n", strip=False)
-    # Save the full page as a single hardware reference
-    full_path = OUT_HW / "wos-reference-full.md"
-    fm = frontmatter(
-        "World of Spectrum — Z80/Spectrum Reference",
-        "spectrum-hardware",
-        WOS_REF,
-        ["system-variables", "io-ports", "ula", "hardware"],
-        licence="community-archive",
-    )
-    write_md(full_path, fm + body_text)
-    print(f"  Wrote {full_path} ({len(body_text)} chars)")
+    rows_md: list[str] = []
+    for row in soup.select("table.map tr"):
+        addr_cell = row.select_one("td[class]")
+        if addr_cell is None:
+            continue
+        addr_link = addr_cell.select_one("a[href]")
+        if addr_link is None:
+            continue
 
-    # Attempt to split by heading into separate files
-    _split_wos_by_heading(soup)
+        length_cell = row.select_one("td.map-length")
+        label_link = row.select_one("a.map-entry-title")
+        if label_link is None:
+            continue
 
+        addr = _clean_text(addr_link)
+        length = _clean_text(length_cell) if length_cell else "?"
+        full_label = _clean_text(label_link)
 
-def _split_wos_by_heading(soup: BeautifulSoup) -> None:
-    """
-    Walk the WoS page headings and emit one file per major section.
-    """
-    sections: list[tuple[str, str]] = []  # (heading_text, content_html)
-    current_heading = "Introduction"
-    current_parts: list[str] = []
-
-    for el in soup.body.children if soup.body else []:
-        tag = getattr(el, "name", None)
-        if tag in ("h1", "h2", "h3"):
-            if current_parts:
-                sections.append((current_heading, "\n".join(current_parts)))
-            current_heading = el.get_text(strip=True)
-            current_parts = []
+        # Split "KSTATE - Used in reading the keyboard" into name + desc
+        if " - " in full_label:
+            var_name, _, var_desc = full_label.partition(" - ")
+        elif ": " in full_label:
+            var_name, _, var_desc = full_label.partition(": ")
         else:
-            txt = el.get_text("\n", strip=True) if hasattr(el, "get_text") else str(el).strip()
-            if txt:
-                current_parts.append(txt)
+            var_name = full_label
+            var_desc = ""
 
-    if current_parts:
-        sections.append((current_heading, "\n".join(current_parts)))
+        url = urllib.parse.urljoin(SKOOLKID_SYSVARS, label_link.get("href", ""))
 
-    print(f"  Splitting into {len(sections)} sections")
-    for heading, content in sections:
-        if not content.strip():
-            continue
-        fname = slug(heading) or "section"
-        path = OUT_HW / f"{fname}.md"
+        rows_md.append(f"| `{addr}H` | {length} | `{var_name.strip()}` | {var_desc.strip()} |")
 
-        # Guess tags from heading text
-        heading_lower = heading.lower()
-        tags = ["hardware"]
-        if "variable" in heading_lower:
-            tags += ["sysvar", "memory-map"]
-        if "port" in heading_lower or "i/o" in heading_lower:
-            tags += ["io", "ports"]
-        if "ula" in heading_lower or "display" in heading_lower:
-            tags += ["ula", "display"]
-        if "timing" in heading_lower:
-            tags += ["timing"]
+    if not rows_md:
+        print("  [warn] no system variables parsed")
+        return
 
-        fm = frontmatter(heading, "spectrum-hardware", WOS_REF, tags, licence="community-archive")
-        write_md(path, fm + f"# {heading}\n\n" + content)
-        print(f"    → {path.name}")
+    print(f"  Parsed {len(rows_md)} system variables")
 
+    table_header = (
+        "| Address | Bytes | Name | Description |\n"
+        "|---------|-------|------|-------------|\n"
+    )
+    table = table_header + "\n".join(rows_md)
 
-# ---------------------------------------------------------------------------
-# Skoolkid HTML — supplementary hardware pages
-# ---------------------------------------------------------------------------
+    intro = (
+        "System variables are stored in RAM at 5C00H–5CB5H. "
+        "They are referenced by the ROM via the IY register (IY=5C3AH). "
+        "Each variable is accessible by name or by offset from IY.\n\n"
+        "The ROM initialises system variables on `NEW` and `RESET`. "
+        "User programs can read and write them directly to control "
+        "border colour, cursor position, streams, and more.\n\n"
+    )
 
-SKOOLKID_HW_PAGES = [
-    ("display-file", f"{SKOOLKID_BASE}/reference/display.html", "ULA display file layout"),
-    ("system-variables", f"{SKOOLKID_BASE}/reference/sysvars.html", "System variables"),
-    ("io-ports", f"{SKOOLKID_BASE}/reference/io.html", "I/O ports"),
-]
+    fm = frontmatter(
+        "ZX Spectrum System Variables",
+        "spectrum-hardware",
+        SKOOLKID_SYSVARS,
+        ["sysvar", "memory-map", "hardware", "spectrum"],
+    )
 
-
-def fetch_skoolkid_hw() -> None:
-    print(f"\nFetching Skoolkid hardware reference pages → {OUT_HW}/")
-    for name, url, desc in SKOOLKID_HW_PAGES:
-        print(f"  {name}: {url}")
-        soup = get(url)
-        if soup is None:
-            continue
-        content = soup.get_text("\n", strip=False)
-        tags = ["hardware", name]
-        fm = frontmatter(desc, "spectrum-hardware", url, tags)
-        path = OUT_HW / f"skoolkid-{name}.md"
-        write_md(path, fm + f"# {desc}\n\nSource: {url}\n\n" + content)
-        print(f"    → {path.name} ({len(content)} chars)")
-        time.sleep(DELAY)
+    content = fm + "# ZX Spectrum System Variables\n\n" + intro + table + "\n"
+    path = OUT_HW / "system-variables.md"
+    write_md(path, content)
+    print(f"  Wrote {path}")
 
 
 # ---------------------------------------------------------------------------
-# Skoolkid — entry points only (fast fallback index)
+# Curated I/O ports and ULA hardware reference
 # ---------------------------------------------------------------------------
 
-KNOWN_ENTRY_POINTS = [
-    ("0000", "MAIN-EXEC", "Main execution loop entry"),
-    ("0008", "ERROR-1", "Error restart"),
-    ("0010", "PRINT-A", "Print character in A"),
-    ("0018", "GET-CHAR", "Get next BASIC character"),
-    ("0020", "NEXT-CHAR", "Get next character from BASIC line"),
-    ("0028", "FP-CALC", "Floating-point calculator"),
-    ("0030", "BC-SPACES", "Make BC spaces in workspace"),
-    ("0038", "MASK-INT", "Maskable interrupt routine"),
-    ("003B", "KEYBOARD", "Keyboard scanning"),
-    ("0048", "TEMPS", "Set temporary colours"),
-    ("0053", "ATTR-BITS", "Collect attribute bits"),
-    ("0077", "BORDER", "Set border colour"),
-    ("007D", "BEEPER", "Produce sound effect"),
-    ("00E2", "CL-CHAN", "Open a channel"),
-    ("1601", "CLS", "Clear screen"),
-    ("1605", "CLS-LOWER", "Clear lower screen"),
-    ("1615", "CHAN-OPEN", "Open channel A in register"),
-    ("1617", "CHAN-OPEN2", "Open channel (main)"),
-    ("229B", "PRINT-OUT", "Output character to current stream"),
-    ("2AB1", "SA-BYTES", "Save bytes to tape"),
-    ("0556", "LD-BYTES", "Load bytes from tape"),
-    ("028E", "MAKE-ROOM", "Make room in BASIC line"),
-    ("1795", "LOOK-VARS", "Look up variable in VARS area"),
-    ("2BF1", "COPY", "Copy screen to printer"),
-    ("0D6B", "DISPLAY-6", "Display routine (ULA)"),
-    ("1B17", "PLOT", "Plot pixel at (X,Y)"),
-    ("1B5B", "DRAW", "Draw line"),
-    ("1EAC", "CIRCLE", "Draw circle"),
-    ("2211", "PRINT-FP", "Print floating-point number"),
-]
+_IO_PORTS_CONTENT = """\
+# ZX Spectrum I/O Ports and ULA
+
+The ULA (Uncommitted Logic Array) handles the Spectrum's display,
+keyboard, tape, and speaker via a single I/O port.
+
+## Port FEH — ULA port
+
+The primary hardware interface. Used by `IN` and `OUT` instructions.
+
+### OUT to port FEH
+
+Write bits control border colour and speaker/tape output:
+
+| Bits | Name | Description |
+|------|------|-------------|
+| 2–0  | BORDER | Border colour (0=black … 7=white, matches INK/PAPER codes) |
+| 3    | MIC   | Tape output (MIC socket) |
+| 4    | EAR   | Loudspeaker drive. Toggle to generate sound. |
+
+Example — toggle speaker bit for beeper:
+```asm
+  LD A, (speaker_state)  ; load current OUT value
+  XOR %00010000          ; toggle bit 4 (EAR/speaker)
+  OUT ($FE), A           ; write to ULA
+  LD (speaker_state), A  ; save for next toggle
+```
+
+### IN from port FEH (keyboard)
+
+Read bits report keyboard half-row and EAR input.
+The address lines select which half-row to read.
+
+| Bit | Name | Description |
+|-----|------|-------------|
+| 4–0 | KEY0–KEY4 | Key state (0=pressed, 1=released) |
+| 6   | EAR input | Signal from EAR socket (tape input) |
+
+Address lines A8–A14 select the keyboard row (one bit per row, active low):
+
+| A8–A14 | Row | Keys (bit 0–4) |
+|--------|-----|----------------|
+| FEFEH  | 3   | SHIFT, Z, X, C, V |
+| FDFEH  | 4   | A, S, D, F, G |
+| FBFEH  | 2   | Q, W, E, R, T |
+| F7FEH  | 5   | 1, 2, 3, 4, 5 |
+| EFFEH  | 6   | 0, 9, 8, 7, 6 |
+| DFFEH  | 1   | P, O, I, U, Y |
+| BFFEH  | 0   | ENTER, L, K, J, H |
+| 7FFEH  | 7   | SPACE, SYM, M, N, B |
+
+Example — read SPACE key (row 7, bit 0):
+```asm
+  LD A, $7F          ; row 7 address high byte
+  IN A, ($FE)        ; read keyboard
+  AND %00000001      ; bit 0 = SPACE
+  JR Z, space_pressed ; Z set if key pressed (bit=0)
+```
+
+## ULA display timing
+
+The ULA generates a PAL TV signal at 50Hz. One frame = 69888 T-states.
+
+| Phase | T-states | Description |
+|-------|----------|-------------|
+| Active display | 224 × 192 | Pixel output (192 scan lines) |
+| Border (vertical) | 224 × 56 | Top + bottom border |
+| HSYNC/VSYNC | — | Horizontal and vertical sync pulses |
+| Interrupt | — | Maskable interrupt fired at frame start |
+
+The interrupt fires at the start of the top border (not the active display).
+The ROM interrupt handler (`0038H`) increments the FRAMES counter (5C78H)
+and handles keyboard repeat timing.
+
+**Contended memory:** CPU memory accesses during the active display are
+delayed by the ULA. Addresses 4000H–7FFFH are contended — the ULA
+inserts wait states to prevent bus conflicts when reading display data.
+
+## Display file layout
+
+The display file occupies 6912 bytes from 4000H:
+
+- **Pixel data:** 4000H–57FFH (6144 bytes, 256×192 pixels)
+- **Attribute data:** 5800H–5AFFH (768 bytes, 32×24 cells)
+
+### Pixel addressing
+
+The pixel address encodes row within cell, cell row, and cell column:
+
+```
+Bit pattern: 0 1 0 R R R Y Y Y X X X X X
+             ^       ^   ^
+             |       |   └── cell column (0–31)
+             |       └──── Y within 8×8 cell (0–7)
+             └────── R = third of screen (0, 1, 2)
+```
+
+This means the pixel data is stored in a non-linear order — consecutive
+bytes in memory are not consecutive rows on screen.
+
+### Attribute cell format
+
+Each attribute byte covers an 8×8 pixel cell (32×24 cells total):
+
+| Bits | Description |
+|------|-------------|
+| 7    | FLASH (blink between INK and PAPER) |
+| 6    | BRIGHT (enhanced luminance) |
+| 5–3  | PAPER colour (0–7) |
+| 2–0  | INK colour (0–7) |
+
+Colour codes: 0=black, 1=blue, 2=red, 3=magenta, 4=green, 5=cyan, 6=yellow, 7=white.
+"""
 
 
-def write_known_entry_points() -> None:
-    """
-    Write stub markdown for well-known ROM entry points as a fast fallback.
-    Only writes files that don't already exist (live fetch takes precedence).
-    """
-    print(f"\nWriting {len(KNOWN_ENTRY_POINTS)} known ROM entry-point stubs → {OUT_ROM}/")
-    for addr, name, desc in KNOWN_ENTRY_POINTS:
-        path = OUT_ROM / f"{slug(name)}.md"
-        if path.exists():
-            continue  # live-fetched version already written
-        url = f"{SKOOLKID_BASE}/asm/{addr.lower()}.html"
-        fm = frontmatter(name, "spectrum-rom", url, ["rom", "entry-point", name.lower()])
-        content = (
-            fm
-            + f"# {name}\n\n"
-            + f"**Address:** `{addr}H`\n\n"
-            + f"**Description:** {desc}\n\n"
-            + "## Calling convention\n\n"
-            + "_See source URL for full disassembly and register usage._\n\n"
-            + "## Related routines\n\n"
-            + "_See Skoolkid ROM disassembly for cross-references._\n"
-        )
-        write_md(path, content)
-    print(f"  Done")
+def write_io_ports() -> None:
+    """Write the curated I/O ports and ULA hardware reference."""
+    fm = frontmatter(
+        "ZX Spectrum I/O Ports and ULA",
+        "spectrum-hardware",
+        "https://skoolkid.github.io/rom/",
+        ["io", "ports", "ula", "display", "hardware", "timing"],
+    )
+    path = OUT_HW / "io-ports-ula.md"
+    write_md(path, fm + _IO_PORTS_CONTENT)
+    print(f"  Wrote {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -387,27 +562,38 @@ def write_known_entry_points() -> None:
 
 
 def main() -> None:
-    print("=== fetch_spectrum.py ===")
+    print("=== fetch_spectrum.py (v2 — fixed selectors) ===")
     print(f"Output: {OUT_ROM} | {OUT_HW}")
     OUT_ROM.mkdir(parents=True, exist_ok=True)
     OUT_HW.mkdir(parents=True, exist_ok=True)
 
-    # 1. Known entry-point stubs (instant, no network) — baseline always written
-    write_known_entry_points()
+    # 1. Curated hardware reference (no network needed)
+    print("\nWriting curated hardware reference…")
+    write_io_ports()
 
-    # 2. Live ROM routine map + detail pages from Skoolkid
-    entries = fetch_rom_entry_map()
+    # 2. System variables from Skoolkid
+    fetch_system_variables()
+
+    # 3. Parse routines map
+    entries = fetch_routines_map()
+
     if entries:
-        # Limit to first 100 to avoid hammering the server
-        fetch_all_rom_routines(entries[:100])
+        # Fetch detail pages for priority routines
+        fetch_selected_routines(entries)
+
+        # Write stubs for the rest (if file doesn't exist)
+        print(f"\nWriting stubs for remaining {len(entries)} routines…")
+        stubs = 0
+        for entry in entries:
+            short = re.sub(r"^THE '(.+?)'\s*(SUBROUTINE|ROUTINE|RESTART|COMMAND.*)?$", r"\1", entry["name"], flags=re.IGNORECASE).strip()
+            label = short or entry["name"]
+            filename = OUT_ROM / f"{slug(label)}.md"
+            if not filename.exists():
+                write_stub(entry)
+                stubs += 1
+        print(f"  {stubs} stubs written")
     else:
-        print("  [warn] ROM map unavailable — stubs only")
-
-    # 3. Hardware reference from World of Spectrum
-    fetch_wos_reference()
-
-    # 4. Supplementary hardware pages from Skoolkid
-    fetch_skoolkid_hw()
+        print("  [warn] routines map unavailable — no ROM routines fetched")
 
     print("\n=== Done ===")
     rom_files = list(OUT_ROM.glob("*.md"))

@@ -22,6 +22,10 @@ python knowledge/scripts/normalise.py
 echo "Building FAISS index..."
 python knowledge/scripts/embed.py
 
+# 5. Build human-readable kb/
+echo "Building kb/..."
+python knowledge/scripts/build_kb.py
+
 echo ""
 echo "=== Done ==="
 echo "Corpus ready: $(find knowledge/chunks -name '*.md' | wc -l | tr -d ' ') chunks"
