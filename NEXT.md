@@ -1,5 +1,26 @@
 # Knowledge Corpus — Deferred Work
 
+## Semantic search — test steps
+
+Requires MCP server restart (new binary at `knowledge-mcp/target/release/knowledge-mcp`).
+
+After restart, the `search_semantic` tool should appear alongside `search` and `read`.
+
+- [x] `search_semantic("how to play audio on the Spectrum")` → beeper engine chunks (z80-beeper-engines category)
+- [x] `search_semantic("binary encoding format")` → WASM binary format chunks (wasm-spec category)
+- [x] `search_semantic("LEB128 encoding")` → WASM binary values/types chunks
+- [x] `search_semantic("sound")` with `category: "z80-library"` → Dean Belfield sound routine
+- [x] Compare: `search("BEEPER")` (keyword, 1 result) vs `search_semantic("BEEPER")` (semantic, should surface beeper engines too)
+- [x] `search_semantic("how do I load a program from tape")` → ROM routines (LD-BYTES etc.)
+- [x] Stats resource (`corpus://stats`) should show "Semantic search: available"
+
+Pipeline (if artifacts need rebuilding):
+```bash
+source incant/.venv/bin/activate
+python knowledge/scripts/embed.py        # vectors.npy + metadata.json
+python knowledge/scripts/export_onnx.py  # model.onnx + tokenizer.json (downloads from HF)
+```
+
 ## Content gaps
 
 Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heaven), WASM spec, MDN WAT reference, WASI preview1.
