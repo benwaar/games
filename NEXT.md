@@ -7,9 +7,11 @@ Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heav
 Still missing:
 - [ ] Spectrum hardware content — skoolkid/WoS pages had different structure than expected, only stubs fetched
 - [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
-- [ ] Undocumented Z80 opcodes — Sean Young doc not yet integrated
-- [ ] 1-bit music routines (utz82) — beeper engine patterns: pulse interleaving, PWM, sample playback
-- [ ] Z80 library routines (breakintoprogram / Dean Belfield) — game routines: sound, sprites, vectors
+- [x] Undocumented Z80 opcodes — Sean Young PDF (GFDL), 17 sections → 57 chunks
+- [x] 1-bit music routines (utz82) — 37 beeper engines from GitHub (MIT) → 138 chunks
+- [x] Z80 library routines (breakintoprogram / Dean Belfield) — 14 routines from GitHub → 32 chunks
+- [x] WASM binary format — W3C spec (values, types, instructions, modules) → 23 chunks
+- [x] MDN per-instruction pages — 210 raw pages fetched → absorbed into wasm-spec chunks
 
 ---
 

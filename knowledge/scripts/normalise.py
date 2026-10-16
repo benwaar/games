@@ -29,9 +29,13 @@ CHUNKS_DIR = REPO_ROOT / "knowledge" / "chunks"
 VALID_CATEGORIES = {
     "z80-instruction",
     "z80-pattern",
+    "z80-undocumented",
+    "z80-beeper",
+    "z80-library",
     "spectrum-rom",
     "spectrum-hardware",
     "wasm-spec",
+    "wasm-binary",
     "wasm-pattern",
     "wasi",
 }

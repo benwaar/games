@@ -8,7 +8,7 @@ Sources:
   - https://developer.mozilla.org/en-US/docs/WebAssembly  (MDN — CC-BY-SA)
   - https://github.com/WebAssembly/WASI/tree/main/legacy/preview1  (Apache 2.0)
 
-Outputs raw markdown to knowledge/raw/wasm/{instructions,wat,wasi}/
+Outputs raw markdown to knowledge/raw/wasm/{instructions,binary,mdn_instructions,wat,wasi}/
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 import sys
 import textwrap
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +32,8 @@ REPO_ROOT = SCRIPT_DIR.parent.parent
 RAW_ROOT = REPO_ROOT / "knowledge" / "raw" / "wasm"
 
 OUT_INSTRUCTIONS = RAW_ROOT / "instructions"
+OUT_BINARY = RAW_ROOT / "binary"
+OUT_MDN_INSTRUCTIONS = RAW_ROOT / "mdn_instructions"
 OUT_WAT = RAW_ROOT / "wat"
 OUT_WAT_TYPES = OUT_WAT / "types"
 OUT_WAT_MODULES = OUT_WAT / "modules"
@@ -64,7 +67,7 @@ def soup(resp: requests.Response) -> BeautifulSoup:
 # ---------------------------------------------------------------------------
 
 def ensure_dirs() -> None:
-    for d in (OUT_INSTRUCTIONS, OUT_WAT_TYPES, OUT_WAT_MODULES, OUT_WASI):
+    for d in (OUT_INSTRUCTIONS, OUT_BINARY, OUT_MDN_INSTRUCTIONS, OUT_WAT_TYPES, OUT_WAT_MODULES, OUT_WASI):
         d.mkdir(parents=True, exist_ok=True)
 
 
@@ -544,6 +547,322 @@ def fetch_wasi_signatures() -> None:
 
 
 # ---------------------------------------------------------------------------
+# WASM binary format — W3C spec
+# ---------------------------------------------------------------------------
+
+SPEC_BINARY_BASE = "https://webassembly.github.io/spec/core/binary/"
+SPEC_BINARY_PAGES = {
+    "binary_values":       SPEC_BINARY_BASE + "values.html",
+    "binary_types":        SPEC_BINARY_BASE + "types.html",
+    "binary_instructions": SPEC_BINARY_BASE + "instructions.html",
+    "binary_modules":      SPEC_BINARY_BASE + "modules.html",
+    "binary_conventions":  SPEC_BINARY_BASE + "conventions.html",
+}
+
+# Section headings found in binary/modules.html that deserve their own file
+BINARY_MODULE_SECTIONS = [
+    "Type Section",
+    "Import Section",
+    "Function Section",
+    "Table Section",
+    "Memory Section",
+    "Global Section",
+    "Export Section",
+    "Start Section",
+    "Element Section",
+    "Code Section",
+    "Data Section",
+    "Data Count Section",
+    "Custom Section",
+]
+
+
+def extract_hex_opcodes(text: str) -> list[str]:
+    """Pull hex byte patterns like 0x7F, 0x41, 0xFC from spec text."""
+    return re.findall(r"0x[0-9A-Fa-f]{2}", text)
+
+
+def clean_binary_text(text: str) -> str:
+    """Strip MathML/LaTeX artefacts and tidy whitespace for binary spec pages.
+
+    The spec embeds notation like \\mathtt{0x7F} and \\mathsf{i32}.
+    We convert these to readable forms and remove the rest.
+    """
+    # \\mathtt{0x7F}  →  0x7F
+    text = re.sub(r"\\mathtt\{([^}]+)\}", r"\1", text)
+    # \\mathsf{i32.add}  →  i32.add
+    text = re.sub(r"\\mathsf\{([^}]+)\}", r"\1", text)
+    # Remove remaining LaTeX commands
+    text = re.sub(r"\\[a-zA-Z]+\{[^}]*\}", "", text)
+    text = re.sub(r"\\[a-zA-Z]+", "", text)
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def extract_binary_section_content(section_el: Tag) -> str:
+    """Extract meaningful content from a spec section element."""
+    lines: list[str] = []
+    _extract_binary_recursive(section_el, lines)
+    return "\n\n".join(lines)
+
+
+def _extract_binary_recursive(el: Tag, lines: list[str]) -> None:
+    """Walk the DOM tree extracting headings, paragraphs, tables, and code."""
+    for child in el.children:
+        if not isinstance(child, Tag):
+            continue
+        tag = child.name
+        if tag in ("section", "div"):
+            _extract_binary_recursive(child, lines)
+            continue
+        raw = child.get_text(" ", strip=True)
+        text = clean_binary_text(raw)
+        if not text:
+            continue
+        if tag in ("h1", "h2", "h3", "h4", "h5"):
+            level = int(tag[1])
+            lines.append("#" * level + " " + text)
+        elif tag == "pre":
+            code = clean_binary_text(child.get_text())
+            lines.append("```\n" + code.strip() + "\n```")
+        elif tag in ("p", "dd", "li"):
+            lines.append(text)
+        elif tag in ("ul", "ol"):
+            for li in child.find_all("li", recursive=False):
+                lines.append("- " + clean_binary_text(li.get_text(" ", strip=True)))
+        elif tag == "table":
+            rows = []
+            for tr in child.find_all("tr"):
+                cells = [clean_binary_text(td.get_text(" ", strip=True)) for td in tr.find_all(["th", "td"])]
+                if cells:
+                    rows.append(" | ".join(cells))
+            if rows:
+                lines.append("\n".join(rows))
+
+
+def write_binary_file(name: str, content: str, source_url: str, filename: Optional[str] = None) -> None:
+    fm = frontmatter(
+        topic=name,
+        category="wasm-binary",
+        source_url=source_url,
+        licence="W3C-20150513",
+        tags=["wasm", "binary", "encoding", slug(name)],
+    )
+    fname = (filename or slug(name)) + ".md"
+    write_raw(OUT_BINARY / fname, fm + content)
+
+
+def fetch_wasm_binary_format() -> None:
+    print("\n--- WASM binary format (W3C spec) ---")
+    for page_key, url in SPEC_BINARY_PAGES.items():
+        print(f"Fetching {page_key} …")
+        resp = get(url)
+        if resp is None:
+            continue
+
+        s = soup(resp)
+        main = (
+            s.find("div", class_="body")
+            or s.find("main")
+            or s.find("article")
+            or s.body
+        )
+        if not main:
+            print(f"  [WARN] no content area found in {url}")
+            continue
+
+        title_el = s.find("h1") or s.find("title")
+        page_title = title_el.get_text(strip=True) if title_el else page_key
+
+        content_md = extract_binary_section_content(main)
+        if not content_md.strip():
+            print(f"  [WARN] no content extracted from {url}")
+            continue
+
+        # Highlight any hex byte values found in the raw HTML
+        hex_values = extract_hex_opcodes(main.get_text())
+        hex_note = ""
+        if hex_values:
+            unique_hex = sorted(set(hex_values))
+            hex_note = f"\n\n**Byte encodings referenced:** {', '.join(unique_hex[:30])}\n"
+
+        body = f"# {page_title}\n\n**Source:** {url}{hex_note}\n\n{content_md}\n"
+        write_binary_file(name=page_title, content=body, source_url=url, filename=page_key)
+
+        # Split binary_modules into per-section files — it's very long
+        if page_key == "binary_modules":
+            _split_binary_modules(main, url)
+
+
+def _split_binary_modules(main: Tag, source_url: str) -> None:
+    """Split the binary/modules page into one file per section."""
+    print("  splitting binary_modules into per-section files …")
+    # Find all h2/h3 headings and the content that follows each
+    heading_tags = main.find_all(re.compile(r"^h[23]$"))
+    for heading in heading_tags:
+        section_title = clean_binary_text(heading.get_text(strip=True))
+        # Collect siblings until the next heading of the same or higher level
+        siblings: list[Tag] = []
+        for sib in heading.find_next_siblings():
+            if isinstance(sib, Tag) and re.match(r"^h[12]$", sib.name):
+                break
+            siblings.append(sib)
+
+        if not siblings:
+            continue
+
+        # Build a fake container to reuse extract_binary_section_content
+        container = BeautifulSoup("<div></div>", "html.parser").div
+        for sib in siblings:
+            container.append(sib.__copy__())
+
+        section_md = extract_binary_section_content(container)
+        if not section_md.strip():
+            continue
+
+        hex_values = extract_hex_opcodes(" ".join(sib.get_text() for sib in siblings if isinstance(sib, Tag)))
+        hex_note = ""
+        if hex_values:
+            unique_hex = sorted(set(hex_values))
+            hex_note = f"\n\n**Byte encodings referenced:** {', '.join(unique_hex[:20])}\n"
+
+        body = f"# {section_title}\n\n**Source:** {source_url}{hex_note}\n\n{section_md}\n"
+        fname = "modules_" + slug(section_title)
+        write_binary_file(name=section_title, content=body, source_url=source_url, filename=fname)
+
+
+# ---------------------------------------------------------------------------
+# MDN per-instruction pages
+# ---------------------------------------------------------------------------
+
+MDN_INSTR_GROUP_URLS = {
+    "numeric":      "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric",
+    "memory":       "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Memory",
+    "control_flow": "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Control_flow",
+    "variables":    "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Variables",
+    "table":        "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Table",
+    "simd":         "https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/SIMD",
+}
+
+MDN_BASE = "https://developer.mozilla.org"
+MDN_REF_PREFIX = "/en-US/docs/WebAssembly/Reference/"
+
+
+def _parse_mdn_instruction_links(s: BeautifulSoup, group_url: str) -> list[str]:
+    """Return absolute URLs for individual instruction pages linked from a group index."""
+    links: list[str] = []
+    seen: set[str] = set()
+    for a in s.find_all("a", href=True):
+        href: str = a["href"]
+        # Must be a deeper page under /en-US/docs/WebAssembly/Reference/
+        if not href.startswith(MDN_REF_PREFIX):
+            continue
+        # Must be at least one level deeper than the group page itself
+        suffix = href[len(MDN_REF_PREFIX):]
+        if "/" not in suffix:
+            continue  # same-level page, skip
+        abs_url = MDN_BASE + href.split("#")[0]  # drop fragment
+        if abs_url not in seen and abs_url != group_url:
+            seen.add(abs_url)
+            links.append(abs_url)
+    return links
+
+
+def _extract_mdn_instruction_content(s: BeautifulSoup, url: str) -> str:
+    """Extract title, description, syntax, and code examples from an MDN instruction page."""
+    lines: list[str] = []
+
+    title_el = s.find("h1")
+    title = title_el.get_text(strip=True) if title_el else url.rstrip("/").split("/")[-1]
+    lines.append(f"# {title}")
+    lines.append(f"\n**Source:** {url}\n")
+
+    main = s.find("main") or s.find("article") or s.body
+    if not main:
+        return "\n".join(lines)
+
+    current_section: Optional[str] = None
+    for child in main.descendants:
+        if not isinstance(child, Tag):
+            continue
+        tag = child.name
+
+        if tag in ("h2", "h3"):
+            current_section = child.get_text(strip=True).lower()
+            lines.append(f"\n## {child.get_text(strip=True)}\n")
+
+        elif tag == "p":
+            text = child.get_text(" ", strip=True)
+            if text:
+                lines.append(text)
+
+        elif tag == "pre":
+            code_el = child.find("code")
+            code = (code_el or child).get_text()
+            # Detect WAT vs other
+            lang = "wat" if any(kw in code for kw in ("(func", "(module", "(local", "(import", "(export", "i32", "i64", "f32", "f64")) else ""
+            lines.append(f"\n```{lang}\n{code.strip()}\n```\n")
+
+        elif tag in ("ul", "ol") and current_section in ("parameters", "instructions", "syntax", None):
+            for li in child.find_all("li", recursive=False):
+                lines.append("- " + li.get_text(" ", strip=True))
+
+    return "\n".join(lines)
+
+
+def fetch_mdn_instruction_pages() -> None:
+    print("\n--- MDN per-instruction pages ---")
+    for group_name, group_url in MDN_INSTR_GROUP_URLS.items():
+        print(f"Fetching MDN group index: {group_name} …")
+        resp = get(group_url)
+        if resp is None:
+            continue
+
+        s = soup(resp)
+        instr_urls = _parse_mdn_instruction_links(s, group_url)
+        print(f"  found {len(instr_urls)} instruction links in {group_name}")
+
+        for instr_url in instr_urls:
+            # Skip if already written by fetch_wasm_instructions() in instructions/
+            instr_slug = slug(instr_url.rstrip("/").split("/")[-1])
+            if (OUT_INSTRUCTIONS / (instr_slug + ".md")).exists():
+                print(f"  [skip] {instr_slug} already in instructions/")
+                continue
+
+            dest = OUT_MDN_INSTRUCTIONS / (instr_slug + ".md")
+            if dest.exists():
+                print(f"  [skip] {instr_slug} already in mdn_instructions/")
+                continue
+
+            time.sleep(0.5)  # be rate-limit friendly
+            print(f"  fetching {instr_url} …")
+            iresp = get(instr_url)
+            if iresp is None:
+                continue
+
+            is_soup = soup(iresp)
+            content_md = _extract_mdn_instruction_content(is_soup, instr_url)
+            if not content_md.strip():
+                print(f"  [WARN] no content extracted from {instr_url}")
+                continue
+
+            title_el = is_soup.find("h1")
+            topic = title_el.get_text(strip=True) if title_el else instr_slug
+
+            fm = frontmatter(
+                topic=topic,
+                category="wasm-spec",
+                source_url=instr_url,
+                licence="CC-BY-SA-2.5",
+                tags=["wasm", "instruction", group_name, instr_slug],
+            )
+            write_raw(dest, fm + content_md)
+
+    print(f"  MDN instruction pages written to {OUT_MDN_INSTRUCTIONS.relative_to(REPO_ROOT)}")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -554,6 +873,8 @@ def main() -> None:
     ensure_dirs()
 
     fetch_wasm_instructions()
+    fetch_wasm_binary_format()
+    fetch_mdn_instruction_pages()
     fetch_wat_format()
     fetch_wasi_signatures()
 
