@@ -1,77 +1,79 @@
-# Next
+# Knowledge Corpus — Z80 / Spectrum / WASM Reference
 
-## ~~wex — extract JS modules~~ ✅
+One corpus, three access methods: Incant RAG, MCP server for Claude, skill for the user.
 
-Done. Split into `player.css`, `a11y.js`, `audio.js`, `settings.js`, `player.js`. HTML is a static shell.
+**Branch:** `feature/no-ticket-knowledge-corpus`
 
-## wex — indexed colour pipeline (256-colour LUT)
+---
 
-Design decision: content art uses a 256-colour indexed palette. Why:
+## M1 — Scaffold + fetch scripts
 
-- **Palette remapping becomes a table swap.** Each palette variant (high-contrast, deuteranopia) is a curated 256-entry LUT. The WASM `render()` walks the pixel buffer, looks up each colour, writes the remapped value. 1KB table, trivial loop.
-- **k-means quantisation already in our pipeline** — same technique we use for Spectrum (k=2 per cell), just with k=256 globally. No new tooling.
-- **256 is the sweet spot for illustrated/pixel art.** Bold line art with flat fills (like Aerythen) rarely exceeds 256 unique colours. Perceptually complete, matches indexed colour (PNG-8), well-understood format.
-- **Designer controls every remap.** No algorithmic surprises — each colour maps to an exact target per palette. Semantic meaning survives (danger stays visually distinct, not just "was red").
-- **Fallback for photographic content:** 3×3 matrix transform per pixel (Brettel for colour blindness, gamma for dark/light). Works on any art, but results are approximate — LUT is preferred when colour count allows.
+Set up the directory structure and write fetch scripts for public sources.
 
-Steps:
-- [ ] Quantise source art to 256 colours in pipeline (k-means, store palette + indices)
-- [ ] New memory layout: 256×4 bytes (palette RGBA) + W×H bytes (indices), replacing raw RGBA
-- [ ] Embed palette + index buffer in WAT data segments
-- [ ] Author palette variants: default, high-contrast, deuteranopia (256 entries each)
-- [ ] WAT `render()` reads preference imports, selects LUT, remaps indices → RGBA into a separate output region for canvas
-- [ ] Update player JS to call `render()` on palette change instead of full `reloadWasm()` — cheaper, just re-renders with new LUT
-- [ ] Fallback: matrix transform path for content exceeding 256 colours
+- [ ] Create `knowledge/` dir structure: `scripts/`, `raw/`, `chunks/`, `schema/`
+- [ ] Add `knowledge/raw/` and `knowledge/chunks/` to `.gitignore`
+- [ ] Define chunk schema (frontmatter: topic, source_url, licence, category)
+- [ ] `scripts/fetch_z80.py` — Z80 instruction set from z80.info + Zilog public docs
+- [ ] `scripts/fetch_spectrum.py` — ROM entry points, system vars, ULA timing from public sources
+- [ ] `scripts/fetch_wasm.py` — W3C WASM spec sections, WAT text format, WASI signatures
+- [ ] Each script outputs raw markdown to `knowledge/raw/{source}/`
+- [ ] Add `scripts/fetch_all.sh` — runs all fetch scripts
+- [ ] Test: scripts run clean, raw files populated
 
-## ~~wex — shared WAT library extraction~~ ✅
+## M2 — Normaliser + chunking
 
-Done. 6 snippet files in `wex/wat/`. Pipeline uses `_load_snippet()` with `{{placeholder}}` templates. `render_with_palette()` deferred to indexed colour phase.
+Transform raw fetched content into uniform, searchable chunks.
 
-## Glyph — deferred from audio POC
+- [ ] `scripts/normalise.py` — reads `raw/`, writes uniform markdown to `chunks/`
+- [ ] Chunks split by topic (one concept per file, ~500-1000 tokens)
+- [ ] Frontmatter on every chunk: `topic`, `category`, `source_url`, `licence`, `tags`
+- [ ] Categories: `z80-instruction`, `z80-pattern`, `spectrum-rom`, `spectrum-hardware`, `wasm-spec`, `wasm-pattern`, `wasi`
+- [ ] Test: normaliser produces valid chunks, frontmatter parses, no empty files
+- [ ] Docs: `knowledge/README.md` — what's in the corpus, how to rebuild, licence audit
 
-- HAL audio surface (`tone_play`, `sfx_play`) — needed for game sigils
-- SFX: sweep, noise burst — melody proved the pipeline
-- ADSR envelopes on WASM side
-- WASM player as wrapper (bundle player + content for deploy)
-- Keyboard input mechanism (store key state in WASM memory)
+## M3 — Skill (user query interface)
 
-## Explainer: indexed colour and palette tables
+Slash command so the user can query the corpus from the terminal.
 
-- Indexed colour: palette (N colours) + index buffer (1 byte per pixel) vs raw RGBA (4 bytes per pixel)
-- Where it appears: PNG-8, GIF, VGA mode 13h, Spectrum SCR (2 colours per 8×8 cell)
-- k-means quantisation: reduce arbitrary art to N representative colours. Same algorithm, different k.
-- LUT remapping: swap the palette, pixels follow. Why this is fast and predictable.
-- Bridge: Spectrum SCR is indexed colour with extra constraints (attribute cells). Our 256-colour LUT is the same idea without the spatial restriction.
-- Where: `wex/explainers/indexed-colour.md`
+- [ ] Skill file: `.claude/skills/z80.md` (or `specref`)
+- [ ] Skill searches chunks by keyword/topic, returns formatted result
+- [ ] Handles multi-word queries, category filters (`/z80 rom CHAN-OPEN`, `/z80 wasm memory.grow`)
+- [ ] Test: manual — query returns relevant chunks
 
-## Explainer: mirror DOM + a11y pipeline
+## M4 — MCP server (Claude query interface)
 
-- How a11y data flows: scene JSON → pipeline → WASM data segment → JS → mirror DOM → screen reader
-- The `type()` bitmask, `a11y_offset()` / `a11y_size()` contract
-- `buildMirrorDom()` pattern: percentage-based positioning, sr-only clip-rect, aria-live
-- Self-voicing and spatial audio: Web Speech API + PannerNode HRTF
-- Where: `wex/explainers/a11y-pipeline.md`
+Expose the corpus as an MCP server so Claude can query it mid-session.
 
-## Explainer: browser preferences → WASM imports
+- [ ] MCP server in `knowledge/mcp/` — Python (FastAPI or stdio)
+- [ ] Tools: `search(query, category?)` → ranked chunks, `read(chunk_id)` → full content
+- [ ] Resources: corpus metadata, category list
+- [ ] Register in `.claude/settings.json` as MCP server
+- [ ] Test: Claude can query Z80 instructions, Spectrum ROM routines, WASM specs mid-session
 
-- The full bridge: OS/browser preference → CSS media query → JS host function → settings override check → WASM import → integer return
-- How `(import "env" "prefers_dark" (func (result i32)))` works: WASM declares what it needs, JS provides the implementation at instantiation
-- Settings panel override layer: Auto (browser default) vs On/Off (localStorage)
-- CSS custom properties (`--bg` etc.) are player-side chrome only — WASM never sees CSS, only integers through imports
-- Not M3 design tokens — flat, six-token set. Note how M3/design systems solve the same problem at larger scale.
-- Where: `wex/explainers/preference-bridge.md`
+## M5 — Incant integration (RAG pipeline)
 
-## Explainer: WASM code reuse — from WAT snippets to Component Model
+Wire the corpus into Incant's local LLM code generation pipeline.
 
-- Our approach: text composition in Python — pipeline stitches WAT fragments (a11y segment, imports, shared render). Pipeline is the linker.
-- Single module composition: multiple `(func)` blocks, everything in one `(module)`. Simple, no tooling overhead.
-- WASM module linking: separate `.wasm` files importing/exporting to each other. Browser support exists (`WebAssembly.Module` imports). Better separation, heavier setup.
-- wasm-merge (wabt): mechanical merging of two `.wasm` into one. Linking without the component model.
-- Component Model + WIT: the official "WASM library" story. Interface types, composable modules, multi-language. Production-grade, still maturing.
-- Why text composition works for us (learning, small modules, one pipeline) vs why you'd graduate to linking/components in production (third-party modules, separate compilation, multi-language teams)
-- Where: `wex/explainers/wasm-code-reuse.md`
+- [ ] Embedding script: `scripts/embed.py` — generates vector index from chunks
+- [ ] Vector store: FAISS or ChromaDB index in `knowledge/index/` (gitignored)
+- [ ] Incant queries the index during code gen for Z80/WASM context
+- [ ] Test: Incant generates better Z80/WASM with corpus vs without
+- [ ] `knowledge/index/` added to `.gitignore`
 
-## Cross-project
+---
 
-- incant to follow same debug pipeline as glyph, with wrappers for testing
-- Better build pipeline later that combines stuff
+## Sources (public, freely available)
+
+| Source | Content | Licence/Status |
+|--------|---------|---------------|
+| z80.info | Instruction set, timing tables | Community-maintained, open |
+| Zilog Z80 CPU manual | Official instruction reference | Public domain |
+| "Undocumented Z80" (Sean Young) | Undocumented opcodes, flags | Freely distributed |
+| Spectrum ROM disassembly (Logan/O'Hara) | ROM entry points, routines | Freely published |
+| World of Spectrum | System variables, ULA docs | Community archive |
+| Skoolkit disassemblies | Annotated ROM | GPL |
+| W3C WebAssembly spec | WASM binary + text format | W3C licence (open) |
+| MDN WebAssembly docs | WAT, API reference | CC-BY-SA |
+| WASI spec | WASI preview signatures | Apache 2.0 |
+
+**Not included:** copyrighted books (full text), paywalled content, forum posts without explicit licence.
