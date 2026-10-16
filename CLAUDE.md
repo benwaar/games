@@ -18,6 +18,7 @@ games/
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
   grimoire/            — debug maps for LLM-first toolchains: spec → binary composition graph
+  rosetta/             — round-trip translation: Z80 binary → glyph IR → Z80 + WASM, verified
   wex/                 — WASM executor: static HTML host + swappable debug.wasm
 ```
 
@@ -102,4 +103,5 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [wex](wex/) | ▶ Active — WASM executor, responsive canvas, a11y (mirror DOM, settings, palettes) |
 | [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
 | [Grimoire](grimoire/) | Planned — debug maps: sigil → binary composition graph, LLM debug loop |
+| [Rosetta](rosetta/) | Planned — round-trip: Z80 binary → glyph IR → Z80 + WASM, verified |
 | [Void Duel](void-duel/) | Planned |

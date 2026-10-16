@@ -1,5 +1,30 @@
 # Next
 
+## Knowledge corpus — Z80 binary analysis
+
+Add a `z80-binary-analysis` category to the corpus for reverse engineering game binaries. Needed for artefact (ROM scanner, sound extraction). The j83 sound analysis was done by hand — this would give the MCP the knowledge to assist.
+
+Topics to cover:
+- [ ] Opcode scanning patterns (finding OUT (FE), CALL targets, data vs code discrimination)
+- [ ] Recursive descent disassembly vs linear sweep — tradeoffs for 8-bit binaries
+- [ ] Call graph tracing — identifying subroutine boundaries from CALL/RET/JP
+- [ ] Data table detection — distinguishing address tables, lookup tables, sprite data from code
+- [ ] Sound routine signatures — common beeper patterns (DJNZ delay loops, OUT (FE) toggle, sweep/decay structures)
+- [ ] TAP/SNA/Z80 format parsing for extraction
+- [ ] RAM workspace analysis — tracing engine state through IX-indexed structures
+
+Resources:
+- [z80-smart-disassembler](https://github.com/cormacj/z80-smart-disassembler) — labels strings/data areas automatically
+- [z80dasm](https://github.com/sharkcz/z80dasm) — Spectrum-focused disassembler with control file support
+- [Spectrum Analyser](https://colourclash.co.uk/spectrum-analyser/) — emulator + debugger + interactive disassembler
+- [Wise Owl Z80 disassembler](https://www.wiseowl.com/tools/z80-disassembler/) — recursive-descent walker, data classification, sjasmplus output
+- [zxrecomp](https://github.com/sp00nznet/zxrecomp) — static recompilation toolkit, Z80 → C (good analysis patterns)
+- [ZX Spectrum 1-Bit Routines](https://github.com/utz82/ZX-Spectrum-1-Bit-Routines) — reference collection of beeper sound engines (already in corpus as z80-beeper)
+- [Project AY](https://worldofspectrum.org/projectay/tech.htm) — player routine + note table structures
+- [Reverse engineering ZX Spectrum games](https://mrcook.uk/reverse-engineering-zx-spectrum-games/) — walkthrough of disassembly and annotation process
+- [z80-rom-reverse-engineering skill](https://skillsmp.com/creators/fstark/micral-p2/copilot-skills-z80-rom-reverse-engineering) — Claude Code agent skill for Z80 ROM analysis (reference for our approach)
+
+
 ## glyph — extract Z80 assembly from beeper.py
 
 `beeper.py` has ~200 lines of hand-encoded Z80 machine code as raw hex bytes with a mini linker (patching CALL addresses after layout). The SCR loader already does it right — `scr_loader.asm` assembled by the z80 lib. Beeper should follow the same pattern.
@@ -72,6 +97,10 @@ Steps:
 - Component Model + WIT: the official "WASM library" story. Interface types, composable modules, multi-language. Production-grade, still maturing.
 - Why text composition works for us (learning, small modules, one pipeline) vs why you'd graduate to linking/components in production (third-party modules, separate compilation, multi-language teams)
 - Where: `wex/explainers/wasm-code-reuse.md`
+
+## Rosetta — round-trip translation pipeline
+
+See [rosetta/README.md](rosetta/README.md) for full plan. Start with M1 (extract j83 sound → Z80 replay → byte comparison).
 
 ## Cross-project
 
