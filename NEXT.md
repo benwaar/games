@@ -5,8 +5,8 @@
 Wire the knowledge corpus into Incant's local LLM code generation pipeline.
 
 - [x] test mcp
-- [ ] Incant queries the FAISS index during code gen for Z80/WASM context
-- [ ] Test: Incant generates better Z80/WASM with corpus vs without
+- [ ] Incant embeds knowledge corpus chunks into its existing RAG store (ollama embeddings)
+- [ ] Test: Incant generates better Z80/WASM with corpus context vs without
 
 ## Content gaps
 

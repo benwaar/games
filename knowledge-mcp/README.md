@@ -42,23 +42,28 @@ Scoring: +10 topic match, +5 filename match, +1 body match. Returns top 5.
 
 ## Configuration
 
-Registered in `.claude/settings.json`:
+Registered in `.mcp.json` at the project root:
 
 ```json
 {
   "mcpServers": {
     "knowledge-corpus": {
+      "type": "stdio",
       "command": "./knowledge-mcp/target/release/knowledge-mcp",
-      "cwd": "/path/to/games"
+      "args": []
     }
   }
 }
 ```
 
-The server expects to be launched with `cwd` set to the repo root (it looks for `knowledge/chunks/` relative to the working directory).
+The server expects to be launched from the repo root (it looks for `knowledge/chunks/` relative to the working directory).
 
 ## Dependencies
 
 - `rust-mcp-sdk` v2 (MCP protocol, stdio transport)
 - `serde` / `serde_json` (frontmatter parsing)
 - `tokio` (async runtime)
+
+## Learn
+
+- [Embeddings and RAG](../explainers/embeddings-and-rag.md) — how text becomes vectors, FAISS indexing, and why this project uses sentence-transformers here but ollama in incant

@@ -106,9 +106,14 @@ AI / ML
 │   ├── Exploration vs exploitation ─────────────── acoustic-odyssey/echo
 │   └── Multi-agent / offline RL ────────────────── void-duel Ph 3
 │
-├── LLM Engineering ─────────────────────────────── 🔷 all covered (TPP)
-│   ├── RAG, MCP, skills, evals ────────────────── 🔷 TPP
-│   └── Agent orchestration ────────────────────── 🔷 TPP + ✅ /forge skill (this repo)
+├── LLM Engineering
+│   ├── Embeddings (sentence-transformers, ollama) ── ✅ knowledge corpus + incant
+│   ├── Vector search (FAISS) ─────────────────────── ✅ knowledge corpus
+│   ├── RAG pipeline ──────────────────────────────── ✅ incant + 🔷 TPP
+│   ├── MCP server (custom, Rust) ─────────────────── ✅ knowledge-mcp
+│   ├── Skills / CLI tools ────────────────────────── ✅ /asm skill
+│   ├── Deterministic evals ───────────────────────── 🔷 TPP
+│   └── Agent orchestration ────────────────────────── 🔷 TPP + ✅ /forge skill (this repo)
 │
 ├── Code Generation
 │   ├── Spec → assembly (WAT, Z80) ────────────── ✅ incant M1–M3
