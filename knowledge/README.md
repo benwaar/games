@@ -10,8 +10,9 @@ A curated reference corpus covering Z80 assembly, ZX Spectrum hardware/ROM, and 
 
 Designed to be queried by:
 - **Incant** — RAG context during Z80/WASM code generation
-- **MCP server** (`knowledge/mcp/`) — Claude queries mid-session (planned, M4)
-- **Skill** (`.claude/skills/`) — user queries from the terminal (planned, M3)
+- **MCP server** (`knowledge-mcp/`) — Rust server with `search`, `read`, `search_semantic` tools
+- **Skill** (`.claude/skills/asm/`) — `/asm` slash command for browsing from the terminal
+- **kb** (`_data/kb/`) — human-readable markdown reference (gitignored, built by `build_kb.py`)
 
 ---
 
@@ -19,14 +20,13 @@ Designed to be queried by:
 
 ```
 knowledge/
-  scripts/          — fetch + normalise scripts
+  scripts/          — fetch, normalise, embed, build_kb scripts
   raw/              — fetched source content (gitignored, regenerated)
   chunks/           — normalised chunks ready for indexing (gitignored, regenerated)
+  curated/          — hand-written reference files (z80/, wat/)
   schema/           — chunk schema definition
     chunk.md        — frontmatter spec + field definitions
-  index/            — vector index (gitignored, future — M5)
-  mcp/              — MCP server (future — M4)
-  requirements.txt  — Python dependencies
+  index/            — vector index + ONNX model (gitignored, regenerated)
 ```
 
 ---
@@ -34,12 +34,10 @@ knowledge/
 ## How to rebuild
 
 ```bash
-pip install -r knowledge/requirements.txt
-./knowledge/scripts/fetch_all.sh
-python knowledge/scripts/normalise.py
+bash knowledge/setup.sh
 ```
 
-`fetch_all.sh` runs all three fetch scripts. Each writes raw markdown to `knowledge/raw/{source}/`. The normaliser reads `raw/` and writes uniform chunks to `knowledge/chunks/`.
+This fetches raw data, normalises into chunks, builds the FAISS/ONNX index, and generates the human-readable `_data/kb/` reference (gitignored).
 
 ---
 
@@ -55,9 +53,13 @@ Every chunk carries: `topic`, `category`, `source_url`, `licence`, `tags`.
 |----------|---------|
 | `z80-instruction` | Opcode definitions, timing, flags |
 | `z80-pattern` | Common Z80 idioms and patterns |
+| `z80-undocumented` | Undocumented opcodes (Sean Young) |
+| `z80-beeper` | 1-bit beeper engine source (utz82) |
+| `z80-library` | Library routines (Dean Belfield) |
 | `spectrum-rom` | ROM entry points and routines |
 | `spectrum-hardware` | System variables, ULA, port I/O |
-| `wasm-spec` | WASM binary format, instruction set, types |
+| `wasm-spec` | WASM instruction set, WAT text format, MDN pages |
+| `wasm-binary` | WASM binary format (values, types, modules) |
 | `wasm-pattern` | WAT idioms and common patterns |
 | `wasi` | WASI preview1 host function signatures |
 
@@ -69,10 +71,13 @@ Every chunk carries: `topic`, `category`, `source_url`, `licence`, `tags`.
 |--------|---------|---------|
 | clrhome.org | Z80 opcode table | Community/open |
 | z80-heaven.wikidot.com | Z80 instruction descriptions | Community/open |
-| skoolkid.github.io/rom | Spectrum ROM disassembly | GPL-3.0 |
-| worldofspectrum.org | System variables, ULA docs | Community archive |
-| webassembly.github.io/spec | WASM spec (instructions, types) | W3C |
-| developer.mozilla.org | WAT text format, API reference | CC-BY-SA-2.5 |
+| skoolkid.github.io/rom | Spectrum ROM disassembly, system variables | GPL-3.0 |
+| worldofspectrum.org | ULA docs, I/O ports | Community archive |
+| Sean Young (z80.info) | Undocumented Z80 opcodes (57 chunks) | GFDL |
+| github.com/utz82/ZX-Spectrum-1-Bit-Routines | 37 beeper engines (138 chunks) | MIT |
+| github.com/breakintoprogram/spectrumutils | Z80 library routines — Dean Belfield (32 chunks) | MIT |
+| webassembly.github.io/spec | WASM spec (instructions, types, binary format) | W3C |
+| developer.mozilla.org | WAT text format, per-instruction pages (210 pages) | CC-BY-SA-2.5 |
 | github.com/WebAssembly/WASI | WASI preview1 signatures | Apache-2.0 |
 
 ---
