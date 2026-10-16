@@ -1,3 +1,11 @@
+---
+topic: "Z80 Core Instructions"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, instructions, curated]
+---
+
 # Z80 Core Instructions
 
 ## Load and store

@@ -133,3 +133,4 @@ WASI sigils use `fd_read`/`fd_write` for stdin/stdout I/O and `_start` as the en
 - Milestone log: [LOG.md](LOG.md)
 - Explainers: [explainers/](explainers/)
 - Shared concept explainers: [../explainers/](../explainers/README.md)
+  - [Embeddings and RAG](../explainers/embeddings-and-rag.md) — how text becomes vectors, FAISS indexing, and the retrieve-then-generate pattern this pipeline uses

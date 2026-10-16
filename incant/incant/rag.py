@@ -22,6 +22,13 @@ class Chunk:
 def chunk_markdown(path: Path) -> list[tuple[str, str]]:
     """Split a markdown file into chunks by heading. Returns (heading, text) pairs."""
     text = path.read_text()
+
+    # Strip YAML frontmatter (--- delimited block at top of file)
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            text = text[end + 4:].lstrip("\n")
+
     chunks = []
     current_heading = path.stem
     current_lines: list[str] = []
@@ -88,9 +95,10 @@ class VectorStore:
                 )
                 f.write("\n")
 
-    def embed_directory(self, dir_path: Path, collection: str):
+    def embed_directory(self, dir_path: Path, collection: str, replace: bool = True):
         """Embed all markdown files in a directory into a collection."""
-        self.chunks = [c for c in self.chunks if c.collection != collection]
+        if replace:
+            self.chunks = [c for c in self.chunks if c.collection != collection]
 
         for md_file in sorted(dir_path.glob("*.md")):
             for heading, text in chunk_markdown(md_file):

@@ -396,10 +396,11 @@ def cmd_rag(args):
     if args.rag_action == "embed":
         dir_path = Path(args.path)
         collection = args.collection
-        print(f"Embedding {dir_path} into collection '{collection}'...")
-        store.embed_directory(dir_path, collection)
+        append = getattr(args, "append", False)
+        print(f"Embedding {dir_path} into collection '{collection}'{'(append)' if append else ''}...")
+        store.embed_directory(dir_path, collection, replace=not append)
         count = sum(1 for c in store.chunks if c.collection == collection)
-        print(f"  {count} chunks embedded")
+        print(f"  {count} chunks in collection")
 
     elif args.rag_action == "query":
         query = args.query_text
@@ -458,6 +459,7 @@ def main():
     embed_parser = rag_sub.add_parser("embed", help="Embed a directory")
     embed_parser.add_argument("path", help="Directory of markdown files")
     embed_parser.add_argument("collection", help="Collection name")
+    embed_parser.add_argument("--append", action="store_true", help="Append to existing collection instead of replacing")
 
     query_parser = rag_sub.add_parser("query", help="Query the knowledge base")
     query_parser.add_argument("query_text", help="Query string")

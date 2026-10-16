@@ -1,3 +1,11 @@
+---
+topic: "Harness I/O — Memory-Mapped String I/O for Testing"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, harness_io, curated]
+---
+
 # Harness I/O — Memory-Mapped String I/O for Testing
 
 Z80 has no stdin/stdout. The harness I/O convention provides a simple equivalent for testing string-based programs.

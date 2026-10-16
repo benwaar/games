@@ -1,3 +1,11 @@
+---
+topic: "Z80 Registers"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, registers, curated]
+---
+
 # Z80 Registers
 
 The Z80 has 8-bit and 16-bit registers.

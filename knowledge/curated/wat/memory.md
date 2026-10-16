@@ -1,3 +1,11 @@
+---
+topic: "WAT Memory"
+category: wasm-pattern
+source_url: "curated"
+licence: "curated"
+tags: [wat, memory, curated]
+---
+
 # WAT Memory
 
 WASM memory is a contiguous, resizable array of bytes.

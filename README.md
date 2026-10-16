@@ -96,6 +96,25 @@ A platform for exploring binary protection (patching live memory via the Chrome 
 
 ---
 
+## Tooling
+
+Development tools that support the projects — shared knowledge infrastructure, browser harnesses, and editor integration.
+
+| Tool | What it does |
+|------|-------------|
+| [knowledge-mcp](knowledge-mcp/) | Rust MCP server — gives Claude searchable access to the Z80/WASM knowledge corpus |
+| [wex](wex/) | WASM player — static HTML harness for testing `.wasm` output in the browser |
+| [zxw harness](zxw/www/) | Spectrum TAP harness — loads `.tap` files into the emulator, zero-click debug mode |
+| [/asm skill](.claude/skills/asm/) | CLI skill — browse and search the knowledge corpus from the terminal |
+| VS Code extensions | Syntax highlighting and snippets for Z80 assembly and WAT |
+
+The knowledge corpus has three access layers — all reading from the same `knowledge/chunks/*.md` files:
+- **knowledge-mcp** → Claude (MCP, keyword index)
+- **/asm skill** → user (CLI, browsable)
+- **FAISS embeddings** → local LLM (incant RAG, semantic search)
+
+---
+
 ## License
 
 Source code is licensed under the MIT License.

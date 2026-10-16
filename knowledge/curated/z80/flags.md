@@ -1,3 +1,11 @@
+---
+topic: "Z80 Flags"
+category: z80-pattern
+source_url: "curated"
+licence: "curated"
+tags: [z80, flags, curated]
+---
+
 # Z80 Flags
 
 The F register holds flags set by arithmetic, logic, and comparison instructions.

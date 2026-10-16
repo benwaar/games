@@ -1,8 +1,48 @@
+# Knowledge Corpus — Deferred Work
+
+## Content gaps
+
+Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heaven), WASM spec, MDN WAT reference, WASI preview1.
+
+Still missing:
+- [ ] Spectrum hardware content — skoolkid/WoS pages had different structure than expected, only stubs fetched
+- [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
+- [ ] Undocumented Z80 opcodes — Sean Young doc not yet integrated
+- [ ] 1-bit music routines (utz82) — beeper engine patterns: pulse interleaving, PWM, sample playback
+- [ ] Z80 library routines (breakintoprogram / Dean Belfield) — game routines: sound, sprites, vectors
+
+---
+
 # Next
 
-## ~~wex — extract JS modules~~ ✅
+https://skoolkid.github.io/rom/asm/03B5.html
 
-Done. Split into `player.css`, `a11y.js`, `audio.js`, `settings.js`, `player.js`. HTML is a static shell.
+## zxw — fix emulator audio pipeline
+
+The beeper audio in zxw drops/loses notes. Investigation (2026-10-15) found:
+
+- **`ScriptProcessorNode` is deprecated** — Chrome warns on every load. Replace with `AudioWorklet`.
+- **Queue overflow wipes audio** — `audio.js` line 41: if `sampleQueue > 44100` it clears the entire buffer. ROM BEEP runs with `DI` (interrupts disabled), so thousands of samples accumulate between frame drains and get nuked.
+- **`drain_audio()` only called per `requestAnimationFrame`** (~16ms) — not fast enough for continuous beeper output. Samples pile up in Rust between drains.
+- **Test case:** `CALL 0x03B5` (ROM BEEP) with C4/D4/E4/F4 notes, 500ms warmup, 150ms gaps. Should hear 4 distinct rising tones. Currently hears 0–2 notes depending on timing.
+- Reference: ROM BEEP disassembly at https://skoolkid.github.io/rom/asm/03B5.html
+
+Steps:
+- [ ] Replace `ScriptProcessorNode` with `AudioWorkletNode` in `zxw/www/audio.js`
+- [ ] Fix queue overflow — don't wipe, ring buffer or backpressure instead
+- [ ] Drain audio more frequently (per-instruction or per-scanline accumulation, not per-frame)
+- [ ] Test with ROM BEEP test TAP (C D E F notes) — all 4 notes audible with clear gaps
+- [ ] Test with a known game (Jetpac) — sound effects should be clean
+
+## glyph — extract Z80 assembly from beeper.py
+
+`beeper.py` has ~200 lines of hand-encoded Z80 machine code as raw hex bytes with a mini linker (patching CALL addresses after layout). The SCR loader already does it right — `scr_loader.asm` assembled by the z80 lib. Beeper should follow the same pattern.
+
+- [ ] Extract `play_note`, `delay_hl`, `rest_loop` routines into `.asm` files under `glyphz80/`
+- [ ] Use the z80 assembler (already a dep) with labels — let it resolve addresses instead of hand-patching
+- [ ] Python parameterises (note frequencies, durations) and stitches the assembled binary
+- [ ] Fix audio playback — TAP beeper output currently doesn't play well, needs investigation (timing? cycle counts? emulator accuracy?)
+- [ ] Tests: existing beeper tests must still pass, add assembly-level sanity checks
 
 ## wex — indexed colour pipeline (256-colour LUT)
 
@@ -22,10 +62,6 @@ Steps:
 - [ ] WAT `render()` reads preference imports, selects LUT, remaps indices → RGBA into a separate output region for canvas
 - [ ] Update player JS to call `render()` on palette change instead of full `reloadWasm()` — cheaper, just re-renders with new LUT
 - [ ] Fallback: matrix transform path for content exceeding 256 colours
-
-## ~~wex — shared WAT library extraction~~ ✅
-
-Done. 6 snippet files in `wex/wat/`. Pipeline uses `_load_snippet()` with `{{placeholder}}` templates. `render_with_palette()` deferred to indexed colour phase.
 
 ## Glyph — deferred from audio POC
 

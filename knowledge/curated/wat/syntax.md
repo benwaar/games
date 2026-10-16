@@ -1,3 +1,11 @@
+---
+topic: "WAT Syntax"
+category: wasm-pattern
+source_url: "curated"
+licence: "curated"
+tags: [wat, syntax, curated]
+---
+
 # WAT Syntax
 
 WAT (WebAssembly Text) uses S-expressions — parenthesised prefix notation.
