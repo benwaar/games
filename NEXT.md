@@ -26,7 +26,7 @@ python knowledge/scripts/export_onnx.py  # model.onnx + tokenizer.json (download
 Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heaven), WASM spec, MDN WAT reference, WASI preview1.
 
 Still missing:
-- [ ] Spectrum hardware content — skoolkid/WoS pages had different structure than expected, only stubs fetched
+- [x] Spectrum hardware content — fixed selectors, fetched 22 priority routines + 274 stubs + sysvars + I/O ports/ULA
 - [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
 - [x] Undocumented Z80 opcodes — Sean Young PDF (GFDL), 17 sections → 57 chunks
 - [x] 1-bit music routines (utz82) — 37 beeper engines from GitHub (MIT) → 138 chunks
