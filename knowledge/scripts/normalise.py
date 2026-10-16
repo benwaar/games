@@ -186,7 +186,10 @@ def process_file(src: Path) -> tuple[int, str | None]:
     Process one raw markdown file.
     Returns (chunks_written, error_message_or_None).
     """
-    text = src.read_text(encoding="utf-8")
+    try:
+        text = src.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        return 0, f"read error: {exc}"
 
     try:
         meta, body = _parse_frontmatter(text)
@@ -214,10 +217,12 @@ def process_file(src: Path) -> tuple[int, str | None]:
     for idx, (part, out_path) in enumerate(zip(body_parts, out_paths)):
         chunk_meta = dict(meta)
         if len(body_parts) > 1:
-            # Annotate multi-part chunks
             chunk_meta["topic"] = f"{meta['topic']} (part {idx + 1}/{len(body_parts)})"
         content = _render_frontmatter(chunk_meta) + "\n" + part.strip() + "\n"
-        out_path.write_text(content, encoding="utf-8")
+        try:
+            out_path.write_text(content, encoding="utf-8")
+        except OSError as exc:
+            return idx, f"write error: {exc}"
 
     return len(body_parts), None
 

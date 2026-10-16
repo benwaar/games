@@ -85,8 +85,14 @@ def load_chunks(chunks_dir: Path) -> list[dict]:
         path, topic, category, source_url, licence, tags, body, embed_text
     """
     chunks = []
+    skipped = 0
     for md_file in sorted(chunks_dir.rglob("*.md")):
-        text = md_file.read_text(encoding="utf-8")
+        try:
+            text = md_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError as exc:
+            print(f"  [SKIP] {md_file}: {exc}")
+            skipped += 1
+            continue
         meta, body = _parse_frontmatter(text)
 
         topic = meta.get("topic", md_file.stem)
@@ -106,6 +112,9 @@ def load_chunks(chunks_dir: Path) -> list[dict]:
                 "embed_text": embed_text,
             }
         )
+
+    if skipped:
+        print(f"  ({skipped} files skipped)")
 
     return chunks
 
@@ -162,16 +171,22 @@ def main() -> None:
 
     index = build_index(chunks, model)
 
-    # Save FAISS index
-    faiss.write_index(index, str(FAISS_INDEX_PATH))
-    print(f"\nFAISS index saved → {FAISS_INDEX_PATH}")
+    # Save FAISS index and metadata atomically (temp → rename)
+    tmp_index = FAISS_INDEX_PATH.with_suffix(".tmp")
+    tmp_meta = METADATA_PATH.with_suffix(".tmp")
 
-    # Save metadata (strip embed_text — not needed at query time)
     metadata = [
         {k: v for k, v in c.items() if k != "embed_text"}
         for c in chunks
     ]
-    METADATA_PATH.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+    faiss.write_index(index, str(tmp_index))
+    tmp_meta.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
+    tmp_index.rename(FAISS_INDEX_PATH)
+    tmp_meta.rename(METADATA_PATH)
+
+    print(f"\nFAISS index saved → {FAISS_INDEX_PATH}")
     print(f"Metadata saved   → {METADATA_PATH}")
 
     dim = index.d

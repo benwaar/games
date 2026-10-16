@@ -24,8 +24,10 @@ from bs4 import BeautifulSoup
 # Config
 # ---------------------------------------------------------------------------
 
-OUT_ROM = Path("knowledge/raw/spectrum/rom")
-OUT_HW = Path("knowledge/raw/spectrum/hardware")
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parent.parent
+OUT_ROM = REPO_ROOT / "knowledge" / "raw" / "spectrum" / "rom"
+OUT_HW = REPO_ROOT / "knowledge" / "raw" / "spectrum" / "hardware"
 
 SKOOLKID_BASE = "https://skoolkid.github.io/rom"
 SKOOLKID_ASM_INDEX = f"{SKOOLKID_BASE}/asm/0000.html"  # first page of ROM listing
@@ -63,14 +65,14 @@ def write_md(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def frontmatter(topic: str, category: str, source_url: str, tags: list[str]) -> str:
+def frontmatter(topic: str, category: str, source_url: str, tags: list[str], licence: str = "gpl-3.0") -> str:
     tag_str = ", ".join(tags)
     return (
         "---\n"
         f'topic: "{topic}"\n'
         f"category: {category}\n"
         f'source_url: "{source_url}"\n'
-        "licence: gpl-3.0\n"
+        f"licence: {licence}\n"
         f"tags: [{tag_str}]\n"
         "---\n\n"
     )
@@ -233,6 +235,7 @@ def fetch_wos_reference() -> None:
         "spectrum-hardware",
         WOS_REF,
         ["system-variables", "io-ports", "ula", "hardware"],
+        licence="community-archive",
     )
     write_md(full_path, fm + body_text)
     print(f"  Wrote {full_path} ({len(body_text)} chars)")
@@ -283,7 +286,7 @@ def _split_wos_by_heading(soup: BeautifulSoup) -> None:
         if "timing" in heading_lower:
             tags += ["timing"]
 
-        fm = frontmatter(heading, "spectrum-hardware", WOS_REF, tags)
+        fm = frontmatter(heading, "spectrum-hardware", WOS_REF, tags, licence="community-archive")
         write_md(path, fm + f"# {heading}\n\n" + content)
         print(f"    → {path.name}")
 

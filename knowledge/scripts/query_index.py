@@ -43,9 +43,9 @@ def query(query_text: str, top_k: int = DEFAULT_TOP_K) -> list[dict]:
 
     Each result dict has: rank, score, path, topic, category, source_url, tags
     """
-    if not FAISS_INDEX_PATH.exists():
+    if not FAISS_INDEX_PATH.exists() or not METADATA_PATH.exists():
         print(
-            f"ERROR: index not found at {FAISS_INDEX_PATH}\n"
+            f"ERROR: index not found at {INDEX_DIR}\n"
             "Run 'python knowledge/scripts/embed.py' first.",
             file=sys.stderr,
         )
@@ -66,7 +66,7 @@ def query(query_text: str, top_k: int = DEFAULT_TOP_K) -> list[dict]:
 
     results = []
     for rank, (dist, idx) in enumerate(zip(distances[0], indices[0]), start=1):
-        if idx == -1:
+        if idx == -1 or idx >= len(metadata):
             continue
         chunk = metadata[idx]
         results.append(

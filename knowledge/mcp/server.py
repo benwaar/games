@@ -26,13 +26,13 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
     fm: dict = {}
     body = text
     if text.startswith("---"):
-        parts = text.split("---", 2)
-        if len(parts) >= 3:
-            for line in parts[1].splitlines():
+        end = text.find("\n---", 3)
+        if end != -1:
+            for line in text[3:end].splitlines():
                 if ":" in line:
                     k, _, v = line.partition(":")
                     fm[k.strip()] = v.strip()
-            body = parts[2].strip()
+            body = text[end + 4:].strip()
     return fm, body
 
 
@@ -126,7 +126,10 @@ async def _search(query: str, category: str | None) -> list[TextContent]:
 
     scored: list[tuple[int, Path]] = []
     for md in CHUNKS_DIR.rglob("*.md"):
-        score = _score_chunk(md, query, category)
+        try:
+            score = _score_chunk(md, query, category)
+        except Exception:
+            continue
         if score > 0:
             scored.append((score, md))
 
@@ -158,7 +161,10 @@ async def _read(chunk_id: str) -> list[TextContent]:
         return [TextContent(type="text", text="chunk_id must be category/filename (e.g. z80-instruction/ld)")]
 
     category, stem = parts
-    target = CHUNKS_DIR / category / f"{stem}.md"
+    target = (CHUNKS_DIR / category / f"{stem}.md").resolve()
+
+    if not target.is_relative_to(CHUNKS_DIR.resolve()):
+        return [TextContent(type="text", text=f"Invalid chunk_id: {chunk_id}")]
 
     if not target.exists():
         return [TextContent(type="text", text=f"Chunk not found: {chunk_id}")]
@@ -172,15 +178,14 @@ async def _read(chunk_id: str) -> list[TextContent]:
 
 @app.list_resources()
 async def list_resources():
-    from mcp.types import Resource as MResource
     return [
-        MResource(
+        Resource(
             uri="corpus://categories",
             name="Corpus categories",
             description="List of chunk categories with file counts",
             mimeType="text/plain",
         ),
-        MResource(
+        Resource(
             uri="corpus://stats",
             name="Corpus stats",
             description="Total chunk count and last rebuild timestamp",
