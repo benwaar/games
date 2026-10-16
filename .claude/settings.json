@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.claude/skills/asm/z80-query.sh *)"
+    ]
+  }
+}
