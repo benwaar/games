@@ -5,6 +5,7 @@
       "Bash(rustup target *)",
       "mcp__chrome-devtools__*",
       "mcp__knowledge-corpus__search",
+      "mcp__knowledge-corpus__search_semantic",
       "mcp__knowledge-corpus__read"
     ]
   },
