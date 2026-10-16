@@ -27,7 +27,7 @@ Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heav
 
 Still missing:
 - [x] Spectrum hardware content — fixed selectors, fetched 22 priority routines + 274 stubs + sysvars + I/O ports/ULA
-- [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
+- [x] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
 - [x] Undocumented Z80 opcodes — Sean Young PDF (GFDL), 17 sections → 57 chunks
 - [x] 1-bit music routines (utz82) — 37 beeper engines from GitHub (MIT) → 138 chunks
 - [x] Z80 library routines (breakintoprogram / Dean Belfield) — 14 routines from GitHub → 32 chunks

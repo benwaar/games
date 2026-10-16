@@ -271,14 +271,33 @@ def fetch_wasm_instructions() -> None:
 # WAT text format — modules, types, imports/exports
 # ---------------------------------------------------------------------------
 
-MDN_WAT_PAGES = {
-    "wat_overview":  "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format",
-    "wat_functions": "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#functions",
-    "wat_types":     "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#types",
-    "wat_imports":   "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#imports_and_exports",
-    "wat_memory":    "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#memory",
-    "wat_tables":    "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#tables",
-    "wat_globals":   "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format#globals",
+# MDN Understanding the text format — single page, section-based extraction.
+# Fragment URLs redirect to the same page (fragments are client-side); fetch once.
+MDN_WAT_BASE_URL = "https://developer.mozilla.org/en-US/docs/WebAssembly/Understanding_the_text_format"
+
+# Section heading IDs to extract, mapped to output subdirectory.
+# Determined by inspecting the live page — IDs are stable anchors on MDN.
+MDN_WAT_SECTION_DIRS: dict[str, Path] = {
+    # Structural / runtime constructs → modules/
+    "s-expressions":                                         OUT_WAT_MODULES,
+    "the_simplest_module":                                   OUT_WAT_MODULES,
+    "adding_functionality_to_your_module":                   OUT_WAT_MODULES,
+    "signatures_and_parameters":                             OUT_WAT_MODULES,
+    "getting_and_setting_locals_and_parameters":             OUT_WAT_MODULES,
+    "stack_machines":                                        OUT_WAT_MODULES,
+    "our_first_function_body":                               OUT_WAT_MODULES,
+    "exploring_fundamentals":                                OUT_WAT_MODULES,
+    "importing_functions_from_javascript":                   OUT_WAT_MODULES,
+    "declaring_globals_in_webassembly":                      OUT_WAT_MODULES,
+    "webassembly_memory":                                    OUT_WAT_MODULES,
+    "webassembly_tables":                                    OUT_WAT_MODULES,
+    "bulk_memory_operations":                                OUT_WAT_MODULES,
+    # Type system → types/
+    "types":                                                 OUT_WAT_TYPES,
+    "number_types":                                          OUT_WAT_TYPES,
+    "vector_types":                                          OUT_WAT_TYPES,
+    "reference_types":                                       OUT_WAT_TYPES,
+    "multi-value_webassembly":                               OUT_WAT_TYPES,
 }
 
 SPEC_TEXT_BASE = "https://webassembly.github.io/spec/core/text/"
@@ -329,36 +348,83 @@ def write_wat_file(name: str, subdir: Path, content: str, source_url: str, licen
     write_raw(subdir / (slug(name) + ".md"), fm + content)
 
 
+def _extract_mdn_section(heading: Tag) -> str:
+    """Extract markdown for one MDN section: heading + all siblings until next same-or-higher heading."""
+    level = int(heading.name[1])
+    lines: list[str] = [f"{'#' * level} {heading.get_text(strip=True)}"]
+    for sib in heading.find_next_siblings():
+        if not isinstance(sib, Tag):
+            continue
+        if sib.name and re.match(r"^h[1-6]$", sib.name) and int(sib.name[1]) <= level:
+            break
+        tag = sib.name
+        text = sib.get_text(" ", strip=True)
+        if not text:
+            continue
+        if tag in ("h2", "h3", "h4", "h5"):
+            sub_level = int(tag[1])
+            lines.append(f"{'#' * sub_level} {text}")
+        elif tag == "pre":
+            code_el = sib.find("code")
+            code = (code_el or sib).get_text()
+            lang = "wat" if any(kw in code for kw in ("(func", "(module", "(local", "(import", "(export", "i32", "i64")) else ""
+            lines.append(f"```{lang}\n{code.strip()}\n```")
+        elif tag in ("p", "dd"):
+            lines.append(text)
+        elif tag in ("ul", "ol"):
+            for li in sib.find_all("li", recursive=False):
+                lines.append("- " + li.get_text(" ", strip=True))
+    return "\n\n".join(lines)
+
+
 def fetch_wat_format() -> None:
     print("\n--- WAT text format (MDN) ---")
-    for page_key, url in MDN_WAT_PAGES.items():
-        print(f"Fetching {page_key} …")
-        resp = get(url)
-        if resp is None:
-            continue
 
+    # Fetch the single MDN page once — fragment URLs redirect to the same page.
+    # Fragments are stripped by the HTTP layer, so all MDN_WAT_PAGES entries would
+    # have returned identical content; instead we fetch once and extract by section ID.
+    print(f"Fetching {MDN_WAT_BASE_URL} …")
+    resp = get(MDN_WAT_BASE_URL)
+    if resp is None:
+        print("  [WARN] MDN WAT page unavailable — skipping MDN WAT sections")
+    else:
         s = soup(resp)
         main = s.find("main") or s.find("article") or s.body
-        if not main:
-            continue
 
-        title = s.find("h1")
-        page_title = title.get_text(strip=True) if title else page_key
+        # MDN renders <aside> nav + a content <div> inside <main>.
+        # Pick the <div> that contains the most headings (the real content).
+        content_div = main
+        if main:
+            best_count = 0
+            for div in main.find_all("div", recursive=False):
+                count = len(div.find_all(re.compile(r"^h[2-4]$")))
+                if count > best_count:
+                    best_count = count
+                    content_div = div
 
-        content_md = html_to_md_excerpt(main, max_chars=4000)
-        if not content_md.strip():
-            print(f"  [WARN] no content extracted from {url}")
-            continue
+        written = 0
+        for section_id, subdir in MDN_WAT_SECTION_DIRS.items():
+            heading = (content_div or main or s).find(id=section_id)
+            if not heading:
+                print(f"  [WARN] section #{section_id} not found in MDN WAT page")
+                continue
+            section_title = heading.get_text(strip=True)
+            section_md = _extract_mdn_section(heading)
+            if not section_md.strip():
+                print(f"  [WARN] empty content for section #{section_id}")
+                continue
+            anchor_url = f"{MDN_WAT_BASE_URL}#{section_id}"
+            body = f"{section_md}\n\n**Source:** {anchor_url}\n"
+            write_wat_file(
+                name=section_title,
+                subdir=subdir,
+                content=body,
+                source_url=anchor_url,
+                licence="CC-BY-SA-2.5",
+            )
+            written += 1
 
-        body = f"# {page_title}\n\n**Source:** {url}\n\n{content_md}\n"
-        subdir = OUT_WAT_MODULES if "module" in page_key or "import" in page_key or "memory" in page_key or "table" in page_key or "global" in page_key else OUT_WAT_TYPES
-        write_wat_file(
-            name=page_title,
-            subdir=subdir,
-            content=body,
-            source_url=url,
-            licence="CC-BY-SA-2.5",
-        )
+        print(f"  wrote {written} MDN WAT sections")
 
     print("\n--- WAT text format (spec) ---")
     for page_key, url in SPEC_TEXT_PAGES.items():
