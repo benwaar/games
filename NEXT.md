@@ -1,18 +1,15 @@
 # Knowledge Corpus — Deferred Work
 
-## Incant pipeline integration
-
-Wire the knowledge corpus into Incant's local LLM code generation pipeline.
-
-- [x] test mcp
-- [ ] Incant embeds knowledge corpus chunks into its existing RAG store (ollama embeddings)
-- [ ] Test: Incant generates better Z80/WASM with corpus context vs without
-
 ## Content gaps
 
+Sources already fetched: SkoolKit ROM disassembly, Z80 instruction set (z80-heaven), WASM spec, MDN WAT reference, WASI preview1.
+
+Still missing:
 - [ ] Spectrum hardware content — skoolkid/WoS pages had different structure than expected, only stubs fetched
 - [ ] MDN WAT section parsing — MDN redirects fragment URLs, content extraction needs rework
 - [ ] Undocumented Z80 opcodes — Sean Young doc not yet integrated
+- [ ] 1-bit music routines (utz82) — beeper engine patterns: pulse interleaving, PWM, sample playback
+- [ ] Z80 library routines (breakintoprogram / Dean Belfield) — game routines: sound, sprites, vectors
 
 ---
 
@@ -47,10 +44,6 @@ Steps:
 - [ ] Fix audio playback — TAP beeper output currently doesn't play well, needs investigation (timing? cycle counts? emulator accuracy?)
 - [ ] Tests: existing beeper tests must still pass, add assembly-level sanity checks
 
-## ~~wex — extract JS modules~~ ✅
-
-Done. Split into `player.css`, `a11y.js`, `audio.js`, `settings.js`, `player.js`. HTML is a static shell.
-
 ## wex — indexed colour pipeline (256-colour LUT)
 
 Design decision: content art uses a 256-colour indexed palette. Why:
@@ -69,10 +62,6 @@ Steps:
 - [ ] WAT `render()` reads preference imports, selects LUT, remaps indices → RGBA into a separate output region for canvas
 - [ ] Update player JS to call `render()` on palette change instead of full `reloadWasm()` — cheaper, just re-renders with new LUT
 - [ ] Fallback: matrix transform path for content exceeding 256 colours
-
-## ~~wex — shared WAT library extraction~~ ✅
-
-Done. 6 snippet files in `wex/wat/`. Pipeline uses `_load_snippet()` with `{{placeholder}}` templates. `render_with_palette()` deferred to indexed colour phase.
 
 ## Glyph — deferred from audio POC
 
@@ -122,16 +111,3 @@ Done. 6 snippet files in `wex/wat/`. Pipeline uses `_load_snippet()` with `{{pla
 
 - incant to follow same debug pipeline as glyph, with wrappers for testing
 - Better build pipeline later that combines stuff
-
-## RAG corpus — Z80 / Spectrum reference material
-
-Reference material for incant (spec → Z80 code gen) and artefact (ROM scanner, chip-tunes, restoration). Not training data — grounding material so the LLM can look up rather than guess.
-
-Sources:
-- [ ] **Complete Spectrum ROM Disassembly** (SkoolKit) — every ROM routine annotated: BEEP, keyboard scan, tape I/O, LDIR patterns, interrupt modes. https://skoolkid.github.io/rom/
-- [ ] **Z80 instruction set** — opcode tables, cycle counts per instruction, flag effects. Essential for cycle-accurate code gen.
-- [ ] **Spectrum hardware docs** — ULA timing, port 0xFE (border/speaker/keyboard), memory map (0x4000 screen, 0x5800 attrs), attribute clash rules
-- [ ] **1-bit music routines** (utz82) — beeper engine patterns beyond simple tones: pulse interleaving, PWM, sample playback. https://github.com/utz82/ZX-Spectrum-1-Bit-Routines
-- [ ] **Z80 library routines** (breakintoprogram / Dean Belfield) — proven game routines: sound, sprites, vectors. https://www.breakintoprogram.co.uk/hardware/computers/zx-spectrum/assembly-language/z80-library-routines
-- [ ] Decide corpus format: markdown chunks? structured JSON? What works with incant's ONNX/RAG pipeline?
-- [ ] Index and test retrieval: "how do I play a note on the Spectrum?" should return the ROM BEEP routine, not a guess

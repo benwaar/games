@@ -33,11 +33,19 @@ if ! command -v wat2wasm &>/dev/null; then
     exit 1
 fi
 
-# Embed knowledge (when RAG module exists)
+# Embed knowledge (curated + corpus)
 if [ -f incant/rag.py ]; then
-    echo "Embedding knowledge..."
+    echo "Embedding curated knowledge..."
     python -m incant rag embed ../knowledge/curated/z80 z80
     python -m incant rag embed ../knowledge/curated/wat wat
+
+    echo "Embedding knowledge corpus chunks..."
+    for dir in ../knowledge/chunks/z80-instruction ../knowledge/chunks/z80-pattern ../knowledge/chunks/spectrum-rom; do
+        python -m incant rag embed "$dir" z80 --append
+    done
+    for dir in ../knowledge/chunks/wasm-spec ../knowledge/chunks/wasm-pattern ../knowledge/chunks/wasi; do
+        python -m incant rag embed "$dir" wat --append
+    done
 fi
 
 echo "=== setup complete ==="

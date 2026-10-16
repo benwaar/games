@@ -16,8 +16,24 @@ One corpus, three access methods. Built fetch → normalise → serve pipeline f
 - **Setup script** (`knowledge/setup.sh`) — one-command install: deps, fetch, normalise, embed.
 
 **Deferred:**
-- Incant pipeline integration (wiring query_index into code gen)
 - Spectrum hardware content (skoolkid/WoS pages had different structure than expected — stubs only)
 - MDN WAT section parsing (MDN redirects fragment URLs, content extraction needs rework)
+
+**Branch:** `feature/no-ticket-knowledge-corpus`
+
+## 2026-10-16 — MCP server rewrite + Incant pipeline integration
+
+Rewrote MCP server in Rust, wired knowledge corpus into incant's RAG store, added embeddings explainer.
+
+**What was built:**
+
+- **Rust MCP server** (`knowledge-mcp/`) — rewrote Python server in Rust using `rust-mcp-sdk` v2. Same tools (`search`, `read`) and resources (`corpus://categories`, `corpus://stats`). Registered in `.mcp.json`.
+- **Incant RAG integration** — corpus chunks (529 files across 6 categories) embedded into incant's existing ollama-based RAG store via `--append` flag. Curated files (11) kept as base, corpus appended. 78 → 1,794 chunks.
+- **rag.py improvements** — frontmatter stripping in `chunk_markdown()`, `replace` parameter on `embed_directory()` for append-mode embedding.
+- **Embeddings explainer** (`explainers/embeddings-and-rag.md`) — covers embeddings, FAISS, RAG pattern, and why the project uses sentence-transformers for the shared corpus and ollama for incant.
+- **STUDY.md** — expanded LLM Engineering from 2 lines to 7: embeddings, vector search, RAG, MCP, skills, evals, agent orchestration.
+- **Setup** — `setup.sh` now embeds all corpus categories into incant (z80-instruction, z80-pattern, spectrum-rom → z80 collection; wasm-spec, wasm-pattern, wasi → wat collection).
+
+**Gate:** 151 tests passing. 4 end-to-end code gen tests (z80_add, wat_factorial, z80_store_load, z80_greet) all generate and pass gates with enriched RAG context.
 
 **Branch:** `feature/no-ticket-knowledge-corpus`
