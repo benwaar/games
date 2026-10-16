@@ -1,3 +1,6 @@
+# Copyrighted reference material (local only)
+_data/
+
 # JupyterLite build artifacts (if accidentally created at root)
 dist/
 _output/
