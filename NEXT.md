@@ -1,13 +1,5 @@
 # Next
 
-## zxw — audio pipeline: listening test
-
-AudioWorklet + SAB ring buffer implemented. Needs a listening test:
-
-- [ ] `BEEP 1,0` in BASIC — hear a clean 1-second middle C
-- [ ] ROM BEEP test TAP (C D E F notes) — all 4 notes audible with clear gaps
-- [ ] Test with a known game (Jetpac) — sound effects should be clean
-
 ## glyph — extract Z80 assembly from beeper.py
 
 `beeper.py` has ~200 lines of hand-encoded Z80 machine code as raw hex bytes with a mini linker (patching CALL addresses after layout). The SCR loader already does it right — `scr_loader.asm` assembled by the z80 lib. Beeper should follow the same pattern.
