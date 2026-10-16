@@ -17,6 +17,7 @@ games/
   zxw/                 — ZX Spectrum 48K emulator: Rust → WASM + CDP debug integration
   incant/              — spec-driven code gen: local LLM + RAG → WAT/WASM + Z80 assembly
   glyph/               — LLM-first presentation layer: game sigils → WASM (macroquad) + Z80 (ULA)
+  grimoire/            — debug maps for LLM-first toolchains: spec → binary composition graph
   wex/                 — WASM executor: static HTML host + swappable debug.wasm
 ```
 
@@ -100,4 +101,5 @@ See [STUDY.md](STUDY.md) for the full capability map and business alignment.
 | [Incant](incant/) | ✅ M1–M10 complete — spec → code gen, TAP tools, ONNX inference, binary protection |
 | [wex](wex/) | ▶ Active — WASM executor, responsive canvas, a11y (mirror DOM, settings, palettes) |
 | [Glyph](glyph/) | ▶ POC complete — image + audio → both targets, pure WAT pipeline, 113 tests |
+| [Grimoire](grimoire/) | Planned — debug maps: sigil → binary composition graph, LLM debug loop |
 | [Void Duel](void-duel/) | Planned |
