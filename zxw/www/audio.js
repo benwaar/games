@@ -1,59 +1,69 @@
 // audio.js — beeper audio playback for zxw emulator.
-// Feeds f32 samples from the Rust emulator into Web Audio via a ring buffer.
+// Feeds f32 samples from the Rust emulator into an AudioWorklet via a SAB ring buffer.
 
 const SAMPLE_RATE = 44100;
-const BUFFER_FRAMES = 2048;
+const RING_SIZE = 16384;
+const RING_MASK = RING_SIZE - 1;
 
 let audioCtx = null;
-let scriptNode = null;
-let sampleQueue = [];
+let workletNode = null;
+let ringBuffer = null;    // Float32Array over SAB
+let controlBuffer = null; // Uint32Array over SAB: [writeIdx, readIdx]
 let muted = false;
+let ready = false;
 
-export function initAudio() {
-  if (audioCtx) { return audioCtx; }
+export async function initAudio() {
+  if (audioCtx) return audioCtx;
+
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
-  scriptNode = audioCtx.createScriptProcessor(BUFFER_FRAMES, 0, 1);
-  scriptNode.onaudioprocess = (event) => {
-    const output = event.outputBuffer.getChannelData(0);
-    const available = sampleQueue.length;
-    const count = Math.min(output.length, available);
+  await audioCtx.audioWorklet.addModule('audio-worklet.js');
 
-    if (muted || count === 0) {
-      output.fill(0);
-      return;
-    }
+  const ringSAB = new SharedArrayBuffer(RING_SIZE * 4);
+  const controlSAB = new SharedArrayBuffer(8);
+  ringBuffer = new Float32Array(ringSAB);
+  controlBuffer = new Uint32Array(controlSAB);
 
-    for (let i = 0; i < count; i++) {
-      output[i] = sampleQueue[i];
-    }
-    for (let i = count; i < output.length; i++) {
-      output[i] = sampleQueue.length > 0 ? sampleQueue[count - 1] : 0;
-    }
-    sampleQueue.splice(0, count);
-  };
-  scriptNode.connect(audioCtx.destination);
+  workletNode = new AudioWorkletNode(audioCtx, 'beeper-processor');
+  workletNode.port.postMessage({
+    type: 'init',
+    ringBuffer: ringSAB,
+    controlBuffer: controlSAB,
+  });
+  workletNode.connect(audioCtx.destination);
+  ready = true;
   return audioCtx;
 }
 
 export function feedAudio(samples) {
-  if (!audioCtx || !samples || samples.length === 0) { return; }
-  // Prevent queue from growing unbounded if browser tab is background
-  if (sampleQueue.length > SAMPLE_RATE) {
-    sampleQueue.length = 0;
+  if (!ready || !samples || samples.length === 0) return;
+
+  let writeIdx = Atomics.load(controlBuffer, 0);
+  const readIdx = Atomics.load(controlBuffer, 1);
+  const available = RING_SIZE - ((writeIdx - readIdx) & 0xFFFFFFFF);
+
+  if (samples.length >= available) {
+    // would overflow — drop oldest by advancing read pointer
+    const overflow = samples.length - available + 1;
+    Atomics.store(controlBuffer, 1, (readIdx + overflow) >>> 0);
   }
+
   for (let i = 0; i < samples.length; i++) {
-    sampleQueue.push(samples[i]);
+    ringBuffer[(writeIdx + i) & RING_MASK] = samples[i];
   }
+  Atomics.store(controlBuffer, 0, (writeIdx + samples.length) >>> 0);
 }
 
-export function resumeAudio() {
+export async function resumeAudio() {
   if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
+    await audioCtx.resume();
   }
 }
 
 export function toggleMute() {
   muted = !muted;
+  if (workletNode) {
+    workletNode.port.postMessage({ type: 'mute', value: muted });
+  }
   return muted;
 }
 
@@ -62,10 +72,17 @@ export function isMuted() {
 }
 
 export function audioStats() {
+  if (!ready) {
+    return { state: 'no context', fill: 0, muted, sampleRate: 0 };
+  }
+  const writeIdx = Atomics.load(controlBuffer, 0);
+  const readIdx = Atomics.load(controlBuffer, 1);
+  const fill = (writeIdx - readIdx) & 0xFFFFFFFF;
   return {
-    state: audioCtx ? audioCtx.state : 'no context',
-    queueLength: sampleQueue.length,
+    state: audioCtx.state,
+    fill,
+    fillMs: ((fill / SAMPLE_RATE) * 1000) | 0,
     muted,
-    sampleRate: audioCtx ? audioCtx.sampleRate : 0,
+    sampleRate: audioCtx.sampleRate,
   };
 }

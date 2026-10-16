@@ -329,7 +329,7 @@
       autoTypeLOAD();
     });
 
-    function boot() {
+    async function boot() {
       if (!romLoaded) return;
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
@@ -337,8 +337,8 @@
       }
       emulator.reset();
       running = true;
-      initAudio();
-      resumeAudio();
+      await initAudio();
+      await resumeAudio();
       console.log('[zxw] booting ROM');
       status.textContent = 'Booting ROM…';
       function frame() {

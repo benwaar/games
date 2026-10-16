@@ -1,4 +1,23 @@
-# LOG — Knowledge Corpus
+# LOG — Games AI Lab
+
+## 2026-10-16 — zxw: AudioWorklet + SAB ring buffer
+
+Replaced the deprecated `ScriptProcessorNode` audio pipeline with `AudioWorkletNode` + `SharedArrayBuffer` ring buffer.
+
+**What changed:**
+
+- **`audio-worklet.js`** (new) — `BeeperProcessor` AudioWorkletProcessor. Reads f32 samples from a 16384-sample SAB ring buffer using atomic read/write indices. Silence on underrun.
+- **`audio.js`** (rewrite) — creates `AudioWorkletNode`, feeds samples into the SAB ring buffer. Overflow drops oldest samples (advances read pointer) instead of wiping the entire queue. Same export API (`initAudio`, `feedAudio`, `resumeAudio`, `toggleMute`, `isMuted`, `audioStats`).
+- **`serve.sh`** — Python server now sends `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: require-corp` headers (required for `SharedArrayBuffer`).
+- **`debug.html` / `index.html`** — `initAudio()` is now async, call sites updated to `await`.
+
+**Why:** The old pipeline used a plain JS array as a FIFO (`push` + `splice(0, n)` = O(n) per callback), wiped the entire queue on overflow (>1s backlog), and ran on the main thread. ROM BEEP runs with `DI` (interrupts disabled) in a tight loop — samples accumulated correctly in Rust but got dropped by the JS overflow wipe. The AudioWorklet runs on a dedicated audio thread, and the ring buffer handles backpressure without data loss.
+
+**Rust side unchanged** — `spectrum.rs` sample accumulation (fractional T-state accumulator, ~880 samples/frame at 50Hz) was already correct.
+
+**Needs listening test** — pipeline verified working (zero console errors/warnings, worklet running, buffer flowing steady at ~365ms fill), but audio quality needs human verification.
+
+**Branch:** `feature/no-ticket-zxw-audio-pipeline`
 
 ## 2026-10-16 — Knowledge Corpus: Z80 / Spectrum / WASM Reference
 

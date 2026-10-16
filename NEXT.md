@@ -1,20 +1,11 @@
 # Next
 
-## zxw — fix emulator audio pipeline
+## zxw — audio pipeline: listening test
 
-The beeper audio in zxw drops/loses notes. Investigation (2026-10-15) found:
+AudioWorklet + SAB ring buffer implemented. Needs a listening test:
 
-- **`ScriptProcessorNode` is deprecated** — Chrome warns on every load. Replace with `AudioWorklet`.
-- **Queue overflow wipes audio** — `audio.js` line 41: if `sampleQueue > 44100` it clears the entire buffer. ROM BEEP runs with `DI` (interrupts disabled), so thousands of samples accumulate between frame drains and get nuked.
-- **`drain_audio()` only called per `requestAnimationFrame`** (~16ms) — not fast enough for continuous beeper output. Samples pile up in Rust between drains.
-- **Test case:** `CALL 0x03B5` (ROM BEEP) with C4/D4/E4/F4 notes, 500ms warmup, 150ms gaps. Should hear 4 distinct rising tones. Currently hears 0–2 notes depending on timing.
-- Reference: ROM BEEP disassembly at https://skoolkid.github.io/rom/asm/03B5.html
-
-Steps:
-- [ ] Replace `ScriptProcessorNode` with `AudioWorkletNode` in `zxw/www/audio.js`
-- [ ] Fix queue overflow — don't wipe, ring buffer or backpressure instead
-- [ ] Drain audio more frequently (per-instruction or per-scanline accumulation, not per-frame)
-- [ ] Test with ROM BEEP test TAP (C D E F notes) — all 4 notes audible with clear gaps
+- [ ] `BEEP 1,0` in BASIC — hear a clean 1-second middle C
+- [ ] ROM BEEP test TAP (C D E F notes) — all 4 notes audible with clear gaps
 - [ ] Test with a known game (Jetpac) — sound effects should be clean
 
 ## glyph — extract Z80 assembly from beeper.py

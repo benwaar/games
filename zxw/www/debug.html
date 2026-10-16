@@ -180,8 +180,8 @@
 
       set('Booting…');
       emulator.reset();
-      initAudio();
-      resumeAudio();
+      await initAudio();
+      await resumeAudio();
       startFrameLoop();
 
       autoTypeLOAD();
