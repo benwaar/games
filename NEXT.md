@@ -35,6 +35,48 @@ Resources:
 - [ ] Fix audio playback — TAP beeper output currently doesn't play well, needs investigation (timing? cycle counts? emulator accuracy?)
 - [ ] Tests: existing beeper tests must still pass, add assembly-level sanity checks
 
+---
+
+## Rosetta — POC analysis (j83 sound extraction)
+
+Round-trip pipeline: Z80 binary → extract → glyph IR → Z80 + WASM. See [rosetta/README.md](rosetta/README.md).
+
+### What we learned from j83
+
+The j83 binary has **two layers** of sound:
+
+**4 standalone beeper routines** (0x6800–0x6833 + 0x684E, 117 bytes):
+- Fixed-pitch tone (D=period, C=repeat count) — pickup and hit sounds
+- Rising sweep (C increments from 0x08 to 0x38) — laser/thrust
+- Descending sweep with decay (IX-indexed workspace) — explosion
+- All self-contained, no dependencies, relocatable (relative jumps only)
+
+**Integrated animation+sound engine** (0x6875–0x6920):
+- Not standalone sound — calls `729B`, `71CF`, `7327`, `72A5` etc (all graphics routines)
+- Title screen "sound" is really a combined animation system
+- Channel-based driver with RAM workspace at `0x5D80`, frame tick at `0x68AB`
+- Cannot be extracted without pulling in the entire graphics engine
+
+### POC result
+
+Built `zxw/tools/build_j83_snd_test.py` — extracts the 4 standalone routines, wraps in a test harness with varied parameters (5 sections: original tones, pitch range, sweep, decay variations, rapid-fire combos). Loads as single CODE block, plays in zxw emulator.
+
+**Sound quality is poor** — the beeper routines use tight DJNZ loops (toggling port FE every few dozen T-states) and the emulator's frame-based audio sampler averages out the sharp edges. This is an emulator accuracy issue, not an extraction problem.
+
+**The extraction pipeline works.** Binary → analyse → identify routines → extract → wrap → play. This is the Rosetta M1 approach proven at POC level.
+
+### Implications for Rosetta M1
+
+- Standalone beeper routines are clean extraction targets — pattern: OUT (FE) + DJNZ delay loop
+- Engine-driven sound is deeply coupled to game state/graphics — needs a different approach (full binary recompilation or selective stubbing)
+- The glyph beeper work (above) should happen first — gives us clean Z80 assembly to compare extracted code against
+- Emulator audio accuracy needs work before we can do meaningful waveform comparison (Rosetta M3)
+
+Full disassembly and call map: `_data/j83-analysis-sound.md`
+
+
+---
+
 ## wex — indexed colour pipeline (256-colour LUT)
 
 Design decision: content art uses a 256-colour indexed palette. Why:
@@ -97,10 +139,6 @@ Steps:
 - Component Model + WIT: the official "WASM library" story. Interface types, composable modules, multi-language. Production-grade, still maturing.
 - Why text composition works for us (learning, small modules, one pipeline) vs why you'd graduate to linking/components in production (third-party modules, separate compilation, multi-language teams)
 - Where: `wex/explainers/wasm-code-reuse.md`
-
-## Rosetta — round-trip translation pipeline
-
-See [rosetta/README.md](rosetta/README.md) for full plan. Start with M1 (extract j83 sound → Z80 replay → byte comparison).
 
 ## Cross-project
 
