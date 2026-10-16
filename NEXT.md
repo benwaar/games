@@ -10,15 +10,15 @@ One corpus, three access methods: Incant RAG, MCP server for Claude, skill for t
 
 Set up the directory structure and write fetch scripts for public sources.
 
-- [ ] Create `knowledge/` dir structure: `scripts/`, `raw/`, `chunks/`, `schema/`
-- [ ] Add `knowledge/raw/` and `knowledge/chunks/` to `.gitignore`
-- [ ] Define chunk schema (frontmatter: topic, source_url, licence, category)
-- [ ] `scripts/fetch_z80.py` — Z80 instruction set from z80.info + Zilog public docs
-- [ ] `scripts/fetch_spectrum.py` — ROM entry points, system vars, ULA timing from public sources
-- [ ] `scripts/fetch_wasm.py` — W3C WASM spec sections, WAT text format, WASI signatures
-- [ ] Each script outputs raw markdown to `knowledge/raw/{source}/`
-- [ ] Add `scripts/fetch_all.sh` — runs all fetch scripts
-- [ ] Test: scripts run clean, raw files populated
+- [x] Create `knowledge/` dir structure: `scripts/`, `raw/`, `chunks/`, `schema/`
+- [x] Add `knowledge/raw/` and `knowledge/chunks/` to `.gitignore`
+- [x] Define chunk schema (frontmatter: topic, source_url, licence, category)
+- [x] `scripts/fetch_z80.py` — Z80 instruction set from z80.info + Zilog public docs
+- [x] `scripts/fetch_spectrum.py` — ROM entry points, system vars, ULA timing from public sources
+- [x] `scripts/fetch_wasm.py` — W3C WASM spec sections, WAT text format, WASI signatures
+- [x] Each script outputs raw markdown to `knowledge/raw/{source}/`
+- [x] Add `scripts/fetch_all.sh` — runs all fetch scripts
+- [x] Test: scripts run clean, raw files populated
 
 ## M2 — Normaliser + chunking
 
