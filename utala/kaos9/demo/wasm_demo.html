@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAOS 9 — TinyNN WASM Inference Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 2rem;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.2rem; color: #58a6ff; margin-bottom: 0.25rem; }
+    .subtitle { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
+    section { margin-bottom: 2rem; }
+    h2 { font-size: 0.85rem; color: #8b949e; text-transform: uppercase;
+         letter-spacing: 0.08em; margin-bottom: 0.75rem; border-bottom: 1px solid #21262d;
+         padding-bottom: 0.4rem; }
+    .card {
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 1rem 1.25rem;
+    }
+    label { font-size: 0.8rem; color: #8b949e; display: block; margin-bottom: 0.4rem; }
+    textarea {
+      width: 100%; height: 5rem;
+      background: #0d1117; color: #c9d1d9;
+      border: 1px solid #30363d; border-radius: 4px;
+      font-family: inherit; font-size: 0.8rem;
+      padding: 0.5rem; resize: vertical;
+    }
+    button {
+      margin-top: 0.75rem; padding: 0.45rem 1rem;
+      background: #238636; color: #fff;
+      border: none; border-radius: 5px;
+      font-family: inherit; font-size: 0.85rem;
+      cursor: pointer;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { background: #21262d; color: #8b949e; cursor: default; }
+    .result {
+      margin-top: 1rem; padding: 0.75rem 1rem;
+      background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+      font-size: 0.9rem; min-height: 2.5rem;
+    }
+    .result .class-idx { color: #58a6ff; font-size: 1.2rem; font-weight: bold; }
+    .result .label { color: #3fb950; margin-left: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { text-align: left; color: #8b949e; padding: 0.3rem 0.5rem;
+         border-bottom: 1px solid #21262d; }
+    td { padding: 0.3rem 0.5rem; }
+    td.num { text-align: right; color: #e6edf3; }
+    td.fast { color: #3fb950; }
+    td.slow { color: #f85149; }
+    .status { font-size: 0.8rem; color: #8b949e; }
+    .status.ok { color: #3fb950; }
+    .status.err { color: #f85149; }
+    .arch { color: #d2a8ff; }
+  </style>
+</head>
+<body>
+
+<h1>KAOS 9 — TinyNN WASM Inference</h1>
+<p class="subtitle">
+  <span class="arch">80 → 32 → 95</span> &nbsp;·&nbsp;
+  5 727 params &nbsp;·&nbsp;
+  f32 float &nbsp;·&nbsp;
+  <span id="wasm-status" class="status">Loading WASM…</span>
+</p>
+
+<section>
+  <h2>Single Inference</h2>
+  <div class="card">
+    <label>
+      State vector — 80 comma-separated floats
+      <span id="vec-hint" style="float:right; font-size:0.75rem; color:#58a6ff; cursor:pointer"
+            onclick="randomiseInput()">↺ randomise</span>
+    </label>
+    <textarea id="input-vec" spellcheck="false"></textarea>
+    <button id="infer-btn" onclick="runInfer()" disabled>Run infer()</button>
+    <div class="result" id="result-box">—</div>
+  </div>
+</section>
+
+<section>
+  <h2>Timing Benchmark</h2>
+  <div class="card">
+    <p style="font-size:0.82rem; color:#8b949e; margin-bottom:0.75rem">
+      10 000 inferences on the same random input. Measures pure WASM compute
+      (no JS overhead between calls).
+    </p>
+    <button id="bench-btn" onclick="runBench()" disabled>Run 10 000 inferences</button>
+    <div id="bench-result" class="result">—</div>
+
+    <table style="margin-top:1.25rem">
+      <thead>
+        <tr>
+          <th>Target</th><th>Precision</th><th>Params</th>
+          <th>Ops (MACs)</th><th>Time / inference</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>WASM (this page)</td>
+          <td>f32</td>
+          <td class="num">5 727</td>
+          <td class="num">≈ 5 727</td>
+          <td id="wasm-time" class="num fast">—</td>
+        </tr>
+        <tr>
+          <td>Z80 @ 3.5 MHz (est.)</td>
+          <td>INT8</td>
+          <td class="num">5 727</td>
+          <td class="num">≈ 5 727</td>
+          <td class="num slow">~1 800 000 T-states ≈ 6 s</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="font-size:0.75rem; color:#8b949e; margin-top:0.5rem">
+      Z80 estimate: ~315 T-states/MAC (shift-and-add multiply) × 5 727 ops ≈ 1.8M T-states ≈ 6 s @ 3.5 MHz.
+    </p>
+  </div>
+</section>
+
+<script>
+  // ---------------------------------------------------------------------------
+  // WASM loader
+  // ---------------------------------------------------------------------------
+
+  let wasmInfer = null;   // (ptr: i32) => i32
+  let wasmMem   = null;   // DataView over WASM linear memory
+
+  (async () => {
+    try {
+      const { instance } = await WebAssembly.instantiateStreaming(
+        fetch('tiny_nn.wasm')
+      );
+      wasmInfer = instance.exports.infer;
+      wasmMem   = new DataView(instance.exports.memory.buffer);
+
+      document.getElementById('wasm-status').textContent = 'WASM ready ✓';
+      document.getElementById('wasm-status').className = 'status ok';
+      document.getElementById('infer-btn').disabled = false;
+      document.getElementById('bench-btn').disabled = false;
+    } catch (e) {
+      document.getElementById('wasm-status').textContent = 'WASM load failed: ' + e.message;
+      document.getElementById('wasm-status').className = 'status err';
+      console.error(e);
+    }
+  })();
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  const IN_DIM = 80;
+  const IN_PTR = 0;   // caller writes input at offset 0
+
+  function randomVec() {
+    // Box-Muller normal samples — matches training distribution
+    const v = [];
+    for (let i = 0; i < IN_DIM; i++) {
+      const u1 = Math.random() || 1e-10;
+      const u2 = Math.random();
+      v.push(Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2));
+    }
+    return v;
+  }
+
+  function randomiseInput() {
+    document.getElementById('input-vec').value = randomVec()
+      .map(v => v.toFixed(4)).join(', ');
+  }
+
+  function parseInput() {
+    const raw = document.getElementById('input-vec').value.trim();
+    const nums = raw.split(/[\s,]+/).map(Number).filter(v => !isNaN(v));
+    if (nums.length !== IN_DIM) {
+      throw new Error(`Expected ${IN_DIM} floats, got ${nums.length}`);
+    }
+    return nums;
+  }
+
+  function writeInput(floats) {
+    for (let i = 0; i < floats.length; i++) {
+      wasmMem.setFloat32(IN_PTR + i * 4, floats[i], /*littleEndian=*/true);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Single inference
+  // ---------------------------------------------------------------------------
+
+  function runInfer() {
+    const box = document.getElementById('result-box');
+    try {
+      const floats = parseInput();
+      writeInput(floats);
+      const classIdx = wasmInfer(IN_PTR);
+      box.innerHTML =
+        `Action <span class="class-idx">${classIdx}</span>` +
+        `<span class="label">(of 95)</span>`;
+    } catch (e) {
+      box.textContent = 'Error: ' + e.message;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Timing benchmark
+  // ---------------------------------------------------------------------------
+
+  function runBench() {
+    const box    = document.getElementById('bench-result');
+    const tdWasm = document.getElementById('wasm-time');
+    const N = 10_000;
+
+    let floats;
+    try {
+      floats = parseInput().length === IN_DIM ? parseInput() : randomVec();
+    } catch (_) {
+      floats = randomVec();
+    }
+    writeInput(floats);
+
+    // Warm-up (avoids JIT compilation being measured)
+    for (let i = 0; i < 100; i++) wasmInfer(IN_PTR);
+
+    const t0 = performance.now();
+    for (let i = 0; i < N; i++) wasmInfer(IN_PTR);
+    const elapsed = performance.now() - t0;
+
+    const usPerInf = (elapsed * 1000) / N;
+    const fmt = usPerInf < 1
+      ? usPerInf.toFixed(3) + ' µs'
+      : usPerInf.toFixed(2) + ' µs';
+
+    box.innerHTML =
+      `${N.toLocaleString()} inferences in <strong>${elapsed.toFixed(1)} ms</strong> ` +
+      `→ <strong style="color:#3fb950">${fmt} / inference</strong>`;
+    tdWasm.textContent = fmt;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Seed a default input on load
+  // ---------------------------------------------------------------------------
+
+  randomiseInput();
+</script>
+</body>
+</html>

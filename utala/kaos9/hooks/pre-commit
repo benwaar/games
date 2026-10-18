@@ -1,0 +1,78 @@
+#!/bin/bash
+# Git pre-commit hook to enforce code quality
+#
+# Runs before commit to validate:
+# 1. Ruff linting (code style and quality)
+# 2. Mypy type checking (static type safety)
+# 3. Unit tests (functional correctness)
+#
+# Only allows commit if all checks pass.
+
+set -e
+
+# Get the git repository root
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Activate virtual environment if it exists
+if [ -f "venv/bin/activate" ]; then
+    source venv/bin/activate
+fi
+
+echo "======================================================================"
+echo "Running pre-commit checks..."
+echo "======================================================================"
+
+# Track overall success
+ALL_PASSED=true
+
+# Function to run a check
+run_check() {
+    local description="$1"
+    shift
+    local cmd=("$@")
+
+    echo ""
+    echo "🔍 $description..."
+
+    if "${cmd[@]}" > /tmp/pre-commit-check.log 2>&1; then
+        echo "✅ $description passed"
+        return 0
+    else
+        echo "❌ $description failed"
+        echo ""
+        cat /tmp/pre-commit-check.log
+        ALL_PASSED=false
+        return 1
+    fi
+}
+
+# Run checks (continue even if one fails, to show all errors)
+run_check "Ruff linting" ruff check src || true
+run_check "Mypy type checking" mypy src || true
+run_check "Unit tests" python -m unittest discover tests || true
+
+# Clean up temp file
+rm -f /tmp/pre-commit-check.log
+
+echo ""
+echo "======================================================================"
+
+if [ "$ALL_PASSED" = true ]; then
+    echo "✅ All pre-commit checks passed!"
+    echo "======================================================================"
+    exit 0
+else
+    echo "❌ Some pre-commit checks failed"
+    echo "======================================================================"
+    echo ""
+    echo "To fix:"
+    echo "  • Ruff:  ruff check src --fix"
+    echo "  • Mypy:  Add type hints or assertions"
+    echo "  • Tests: Fix failing tests"
+    echo ""
+    echo "To skip these checks (NOT RECOMMENDED):"
+    echo "  git commit --no-verify"
+    echo ""
+    exit 1
+fi

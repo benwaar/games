@@ -1,0 +1,9 @@
+# JupyterLite build artifacts
+_output/
+dist/
+.jupyterlite.doit.db
+venv-jupyterlite/
+
+# Python build artifacts
+*.pyc
+__pycache__/

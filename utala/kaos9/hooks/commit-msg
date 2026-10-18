@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""
+Git commit-msg hook to enforce conventional commits format.
+
+Conventional Commits Format:
+  <type>[optional scope]: <description>
+
+  [optional body]
+
+  [optional footer(s)]
+
+Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+"""
+
+import sys
+import re
+
+COMMIT_MSG_FILE = sys.argv[1]
+
+# Conventional commit pattern
+PATTERN = re.compile(
+    r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)"
+    r"(\([a-z0-9\-]+\))?!?: .{1,}$",
+    re.IGNORECASE
+)
+
+VALID_TYPES = [
+    "feat",     # New feature
+    "fix",      # Bug fix
+    "docs",     # Documentation changes
+    "style",    # Code style changes (formatting, missing semi-colons, etc)
+    "refactor", # Code refactoring
+    "perf",     # Performance improvements
+    "test",     # Adding or updating tests
+    "build",    # Build system or external dependencies
+    "ci",       # CI configuration files and scripts
+    "chore",    # Other changes that don't modify src or test files
+    "revert",   # Revert a previous commit
+]
+
+def validate_commit_message(msg):
+    """Validate commit message against conventional commits format."""
+    lines = msg.strip().split('\n')
+
+    if not lines:
+        return False, "Commit message is empty"
+
+    subject = lines[0].strip()
+
+    # Check if subject matches pattern
+    if not PATTERN.match(subject):
+        return False, f"""
+Invalid commit message format!
+
+Your commit message:
+  {subject}
+
+Expected format:
+  <type>[optional scope]: <description>
+
+Valid types: {', '.join(VALID_TYPES)}
+
+Examples:
+  feat: add game engine core
+  fix(agent): correct action masking logic
+  docs: update README with setup instructions
+  refactor(engine)!: breaking change to state representation
+"""
+
+    # Check subject length (recommended max 72 chars)
+    if len(subject) > 100:
+        return False, f"Subject line is too long ({len(subject)} > 100 characters)"
+
+    return True, "Commit message is valid"
+
+def main():
+    with open(COMMIT_MSG_FILE, 'r') as f:
+        commit_msg = f.read()
+
+    # Skip validation for merge commits
+    if commit_msg.startswith("Merge"):
+        sys.exit(0)
+
+    # Skip validation for revert commits (they have their own format)
+    if commit_msg.startswith("Revert"):
+        sys.exit(0)
+
+    # Remove comments (lines starting with #)
+    lines = [line for line in commit_msg.split('\n') if not line.startswith('#')]
+    clean_msg = '\n'.join(lines).strip()
+
+    is_valid, message = validate_commit_message(clean_msg)
+
+    if not is_valid:
+        print(f"\n❌ {message}\n", file=sys.stderr)
+        sys.exit(1)
+
+    print("✅ Commit message follows conventional commits format")
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

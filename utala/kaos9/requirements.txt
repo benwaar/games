@@ -1,0 +1,17 @@
+# utala: kaos 9 dependencies
+# No ML/DL frameworks allowed per CLAUDE.md
+# Phase 2 uses numpy for manual learning implementations
+
+# Phase 2 learning dependencies
+numpy>=1.24.0    # For linear algebra and feature vectors (manual learning)
+
+# Phase 3+ deep learning (DQN, distillation)
+torch>=2.0.0
+onnx>=1.14.0         # Export PyTorch models to ONNX (needed for Flutter deployment)
+onnxruntime>=1.16.0  # Verify ONNX output matches PyTorch during export
+
+# Development dependencies
+coverage>=7.4.0  # Code coverage measurement
+ruff>=0.1.0      # Fast modern linter (replaces flake8, pylint, isort)
+mypy>=1.8.0      # Static type checking
+bandit>=1.7.0    # Security vulnerability scanner
