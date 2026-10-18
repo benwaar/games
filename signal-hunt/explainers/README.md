@@ -93,9 +93,3 @@ How the trained CNN runs entirely in the browser via `onnxruntime-web` (WASM). O
 How the demo classifies audio continuously — the ring buffer, the ScriptProcessor callback loop, why predictions feel instant, and the tradeoffs of window size. Connects to keyword spotting and wake-word detection in production.
 
 → [Real-time inference](realtime-inference.md)
-
----
-
-### RNN Temporal Learning (Phase 4 — coming)
-
-*Coming in Phase 4.* Recurrent layers for chord progressions over time.
