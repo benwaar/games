@@ -29,6 +29,8 @@ Ordered by dependency — each project builds on capabilities from earlier ones.
 
 A competitive 2-player tactical duel playable with any standard 52-card deck.
 
+`TD learning` · `deep RL` · `model distillation` · `TinyNN` · `WASM` · `INT8 quantisation`
+
 AI research studying skill expression, risk management, and learning algorithms — from random baselines through hand-built TD learning to deep reinforcement learning and model distillation. **TinyNN v2 wins 54% against the hand-crafted heuristic** — the first learned agent to consistently beat the baseline — and deploys to three targets: Flutter (mobile), WASM (browser, 6.5 µs/inference), and Z80 assembly (ZX Spectrum, INT8 quantised, 100% argmax agreement with float32).
 
 [One Brain, Three Runtimes](utala/kaos9/docs/DISTILLATION_TARGETS.md) · [Utala KAOS 9 Rules (PDF)](utala-kaos-9-rules.pdf) · [Project folder](./utala/kaos9/)
