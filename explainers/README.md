@@ -1,24 +1,10 @@
 # Learning Hub
 
-Concepts, visualisations, and code from the projects in and around Games AI Lab.
-Each section explains why a technique exists, shows what it looks like in practice, and links to the code that produced it.
-
----
-
-## Signal Processing & Data Pipelines
-
-| Concept | What it shows | Code |
-|---------|--------------|------|
-| [Reading Waveforms & Spectrograms](reading-plots.md) | Waveform and Mel-spectrogram from a real recording | [pipeline/ingest.py](https://github.com/benwaar/music/blob/main/signal-hunt/pipeline/ingest.py), [pipeline/features.py](https://github.com/benwaar/music/blob/main/signal-hunt/pipeline/features.py) |
-| [Mel-Spectrograms](mel-spectrograms.md) | STFT → Mel scale → log-dB → tensor, with piano spectrogram example | [pipeline/features.py](https://github.com/benwaar/music/blob/main/signal-hunt/pipeline/features.py) |
-| [Signal-to-Noise Ratio](snr.md) | Why SNR matters for augmentation | [pipeline/augment.py](https://github.com/benwaar/music/blob/main/signal-hunt/pipeline/augment.py) |
-| [Data Collection](data-collection.md) | Why real recordings, labelling strategy | [data/raw/](https://github.com/benwaar/music/tree/main/signal-hunt/data/raw/) |
-| [Batch Processing](batch-processing.md) | Augmentation strategy, manifest schema | [pipeline/batch.py](https://github.com/benwaar/music/blob/main/signal-hunt/pipeline/batch.py) |
-
-### Waveform and spectrogram from Signal Hunt Phase 1
-
-![Waveform](images/waveform.png)
-![Mel-spectrogram features](images/mel_features.png)
+Shared machine-learning foundations and project explainers from Games AI Lab. These concepts
+are kept here for reuse across current and future projects; Signal Hunt's audio-domain
+explainers now live in the [Music repo](https://github.com/benwaar/music/tree/main/signal-hunt/explainers).
+Each section explains why a technique exists, shows what it looks like in practice, and links
+to project code where relevant.
 
 ---
 
@@ -45,8 +31,8 @@ Each section explains why a technique exists, shows what it looks like in practi
 
 | Concept | What it shows | Code |
 |---------|--------------|------|
-| [CNN Architecture](cnn-architecture.md) | Conv2d, BatchNorm, ReLU, MaxPool, Global Average Pooling | [model/cnn.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/cnn.py) |
-| [Transfer Learning](transfer-learning.md) | Frozen vs fine-tune, scratch comparison, per-note results | [model/transfer.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/transfer.py), [model/transfer_train.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/transfer_train.py) |
+| [CNN Architecture](cnn-architecture.md) | CNN building blocks, illustrated with Signal Hunt's sound classifier | [model/cnn.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/cnn.py) |
+| [Transfer Learning](transfer-learning.md) | Frozen vs fine-tuned features, with Signal Hunt's piano-note experiment | [model/transfer.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/transfer.py), [model/transfer_train.py](https://github.com/benwaar/music/blob/main/signal-hunt/model/transfer_train.py) |
 
 ### Piano C4 spectrogram — harmonic ladder visible
 
@@ -87,5 +73,5 @@ Each section explains why a technique exists, shows what it looks like in practi
 
 | Project | Key explainers used |
 |---------|----------------------|
-| [Signal Hunt](https://github.com/benwaar/music/tree/main/signal-hunt) | Audio processing, data pipelines, CNNs, training, evaluation, transfer learning |
+| [Signal Hunt](https://github.com/benwaar/music/tree/main/signal-hunt) | Audio-domain explainers in Music; shared model architecture, training, and evaluation concepts here |
 | [Utala: KAOS 9](../utala/kaos9/) | Reinforcement learning, model distillation |

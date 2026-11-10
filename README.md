@@ -19,12 +19,13 @@ Everything is inspectable and hackable.
 |---|---------|---------------|------------|--------|
 | 1 | [Utala: KAOS 9](utala/kaos9/) | Card game AI: TD learning → deep RL → distillation (Flutter, WASM, Z80) | — | ✅ |
 
-
 ---
 
 ## Utala: KAOS 9 
 
 A competitive 2-player tactical duel playable with any standard 52-card deck.
+
+Reinforcement Learning, with Temporal Difference Learning as the core method.
 
 `TD learning` · `deep RL` · `model distillation` · `TinyNN` · `WASM` · `INT8 quantisation`
 
