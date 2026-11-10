@@ -1,6 +1,6 @@
 # Games AI Lab
 
-Hands-on machine learning and game AI projects — reinforcement learning, deep learning, audio classification, neural networks, and model distillation. Built from scratch in Python with PyTorch.
+Hands-on machine learning and game AI projects.
 
 ## Development Ethos
 
@@ -15,12 +15,9 @@ Everything is inspectable and hackable.
 
 ## Projects
 
-Ordered by dependency — each project builds on capabilities from earlier ones.
-
 | # | Project | What it builds | Depends on | Status |
 |---|---------|---------------|------------|--------|
 | 1 | [Utala: KAOS 9](utala/kaos9/) | Card game AI: TD learning → deep RL → distillation (Flutter, WASM, Z80) | — | ✅ |
-| 2 | [Signal Hunt](signal-hunt/) | Audio classifier: data pipelines → CNN → transfer learning → chords | — | ✅ |
 
 
 ---
@@ -47,19 +44,6 @@ The overarching project bridges art, music, AI and a developing series of compan
 
 ---
 
-## Signal Hunt
-
-A deep learning project — from raw audio to a live browser piano classifier.
-
-`CNN` · `transfer learning` · `Mel spectrogram` · `multi-label` · `CNN-RNN` · `ONNX` · `WASM inference`
-
-Turn raw audio into Mel-spectrogram tensors and build up from sound-type classification through piano note detection, chord recognition, and chord progressions. The trained model ships to the browser — real-time inference via `onnxruntime-web`, ~12 ms end-to-end, no server required.
-
-**Highlights:** 89.5% piano note accuracy · 96.2% chord name accuracy · live browser demo (`demo/index.html`) · real-time sliding-window inference
-
-[Project folder](./signal-hunt/)
-
----
 
 ## License
 
